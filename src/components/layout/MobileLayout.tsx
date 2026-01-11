@@ -7,7 +7,8 @@ import VideoSection from './VideoSection';
 import { PageData, Video } from '@/lib/types'; 
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Controller } from 'swiper/modules';
-import { Play, ChevronLeft, ChevronRight, FileText, X, Sun, Moon, Share2, Search, HelpCircle } from 'lucide-react';
+// AGREGADO: Importamos Download
+import { Play, ChevronLeft, ChevronRight, FileText, X, Sun, Moon, Share2, Search, HelpCircle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Swiper as SwiperClass } from 'swiper';
 
@@ -159,7 +160,6 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
   }, [videos]);
 
   useEffect(() => {
-    // Si la categoría activa ya no existe, volver a 0
     if (activeCatIndex >= categories.length) setActiveCatIndex(0);
   }, [categories, activeCatIndex]);
 
@@ -183,7 +183,6 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
 
   return (
     <div className="flex flex-col gap-0 h-full w-full">
-      {/* Navegador de Categorías */}
       <div className={cn(
         "flex items-center justify-between px-2 py-2 shrink-0 rounded-lg border mx-1 transition-colors",
         isDark ? "bg-neutral-900/50 border-white/5" : "bg-neutral-100 border-neutral-200"
@@ -192,7 +191,6 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
           <ChevronLeft size={28} strokeWidth={3} />
         </button>
         
-        {/* TÍTULO CATEGORÍA */}
         <h2 className={cn(
           "font-sans font-extrabold text-xl text-center uppercase tracking-wider truncate px-2 flex-1 drop-shadow-sm -mt-[20px]",
           isDark ? "text-white" : "text-black"
@@ -205,14 +203,12 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
         </button>
       </div>
 
-      {/* Swiper */}
       <Swiper slidesPerView={2.2} spaceBetween={10} className="w-full flex-1 min-h-0 px-1">
         {filteredVideos.map((video) => {
           const thumbSrc = video.imagen || getYouTubeThumbnail(video.url);
           return (
             <SwiperSlide key={video.id} className="h-full">
                <div 
-                 // CORRECCIÓN: Eliminado el segundo argumento 'CONTENT'
                  onClick={() => playManual(video)} 
                  className={cn(
                    "relative h-full w-full rounded-lg overflow-hidden border active:scale-95 transition-transform group",
@@ -263,6 +259,9 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // ESTADO DE INSTALACIÓN PWA
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
   const logoSrc = isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png';
   const linkColor = isDark ? '#6699ff' : '#003399';
   const iconColor = isDark ? 'text-neutral-300 hover:text-white' : 'text-neutral-700 hover:text-black';
@@ -282,6 +281,25 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
        setVideoPool(videos.allVideos);
     }
   }, [videos, setVideoPool]);
+
+  // EFECTO PWA: Escuchar evento de instalación
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault(); // Prevenir que Chrome muestre el banner automático (si quisieras controlarlo tú)
+      setDeferredPrompt(e); // Guardar el evento para dispararlo cuando queramos
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   // Lógica de Búsqueda
   useEffect(() => {
@@ -331,7 +349,6 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     }
   };
 
-  // Determinar qué videos mostrar
   const videosDisplay = (isSearchOpen && searchQuery.length > 0) 
     ? filteredVideos 
     : (videos?.allVideos || []);
@@ -486,6 +503,13 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
 
                {!isSearchOpen && (
                  <>
+                   {/* NUEVO: Botón de INSTALAR PWA (Solo aparece si el navegador lo permite) */}
+                   {deferredPrompt && (
+                     <button onClick={handleInstallClick} className={cn("active:scale-90 transition-transform animate-pulse text-green-500 hover:text-green-600")}>
+                        <Download size={20} strokeWidth={2.5} />
+                     </button>
+                   )}
+                   
                    <button onClick={handleShare} className={cn("active:scale-90 transition-transform", iconColor)}><Share2 size={20} strokeWidth={2} /></button>
                    <button onClick={toggleTheme} className={cn("active:scale-90 transition-transform", iconColor)}>{isDark ? <Sun size={20} strokeWidth={2} /> : <Moon size={20} strokeWidth={2} />}</button>
                    <button onClick={() => openModal('DECRETO')} className={cn("active:scale-90 transition-transform", iconColor)}><HelpCircle size={20} strokeWidth={2} /></button>
@@ -514,7 +538,6 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
                               key={item?.id} 
                               news={item} 
                               isFeatured={slide.type === 'featured'} 
-                              // CORRECCIÓN: Eliminado segundo argumento 'NEWS'
                               onClick={() => playManual(item)} 
                               isDark={isDark} 
                             />
