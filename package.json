@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",
@@ -16,7 +17,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-player": "^2.16.1",
-    "swiper": "^11.2.0",
+    "swiper": "^11.2.10",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
