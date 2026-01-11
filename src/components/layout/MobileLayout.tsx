@@ -212,7 +212,8 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
           return (
             <SwiperSlide key={video.id} className="h-full">
                <div 
-                 onClick={() => playManual(video, 'CONTENT')} 
+                 // CORRECCIÓN: Eliminado el segundo argumento 'CONTENT'
+                 onClick={() => playManual(video)} 
                  className={cn(
                    "relative h-full w-full rounded-lg overflow-hidden border active:scale-95 transition-transform group",
                    isDark ? "bg-neutral-800 border-neutral-700/50" : "bg-white border-neutral-200 shadow-sm"
@@ -499,7 +500,6 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
 
         <div className="flex-1 flex flex-col gap-2 px-3 pt-[2px] pb-1 min-h-0">
           
-          {/* CORRECCIÓN: ELIMINADA LA CONDICIÓN !isSearchOpen. LAS NOTICIAS SIEMPRE SE MUESTRAN. */}
           <div className="w-full px-1 mt-1 text-center shrink-0">
               <h3 className={cn("font-sans font-extrabold text-xl uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Últimas Noticias</h3>
           </div>
@@ -510,7 +510,14 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
                     <SwiperSlide key={`news-${index}`}>
                        <div className="w-full h-full flex justify-between">
                           {slide.items.map((item) => (
-                            <MobileNewsCard key={item?.id} news={item} isFeatured={slide.type === 'featured'} onClick={() => playManual(item, 'NEWS')} isDark={isDark} />
+                            <MobileNewsCard 
+                              key={item?.id} 
+                              news={item} 
+                              isFeatured={slide.type === 'featured'} 
+                              // CORRECCIÓN: Eliminado segundo argumento 'NEWS'
+                              onClick={() => playManual(item)} 
+                              isDark={isDark} 
+                            />
                           ))}
                        </div>
                     </SwiperSlide>
@@ -523,15 +530,12 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
             </Swiper>
           </div>
           
-
-          {/* CORRECCIÓN: ELIMINADO EL CAMBIO DE CLASE DINÁMICO. LA ALTURA SIEMPRE ES FIJA. */}
           <div className="h-[220px] shrink-0 flex flex-col -mt-[5px]">
               <div className={cn("flex-1 rounded-xl p-2 border transition-colors", themeClasses.containerVideo)}>
                  <VideoCarouselBlock videos={videosDisplay} isDark={isDark} />
               </div>
           </div>
 
-          {/* CORRECCIÓN: ELIMINADA LA CONDICIÓN !isSearchOpen. LOS ADS SIEMPRE SE MUESTRAN. */}
           <div className="w-full flex-1 min-h-0 mt-2">
               <Swiper modules={[Controller]} onSwiper={setAdsSwiper} controller={{ control: newsSwiper }} spaceBetween={10} slidesPerView={1} loop={adsSlides.length > 3} className="h-full w-full">
                 {adsSlides.map((ad, idx) => (
