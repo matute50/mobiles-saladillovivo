@@ -1,11 +1,32 @@
-import type { Metadata } from "next";
-import Script from "next/script";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
+import { MediaPlayerProvider } from '@/context/MediaPlayerContext';
 
+const inter = Inter({ subsets: ["latin"] });
+
+// CONFIGURACIÓN PWA Y METADATA
 export const metadata: Metadata = {
-  title: "Saladillo Vivo Mobile",
-  description: "Noticias y TV en vivo",
+  title: "Saladillo Vivo",
+  description: "Medio digital de Saladillo",
+  manifest: "/manifest.json", // Vincula el manifiesto
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent", // Barra transparente en iPhone
+    title: "Saladillo Vivo",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+// CONFIGURACIÓN DE VIEWPORT (Zoom y colores)
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // Evita que el usuario haga zoom pellizcando (sensación nativa)
 };
 
 export default function RootLayout({
@@ -15,16 +36,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className="bg-black text-white antialiased">
-        {/* Script oficial de Google Cast para habilitar Chromecast */}
-        <Script 
-          src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" 
-          strategy="beforeInteractive" 
-        />
-        
-        <Providers>
+      <body className={inter.className}>
+        <MediaPlayerProvider>
           {children}
-        </Providers>
+        </MediaPlayerProvider>
       </body>
     </html>
   );
