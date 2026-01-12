@@ -81,7 +81,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
             isActive={true} 
             onEnded={handleContentEnded}
             muted={isUserMuted} 
-            // CAMBIO: Volumen fijo al 100%. El fade lo maneja el Player internamente.
             volume={1}
             isPlaying={isPlaying} 
           />
@@ -90,12 +89,34 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA 2: ESCUDO TRANSPARENTE === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA 3: PUENTE DE CARGA === */}
+       {/* === CAPA 3: PUENTE DE CARGA (EFECTO TV SIN SEÑAL) === */}
        {isIntroVisible && !isIntroReady && (
-         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black">
-            <p className="text-white/30 font-mono text-xs animate-pulse tracking-widest">
-               CARGANDO...
-            </p>
+         <div className="absolute inset-0 z-30 flex items-center justify-center bg-neutral-900 overflow-hidden">
+            
+            {/* 1. Efecto de Ruido Estático (Flicker rápido) */}
+            <div 
+              className="absolute inset-0 opacity-10 bg-white animate-pulse" 
+              style={{ animationDuration: '0.05s' }} 
+            />
+            
+            {/* 2. Scanlines (Líneas horizontales de TV vieja) */}
+            <div 
+              className="absolute inset-0 z-10 pointer-events-none"
+              style={{
+                background: "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.4))",
+                backgroundSize: "100% 4px"
+              }}
+            />
+
+            {/* 3. Vignette (Esquinas oscuras de tubo CRT) */}
+            <div className="absolute inset-0 z-20 bg-[radial-gradient(circle,transparent_60%,black_120%)] pointer-events-none" />
+
+            {/* 4. Texto OSD (On Screen Display) estilo VCR */}
+            <div className="relative z-30 flex flex-col items-center">
+                <p className="text-green-500 font-mono text-xl md:text-3xl tracking-[0.2em] font-bold opacity-80 animate-pulse drop-shadow-[0_0_5px_rgba(0,255,0,0.8)]" style={{ textShadow: "2px 2px 0px rgba(0,0,0,0.5)" }}>
+                   SINTONIZANDO...
+                </p>
+            </div>
          </div>
        )}
 
