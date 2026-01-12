@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ReactPlayer from 'react-player';
+import Image from 'next/image'; // IMPORTANTE: Importamos Image
 import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { OnProgressProps } from 'react-player/base';
@@ -59,24 +60,20 @@ export default function VideoPlayer({
   useEffect(() => {
     if (!isArticle || !isPlaying || !isActive) return;
 
-    setIsTuning(true); // Activar estática de "Sintonizando"
+    setIsTuning(true);
 
     const article = content as Article;
     const totalDuration = (article.animation_duration || 15) * 1000;
     const fadeDuration = 500; 
 
-    // Timer para fade out normal
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
     }, totalDuration - fadeDuration);
 
-    // Timer para terminar el slide
     const endTimer = setTimeout(() => {
       onEnded();
     }, totalDuration);
 
-    // === TIMER DE SEGURIDAD (FALLBACK) ===
-    // Si en 2.5 segundos el iframe no avisó que cargó, destrabamos todo a la fuerza.
     const safetyTimer = setTimeout(() => {
        setIsLoaded(true);
        setIsTuning(false);
@@ -85,7 +82,7 @@ export default function VideoPlayer({
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(endTimer);
-      clearTimeout(safetyTimer); // Limpiar timer de seguridad
+      clearTimeout(safetyTimer);
     };
   }, [content, isPlaying, isActive, onEnded, isArticle]);
 
@@ -120,13 +117,25 @@ export default function VideoPlayer({
     >
       <div className="tv-vignette" />
       <div className="tv-scanlines opacity-50" />
-      <div className="absolute inset-0 overflow-hidden">
+      
+      {/* Ruido Estático: Lo ponemos ENCIMA de la imagen para que parezca que la placa tiene interferencia */}
+      <div className="absolute inset-0 overflow-hidden z-20">
          <div className={cn("tv-noise", isHeavy ? "opacity-30" : "opacity-1")} />
       </div>
       
+      {/* PLACA PERSONALIZADA (Solo visible en modo Heavy/Sintonizando) */}
       {isHeavy && (
-        <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-white/50 font-mono text-xs animate-pulse tracking-widest">SINTONIZANDO...</p>
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+            {/* Reemplazamos el texto por tu imagen */}
+            <div className="relative w-full h-full">
+                <Image 
+                    src="/sintonizando.png" 
+                    alt="Sintonizando..." 
+                    fill 
+                    className="object-cover opacity-80" // Opacidad ligera para mezclar con el fondo negro
+                    priority
+                />
+            </div>
         </div>
       )}
     </div>
@@ -200,7 +209,9 @@ export default function VideoPlayer({
               scrolling="no"
               title={articleData?.titulo}
               loading="eager"
-              sandbox="allow-scripts allow-same-origin"
+              // CORRECCIÓN AUDIO: Agregado 'allow' con autoplay
+              allow="autoplay; encrypted-media; fullscreen"
+              sandbox="allow-scripts allow-same-origin allow-presentation"
               onLoad={handleSlideLoad}
           />
         </div>
