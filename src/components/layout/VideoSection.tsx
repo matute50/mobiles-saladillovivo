@@ -6,7 +6,6 @@ import VideoPlayer from '@/components/player/VideoPlayer';
 import { cn } from '@/lib/utils';
 import ReactPlayer from 'react-player';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import { Article } from '@/lib/types';
 
 declare global {
   namespace JSX {
@@ -25,13 +24,10 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserMuted, setIsUserMuted] = useState(true);
   const [showBars, setShowBars] = useState(true);
 
-  // DETECCIÓN ESTRICTA
-  const isSlide = currentContent && 
-                  'url_slide' in currentContent && 
-                  typeof (currentContent as Article).url_slide === 'string' &&
-                  (currentContent as Article).url_slide.length > 0;
-                  
-  const isVideo = !isSlide; // Si no es slide, asumimos video para la UI
+  // DETECCIÓN POR PRIORIDAD
+  const rawSlide = (currentContent as any)?.url_slide;
+  const isSlide = typeof rawSlide === 'string' && rawSlide.trim().length > 0;
+  const isVideo = !isSlide; // Si es slide, NO es video.
   
   const isNewsIntro = currentIntro ? currentIntro.includes('noticias.mp4') : false;
 
@@ -90,6 +86,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
+       {/* INTRO LAYER */}
        <div className={cn("absolute inset-0 z-40 transition-opacity duration-500 ease-out", isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
          {currentIntro && (
             <ReactPlayer
@@ -109,6 +106,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
+       {/* BARRAS DE CINE (SOLO SI NO ES SLIDE) */}
        {isVideo && (
          <>
            <div className={cn("absolute top-0 left-0 right-0 h-[19%] bg-black z-30 transition-transform duration-500 ease-in-out", showBars ? "translate-y-0" : "-translate-y-full")} />

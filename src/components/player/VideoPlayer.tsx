@@ -38,18 +38,16 @@ export default function VideoPlayer({
 
   // --- 0. PRE-CÁLCULOS SEGUROS ---
   
-  // Extraemos y validamos url_slide
-  const rawSlideUrl = (content as Article)?.url_slide;
-  
+  // 1. Validamos url_slide primero
+  const rawSlide = (content as any)?.url_slide;
   const isSlide = useMemo(() => {
-    // Debe existir, ser string y no estar vacía
-    return typeof rawSlideUrl === 'string' && rawSlideUrl.length > 0;
-  }, [rawSlideUrl]);
+    return typeof rawSlide === 'string' && rawSlide.trim().length > 0;
+  }, [rawSlide]);
 
   const slideUrl = useMemo(() => {
     if (!isSlide) return null;
-    return `${rawSlideUrl}?autoplay=1&mute=0&t=${new Date().getTime()}`;
-  }, [isSlide, rawSlideUrl, (content as Article)?.id]);
+    return `${rawSlide}?autoplay=1&mute=0&t=${new Date().getTime()}`;
+  }, [isSlide, rawSlide, (content as any)?.id]);
 
   // --- 1. LÓGICA DE RESETEO ---
   useEffect(() => {
@@ -60,14 +58,14 @@ export default function VideoPlayer({
     durationRef.current = 0;
   }, [content]);
 
-  // --- 2. LÓGICA PARA ARTÍCULOS ---
+  // --- 2. LÓGICA PARA SLIDES (PRIORIDAD) ---
   useEffect(() => {
     if (!isSlide || !isPlaying || !isActive) return;
 
     setIsTuning(true);
 
     const article = content as Article;
-    const totalDuration = (article.animation_duration || 15) * 1000;
+    const totalDuration = (article?.animation_duration || 15) * 1000;
     const fadeDuration = 500; 
 
     const fadeTimer = setTimeout(() => {
@@ -133,9 +131,9 @@ export default function VideoPlayer({
   // --- RENDERIZADO ---
   if (!content) return <div className="w-full h-full bg-black" />;
 
-  // CASO 1: Es un Slide (NOTICIA)
+  // MODO 1: SLIDE (PRIORIDAD ALTA)
   if (isSlide) {
-    if (!slideUrl) return <div className="w-full h-full bg-black text-white">Cargando slide...</div>;
+    if (!slideUrl) return <div className="bg-black text-white p-4">Error: URL Slide vacía</div>;
     const showSlideStatic = !isLoaded || isTuning;
 
     return (
@@ -143,9 +141,9 @@ export default function VideoPlayer({
           <div className="w-full h-full relative">
             {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
             <iframe
-                key={(content as Article)?.id} src={slideUrl}
+                key={(content as any)?.id} src={slideUrl}
                 className={cn("w-full h-full border-0 pointer-events-none transition-opacity duration-500", (!isTuning && !isFadingOut) ? "opacity-100" : "opacity-0")}
-                scrolling="no" title={(content as Article)?.titulo} loading="eager"
+                scrolling="no" title="Slide" loading="eager"
                 allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
                 sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
                 onLoad={handleSlideLoad}
@@ -155,8 +153,7 @@ export default function VideoPlayer({
     );
   }
 
-  // CASO 2: Es un Video (YouTube)
-  // Solo llegamos aquí si isSlide es FALSE.
+  // MODO 2: VIDEO (FALLBACK)
   const video = content as Video;
   const showStatic = !isLoaded || isBuffering;
 

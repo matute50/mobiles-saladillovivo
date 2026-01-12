@@ -50,19 +50,15 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const triggerTransition = useCallback((nextContent: Video | Article | null) => {
     if (!nextContent) return;
 
-    // --- DETECCIÓN POR VALOR (NO SOLO POR CLAVE) ---
-    // Chequeamos si url_slide existe Y tiene contenido real.
-    const hasSlideUrl = 'url_slide' in nextContent && 
-                        typeof (nextContent as Article).url_slide === 'string' &&
-                        (nextContent as Article).url_slide.length > 0;
-
-    const isSlide = hasSlideUrl;
+    // --- DETECCIÓN POR PRIORIDAD ---
+    // 1. ¿Tiene url_slide? -> ES SLIDE (Sin importar qué diga 'url')
+    const rawSlide = (nextContent as any).url_slide;
+    const isSlide = typeof rawSlide === 'string' && rawSlide.trim().length > 0;
     
-    // Si es Slide -> NEWS_INTRO. Si no -> Random.
+    // Asignación de intro
     const newIntro = isSlide ? NEWS_INTRO : getRandomIntro();
 
-    console.log("🔄 [Context] Detectado:", isSlide ? "NOTICIA (Slide)" : "VIDEO (YouTube)");
-    console.log("🎬 [Context] Intro:", newIntro);
+    console.log("🔄 [Context] Play:", isSlide ? "SLIDE (url_slide)" : "VIDEO");
     
     setState(prev => ({
       ...prev,
@@ -73,10 +69,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }));
 
     if (isSlide) {
-      // SI ES NOTICIA: Loop infinito del intro.
-      // No ponemos timeout. Esperamos señal del VideoPlayer.
+      // MODO SLIDE: Sin timeout. Loop infinito hasta carga.
     } else {
-      // SI ES VIDEO: Timeout fijo de 4 segundos.
+      // MODO VIDEO: Timeout 4s.
       setTimeout(() => {
         setState(prev => ({
           ...prev,
