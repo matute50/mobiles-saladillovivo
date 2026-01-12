@@ -11,7 +11,8 @@ const INTRO_VIDEOS = [
   '/videos_intro/intro5.mp4',
 ];
 
-const NEWS_INTRO = '/videos_intro/noticias.mp4'; // Intro específico para slides
+// Intro específico para slides de noticias
+const NEWS_INTRO = '/videos_intro/noticias.mp4'; 
 
 interface MediaPlayerState {
   currentContent: Video | Article | null; 
@@ -26,7 +27,7 @@ interface MediaPlayerContextType {
   setVideoPool: (videos: Video[]) => void;
   playManual: (item: Video | Article) => void; 
   handleContentEnded: () => void;              
-  hideIntro: () => void; // NUEVO: Función para ocultar intro manualmente
+  hideIntro: () => void; 
 }
 
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
@@ -48,29 +49,38 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     setState(prev => ({ ...prev, isIntroVisible: false }));
   }, []);
 
+  // --- FUNCIÓN PRINCIPAL DE TRANSICIÓN ---
   const triggerTransition = useCallback((nextContent: Video | Article | null) => {
     if (!nextContent) return;
 
-    // Detectamos si es Artículo (Slide) o Video
-    const isArticle = !('url' in nextContent && typeof (nextContent as Video).url === 'string');
+    // 1. DETECTAR SI ES NOTICIA
+    // Verificamos si tiene la propiedad 'url_slide' o si NO tiene 'url' de video
+    const isArticle = 'url_slide' in nextContent || !('url' in nextContent);
     
-    // Si es Artículo -> Usamos 'noticias.mp4'. Si es Video -> Random.
+    // 2. ELEGIR EL INTRO CORRECTO
+    // Si es noticia -> NEWS_INTRO. Si es video -> Random.
     const newIntro = isArticle ? NEWS_INTRO : getRandomIntro();
 
+    console.log("🔄 [Transition] Nuevo contenido:", isArticle ? "NOTICIA" : "VIDEO");
+    console.log("🎬 [Transition] Intro seleccionado:", newIntro);
+
+    // 3. ACTUALIZAR ESTADO
     setState(prev => ({
       ...prev,
-      isIntroVisible: true,
+      isIntroVisible: true, // Mostramos intro
       currentIntro: newIntro,
-      currentContent: nextContent,
+      currentContent: nextContent, // Ponemos EXACTAMENTE lo que tocó el usuario
       isContentPlaying: true 
     }));
 
-    // LÓGICA DE TIEMPO:
+    // 4. GESTIÓN DE TIEMPO DEL INTRO
     if (isArticle) {
-      // SI ES NOTICIA: NO ponemos timer. El intro 'loopeará' hasta que el slide avise que cargó.
-      // (La lógica de ocultar dependerá de la función hideIntro llamada desde el componente)
+      // CASO NOTICIA:
+      // NO ponemos timeout. El intro se quedará en loop (gracias a VideoSection)
+      // hasta que el slide cargue y llame a hideIntro().
     } else {
-      // SI ES VIDEO: Mantenemos el comportamiento de 4 segundos fijos.
+      // CASO VIDEO:
+      // Ponemos un timeout fijo de 4 segundos para ocultar el intro.
       setTimeout(() => {
         setState(prev => ({
           ...prev,
@@ -81,6 +91,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   }, []);
 
+  // Inicio Automático (Solo si no hay nada reproduciendo)
   useEffect(() => {
     if (videoPool.length > 0 && !state.currentContent) {
       const firstVideo = videoPool[Math.floor(Math.random() * videoPool.length)];
@@ -88,10 +99,13 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [videoPool, triggerTransition, state.currentContent]);
 
+  // Selección Manual del Usuario (Clic en Noticia o Video)
   const playManual = (item: Video | Article) => {
+    // Pasamos directamente el item clickeado a la transición
     triggerTransition(item);
   };
 
+  // Cuando termina un contenido, pasamos a uno random
   const handleContentEnded = () => {
     if (videoPool.length === 0) return;
     const nextRandom = videoPool[Math.floor(Math.random() * videoPool.length)];
