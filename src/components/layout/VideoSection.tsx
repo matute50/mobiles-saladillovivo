@@ -5,7 +5,6 @@ import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import VideoPlayer from '@/components/player/VideoPlayer'; 
 import { cn } from '@/lib/utils';
 import ReactPlayer from 'react-player';
-// AGREGADO: Importamos iconos de volumen
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 
 declare global {
@@ -22,18 +21,19 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   
   const [isPlaying, setIsPlaying] = useState(true);
   const [showControls, setShowControls] = useState(false);
-  
-  // NUEVO: Estado de Mute (Inicia true para cumplir políticas de Autoplay móvil)
   const [isUserMuted, setIsUserMuted] = useState(true);
 
+  // Estado para las barras negras
   const [showBars, setShowBars] = useState(true);
 
-  // Sincronización de bandas
+  // --- LÓGICA DE BARRAS DE CINE ---
   useEffect(() => {
     if (isIntroVisible) {
       setShowBars(true); 
     } else {
-      const timer = setTimeout(() => setShowBars(false), 1000);
+      // CAMBIO: Aumentado a 2000ms (2 segundos)
+      // Esto da 1 segundo extra de cobertura y permite el fade-out final
+      const timer = setTimeout(() => setShowBars(false), 2000);
       return () => clearTimeout(timer);
     }
   }, [isIntroVisible]);
@@ -53,11 +53,10 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     else setShowBars(true); 
   };
 
-  // NUEVO: Función para alternar Mute
   const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Evita que el clic se propague y oculte controles
+    e.stopPropagation(); 
     setIsUserMuted(!isUserMuted);
-    setShowControls(true); // Mantiene los controles visibles al tocar
+    setShowControls(true); 
   };
 
   const handleInteraction = () => {
@@ -78,8 +77,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
             isActive={true} 
             shouldPreload={true}
             onEnded={handleContentEnded}
-            // LÓGICA DE MUTE: 
-            // Está muteado si: El usuario quiere (isUserMuted) O si el Intro está sonando (isIntroVisible)
             muted={isUserMuted || isIntroVisible} 
             isPlaying={isPlaying} 
           />
@@ -91,14 +88,16 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          onClick={handleInteraction}
        />
 
-       {/* === CAPA 3: INTRO === */}
+       {/* === CAPA 3: INTRO (CON FADE OUT) === */}
+       {/* CAMBIO: Usamos opacity + pointer-events-none en lugar de 'hidden' para lograr el Fade Out */}
        <div 
          className={cn(
-           "absolute inset-0 z-40 transition-none", 
-           isIntroVisible ? "block" : "hidden pointer-events-none" 
+           "absolute inset-0 z-40 transition-opacity duration-500 ease-out", 
+           isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none" 
          )}
        >
-         {isIntroVisible && currentIntro && (
+         {/* Renderizamos el player siempre que haya URL, lo ocultamos visualmente con CSS */}
+         {currentIntro && (
             <ReactPlayer
               key={currentIntro} 
               url={currentIntro}
@@ -121,13 +120,10 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* === CAPA 4: BANDAS === */}
-       {showBars && (
-         <>
-            <div className="absolute top-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500" />
-            <div className="absolute bottom-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500" />
-         </>
-       )}
+       {/* === CAPA 4: BANDAS (CON FADE OUT) === */}
+       {/* CAMBIO: Controlamos la opacidad con clases CSS en lugar de desmontar el componente */}
+       <div className={cn("absolute top-0 left-0 right-0 h-[14%] bg-black z-30 transition-opacity duration-500", showBars ? "opacity-100" : "opacity-0 pointer-events-none")} />
+       <div className={cn("absolute bottom-0 left-0 right-0 h-[14%] bg-black z-30 transition-opacity duration-500", showBars ? "opacity-100" : "opacity-0 pointer-events-none")} />
 
        {/* === CAPA 5: CONTROLES PROPIOS === */}
        <div 
@@ -136,7 +132,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
            showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
          )}
        >
-          {/* BOTÓN MUTE (Arriba Izquierda) */}
+          {/* BOTÓN MUTE */}
           <button 
             onClick={toggleMute}
             className="absolute top-3 left-3 p-2 rounded-full bg-black/40 text-white backdrop-blur-md border border-white/10 active:scale-95 transition-all"
@@ -144,12 +140,12 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
              {isUserMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
 
-          {/* BOTÓN CHROMECAST (Arriba Derecha) */}
+          {/* BOTÓN CHROMECAST */}
           <div className="absolute top-3 right-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
              <google-cast-launcher style={{ width: '40px', height: '40px', display: 'block' }}></google-cast-launcher>
           </div>
 
-          {/* BOTÓN PLAY/PAUSE (Centro) */}
+          {/* BOTÓN PLAY/PAUSE */}
           <button 
             onClick={togglePlay}
             className="p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white shadow-2xl scale-110 active:scale-95 transition-all"
