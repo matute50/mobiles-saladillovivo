@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Video, Article } from '@/lib/types';
 
 const INTRO_VIDEOS = [
@@ -11,7 +11,7 @@ const INTRO_VIDEOS = [
   '/videos_intro/intro5.mp4',
 ];
 
-const NEWS_INTRO = '/videos_intro/noticias.mp4'; 
+const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 
 interface MediaPlayerState {
   currentContent: Video | Article | null; 
@@ -25,8 +25,8 @@ interface MediaPlayerContextType {
   videoPool: Video[];
   setVideoPool: (videos: Video[]) => void;
   playManual: (item: Video | Article) => void; 
-  handleContentEnded: () => void;              
-  hideIntro: () => void; 
+  handleContentEnded: () => void;
+  dismissIntro: () => void;
 }
 
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
@@ -37,74 +37,80 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const [state, setState] = useState<MediaPlayerState>({
     currentContent: null,
     currentIntro: null,
-    isIntroVisible: true, 
+    isIntroVisible: true,
     isContentPlaying: false,
   });
 
+  const introStartTimeRef = useRef<number>(0);
+
   const getRandomIntro = () => INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
 
-  const hideIntro = useCallback(() => {
-    setState(prev => ({ ...prev, isIntroVisible: false }));
-  }, []);
+  const getRandomVideo = useCallback(() => {
+    if (videoPool.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * videoPool.length);
+    return videoPool[randomIndex];
+  }, [videoPool]);
 
+  // --- TRANSICIÓN ---
   const triggerTransition = useCallback((nextContent: Video | Article | null) => {
     if (!nextContent) return;
 
-    // DETECCIÓN INTELIGENTE DE INTRO
-    const rawSlide = (nextContent as any).url_slide;
-    const isSlide = typeof rawSlide === 'string' && rawSlide.trim().length > 0;
-    
-    // POLÍTICA DE INTROS:
-    // 1. Si es Noticia (Slide) -> Intro "Noticias" (Marca)
-    // 2. Si es Video -> Intro "Aleatorio" (Variedad)
-    const newIntro = isSlide ? NEWS_INTRO : getRandomIntro();
+    const isNewsArticle = 'url_slide' in nextContent || !('url' in nextContent);
+    const newIntro = isNewsArticle ? NEWS_INTRO_VIDEO : getRandomIntro();
+
+    introStartTimeRef.current = Date.now();
 
     setState(prev => ({
       ...prev,
-      isIntroVisible: true,     // <--- SIEMPRE visible al iniciar nuevo contenido
+      isIntroVisible: true, 
       currentIntro: newIntro,
-      currentContent: nextContent, 
+      currentContent: nextContent,
       isContentPlaying: true 
     }));
+  }, []); // Dependencias estables
 
-    // GESTIÓN DE DURACIÓN DEL CONTENIDO
-    if (isSlide) {
-      // SLIDE: El componente VideoPlayer manejará el tiempo exacto usando animation_duration
-      // y llamará a handleContentEnded() cuando termine.
+  // --- OCULTAR INTRO ---
+  const dismissIntro = useCallback(() => {
+    const now = Date.now();
+    const elapsed = now - introStartTimeRef.current;
+    const MIN_DURATION = 2000; 
+
+    if (elapsed >= MIN_DURATION) {
+      setState(prev => ({ ...prev, isIntroVisible: false }));
     } else {
-      // VIDEO: Solo controlamos el tiempo del intro (4s), el video dura lo que dura.
+      const remaining = MIN_DURATION - elapsed;
       setTimeout(() => {
-        setState(prev => ({
-          ...prev,
-          isIntroVisible: false
-        }));
-      }, 4000);
+        setState(prev => ({ ...prev, isIntroVisible: false }));
+      }, remaining);
     }
-
   }, []);
 
+  // --- HANDLERS (MEMOIZADOS PARA EVITAR CRASH) ---
+  const playManual = useCallback((item: Video | Article) => {
+    triggerTransition(item);
+  }, [triggerTransition]);
+
+  const handleContentEnded = useCallback(() => {
+    const nextRandom = getRandomVideo();
+    triggerTransition(nextRandom);
+  }, [getRandomVideo, triggerTransition]);
+
+  // INICIO AUTOMÁTICO
   useEffect(() => {
     if (videoPool.length > 0 && !state.currentContent) {
-      const firstVideo = videoPool[Math.floor(Math.random() * videoPool.length)];
+      const firstVideo = getRandomVideo();
       triggerTransition(firstVideo);
     }
-  }, [videoPool, triggerTransition, state.currentContent]);
-
-  const playManual = (item: Video | Article) => {
-    triggerTransition(item);
-  };
-
-  const handleContentEnded = () => {
-    if (videoPool.length === 0) return;
-    // Selección aleatoria del siguiente contenido
-    const nextRandom = videoPool[Math.floor(Math.random() * videoPool.length)];
-    // Transición inmediata
-    triggerTransition(nextRandom);
-  };
+  }, [videoPool, getRandomVideo, triggerTransition, state.currentContent]);
 
   return (
     <MediaPlayerContext.Provider value={{ 
-      state, videoPool, setVideoPool, playManual, handleContentEnded, hideIntro 
+      state, 
+      videoPool, 
+      setVideoPool, 
+      playManual, 
+      handleContentEnded,
+      dismissIntro 
     }}>
       {children}
     </MediaPlayerContext.Provider>

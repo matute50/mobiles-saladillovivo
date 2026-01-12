@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ReactPlayer from 'react-player';
-import Image from 'next/image'; 
 import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { OnProgressProps } from 'react-player/base';
@@ -10,212 +9,195 @@ import { OnProgressProps } from 'react-player/base';
 interface VideoPlayerProps {
   content: Video | Article | null;
   isActive: boolean;
-  shouldPreload?: boolean;
   onEnded: () => void;
-  onReady?: () => void; 
   muted?: boolean; 
+  volume?: number; 
   isPlaying: boolean;
 }
 
 export default function VideoPlayer({ 
-  content, isActive, onEnded, onReady, muted = true, isPlaying = true 
+  content, 
+  isActive, 
+  onEnded, 
+  muted = true, 
+  volume = 1, 
+  isPlaying = true 
 }: VideoPlayerProps) {
   
   const playerRef = useRef<ReactPlayer>(null);
   
-  // Refs para control de tiempo y estado previo
-  const mountTimeRef = useRef<number>(Date.now());
-  const prevContentRef = useRef<Video | Article | null>(null); // Para detectar cambios
-  const MIN_INTRO_TIME_MS = 1500; 
+  const onEndedRef = useRef(onEnded);
+  useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
 
+  const [hasMounted, setHasMounted] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(false);
-  
-  // ESTADO PARA EL SLIDE FANTASMA (Anti-pantalla negra)
-  const [frozenSlide, setFrozenSlide] = useState<string | null>(null);
+  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+
+  // Volumen interno real que se aplica al player
+  const [internalVolume, setInternalVolume] = useState(0);
 
   const durationRef = useRef<number>(0);
-  const ENABLE_FILTERS = true; 
 
-  // --- PRE-CÁLCULOS ACTUALES ---
-  const rawSlide = (content as any)?.url_slide;
-  const rawVideoUrl = (content as any)?.url;
-
-  const isSlide = typeof rawSlide === 'string' && rawSlide.trim().length > 0;
-  const hasVideoUrl = typeof rawVideoUrl === 'string' && rawVideoUrl.trim().length > 0;
-
-  const slideUrl = useMemo(() => {
-    if (!isSlide) return null;
-    return `${rawSlide}?autoplay=1&mute=0&t=${new Date().getTime()}`;
-  }, [isSlide, rawSlide, (content as any)?.id]);
-
-  // --- EFECTO DE CAMBIO DE CONTENIDO Y PERSISTENCIA ---
   useEffect(() => {
-    // 1. Detectar qué era lo anterior
-    const prevItem = prevContentRef.current;
-    const prevWasSlide = (prevItem as any)?.url_slide;
+    setHasMounted(true);
+  }, []);
 
-    // 2. Si venimos de un slide y cambiamos a otra cosa...
-    if (prevWasSlide && content?.id !== prevItem?.id) {
-      // ¡CONGELAMOS EL SLIDE ANTERIOR!
-      // Lo guardamos en el estado para mantenerlo visible detrás del nuevo contenido
-      // mientras carga el intro.
-      setFrozenSlide(prevWasSlide);
-      
-      // Lo borramos a los 3 segundos (tiempo de sobra para que el Intro tape todo)
-      setTimeout(() => {
-        setFrozenSlide(null);
-      }, 3000);
-    } else if (!prevWasSlide) {
-      // Si no veníamos de un slide, no hace falta congelar nada
-      setFrozenSlide(null);
-    }
-
-    // 3. Actualizamos ref y reseteamos estados del nuevo contenido
-    prevContentRef.current = content;
-    mountTimeRef.current = Date.now();
-    
-    setIsFadingOut(false);
-    setIsLoaded(false); 
-    setIsBuffering(false);
-    durationRef.current = 0;
+  const isArticle = useMemo(() => {
+    if (!content) return false;
+    return 'url_slide' in content || !('url' in content);
   }, [content]);
 
-  // --- LÓGICA DE TIEMPO (POLÍTICA ESTRICTA) ---
+  const articleData = isArticle ? (content as Article) : null;
+  const videoData = !isArticle ? (content as Video) : null;
+  
+  const contentId = isArticle ? articleData?.id : videoData?.url;
+
+  const slideUrl = useMemo(() => {
+    if (!articleData || !articleData.url_slide) return null;
+    return `${articleData.url_slide}?autoplay=1&mute=0&t=${new Date().getTime()}`;
+  }, [articleData?.url_slide, articleData?.id]);
+
+  // --- RESETEO E INICIO (FADE IN) ---
   useEffect(() => {
-    if (!isSlide || !isPlaying || !isActive) return;
-
-    const article = content as Article;
-    const dbDuration = article?.animation_duration || 15;
-    const durationSec = Math.max(dbDuration, 5); 
-    const totalDuration = durationSec * 1000;
-
-    // Timer para FIN EXACTO
-    const endTimer = setTimeout(() => {
-       onEnded();
-    }, totalDuration);
+    setIsFadingOut(false);
+    setIsIframeLoaded(false);
+    durationRef.current = 0;
     
-    // Fallback de seguridad
-    const safetyTimer = setTimeout(() => {
-       finalizeLoading();
-    }, 3000);
+    // Al cambiar video, reseteamos a 0 para asegurar Fade In
+    setInternalVolume(0); 
+  }, [contentId]); 
+
+  // --- MAQUINA DE SUAVIZADO DE AUDIO (FADE IN / FADE OUT) ---
+  useEffect(() => {
+    // Definimos el objetivo:
+    // Si el usuario muteó globalmente -> 0
+    // Si estamos en Fade Out (final del video) -> 0
+    // Si no -> volumen deseado (1)
+    let target = muted ? 0 : volume;
+    if (isFadingOut) target = 0;
+
+    // Si ya estamos cerca del objetivo, no hacemos nada
+    if (Math.abs(internalVolume - target) < 0.01) return;
+
+    const DURATION = 500; // 0.5s duración del fade
+    const INTERVAL = 50;  // updates cada 50ms
+    const STEPS = DURATION / INTERVAL; 
+    
+    const diff = target - internalVolume;
+    const stepAmount = diff / STEPS;
+
+    const timer = setInterval(() => {
+      setInternalVolume(prev => {
+        const next = prev + stepAmount;
+        // Evitamos pasarnos del objetivo
+        if ((stepAmount > 0 && next >= target) || (stepAmount < 0 && next <= target)) {
+          clearInterval(timer);
+          return target;
+        }
+        return next;
+      });
+    }, INTERVAL);
+
+    return () => clearInterval(timer);
+  }, [volume, internalVolume, muted, isFadingOut]); 
+
+
+  // --- TIEMPOS ESTRICTOS (SLIDES) ---
+  useEffect(() => {
+    if (!isArticle || !articleData || !isActive) return;
+
+    const exactDurationSeconds = articleData.animation_duration || 15;
+    const exactDurationMs = exactDurationSeconds * 1000;
+    const fadeOutTimeMs = Math.max(0, exactDurationMs - 500);
+
+    const fadeTimer = setTimeout(() => {
+      setIsFadingOut(true); // Esto activará el Fade Out de audio en el useEffect de arriba
+    }, fadeOutTimeMs);
+
+    const endTimer = setTimeout(() => {
+      if (onEndedRef.current) onEndedRef.current();
+    }, exactDurationMs);
 
     return () => {
+      clearTimeout(fadeTimer);
       clearTimeout(endTimer);
-      clearTimeout(safetyTimer);
     };
-  }, [content, isPlaying, isActive, onEnded, isSlide, onReady]);
+  }, [articleData?.id, isArticle, isActive]); 
 
-
-  // --- COORDINADOR DE CARGA ---
-  const finalizeLoading = () => {
-    setIsLoaded(true);
-    const elapsedTime = Date.now() - mountTimeRef.current;
-    const remainingTime = MIN_INTRO_TIME_MS - elapsedTime;
-
-    const notifyReady = () => {
-      if (onReady) onReady(); 
-    };
-
-    if (remainingTime > 0) {
-      setTimeout(notifyReady, remainingTime);
-    } else {
-      notifyReady();
-    }
-  };
-
-  // --- HANDLERS VIDEO ---
   const handleDuration = (duration: number) => {
     durationRef.current = duration;
   };
 
   const handleProgress = (state: OnProgressProps) => {
-    if (state.playedSeconds > 0 && isBuffering) setIsBuffering(false);
-    if (!durationRef.current || durationRef.current === 0) return;
-    
+    if (!durationRef.current) return;
     const timeLeft = durationRef.current - state.playedSeconds;
+    
+    // Activar Fade Out al final del video
     if (timeLeft < 0.6 && !isFadingOut) setIsFadingOut(true);
     if (timeLeft < 0.2) onEnded();
   };
 
-  // --- COMPONENTE VISUAL ---
-  const RetroFilters = ({ isHeavy }: { isHeavy: boolean }) => (
-    <div className={cn("absolute inset-0 z-[15] pointer-events-none transition-opacity duration-700 ease-out", isHeavy ? "opacity-100 bg-black" : "opacity-0")}>
-      <div className="tv-vignette" />
-      <div className="tv-scanlines opacity-50" />
-      <div className="absolute inset-0 overflow-hidden z-20">
-         <div className={cn("tv-noise", isHeavy ? "opacity-30" : "opacity-1")} />
+  if (!hasMounted || !content) return <div className="w-full h-full bg-black" />;
+
+  const transitionClass = cn(
+    "w-full h-full transition-opacity duration-500 ease-in-out",
+    isFadingOut ? "opacity-0" : "opacity-100"
+  );
+
+  // VIDEO RENDER
+  if (!isArticle && videoData) {
+    return (
+      <div className="w-full h-full bg-black overflow-hidden relative">
+        <div className={transitionClass}>
+          <ReactPlayer
+            ref={playerRef}
+            url={videoData.url}
+            width="100%"
+            height="100%"
+            playing={isActive && isPlaying}
+            // El mute real se controla via volumen 0
+            muted={false} 
+            // Usamos internalVolume que hace la transición suave
+            volume={internalVolume} 
+            onDuration={handleDuration}       
+            onProgress={handleProgress}       
+            onEnded={onEnded}                 
+            playsinline={true} 
+            config={{
+              youtube: {
+                playerVars: {
+                  autoplay: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1,
+                  origin: typeof window !== 'undefined' ? window.location.origin : undefined
+                }
+              }
+            }}
+          />
+        </div>
       </div>
-      {isHeavy && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-            <div className="relative w-full h-full">
-                <Image src="/sintonizando.png" alt="Sintonizando..." fill className="object-cover opacity-80" priority />
-            </div>
-        </div>
-      )}
-    </div>
-  );
+    );
+  }
 
-  // --- RENDER ---
-  if (!content) return <div className="w-full h-full bg-black" />;
+  // SLIDE RENDER
+  if (isArticle && slideUrl) {
+    return (
+      <div className="w-full h-full bg-black overflow-hidden relative">
+        <iframe
+            key={articleData?.id} 
+            src={slideUrl}
+            className={cn(
+              "w-full h-full border-0 pointer-events-none transition-opacity duration-500",
+              (isIframeLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
+            )}
+            scrolling="no"
+            title={articleData?.titulo}
+            loading="eager"
+            allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
+            sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+            onLoad={() => setIsIframeLoaded(true)}
+        />
+      </div>
+    );
+  }
 
-  return (
-    <div className="w-full h-full bg-black overflow-hidden relative">
-      
-      {/* --- CAPA 0: SLIDE FANTASMA (FONDO) --- */}
-      {/* Este iframe se queda quieto cuando cambiamos de noticia a video, evitando el negro */}
-      {frozenSlide && (
-        <div className="absolute inset-0 z-0 pointer-events-none">
-           <iframe
-              src={frozenSlide}
-              className="w-full h-full border-0 opacity-100"
-              scrolling="no" title="Ghost Slide"
-           />
-        </div>
-      )}
-
-      {/* --- CAPA 1: CONTENIDO ACTUAL --- */}
-      {/* Si es Slide Activo */}
-      {isSlide && slideUrl && (
-        <div className="absolute inset-0 z-10 w-full h-full">
-            {ENABLE_FILTERS && <RetroFilters isHeavy={!isLoaded} />}
-            <iframe
-                key={(content as any)?.id} 
-                src={slideUrl}
-                className={cn("w-full h-full border-0 pointer-events-none transition-opacity duration-500", !isFadingOut ? "opacity-100" : "opacity-0")}
-                scrolling="no" title="Slide" loading="eager"
-                allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
-                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
-                onLoad={() => finalizeLoading()}
-            />
-        </div>
-      )}
-
-      {/* Si es Video Activo */}
-      {!isSlide && hasVideoUrl && (
-        <div className="absolute inset-0 z-10 w-full h-full">
-          <div className={cn("w-full h-full transition-opacity duration-500 ease-in-out relative", (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0")}>
-              {ENABLE_FILTERS && <RetroFilters isHeavy={!isLoaded || isBuffering} />}
-              <ReactPlayer
-                ref={playerRef} url={content.url as string} 
-                width="100%" height="100%" playing={isActive && isPlaying} muted={muted} volume={1}
-                onReady={() => setIsLoaded(true)} onBuffer={() => setIsBuffering(true)} onBufferEnd={() => setIsBuffering(false)}
-                onDuration={handleDuration} onProgress={handleProgress} onEnded={onEnded} onError={() => onEnded()}
-                playsinline
-                config={{ youtube: { playerVars: { autoplay: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1 } } }}
-              />
-          </div>
-        </div>
-      )}
-      
-      {/* Si es Video pero sin URL (Error) */}
-      {!isSlide && !hasVideoUrl && (
-         <div className="absolute inset-0 z-10 w-full h-full flex items-center justify-center bg-black">
-            <div className="tv-noise opacity-20" />
-         </div>
-      )}
-
-    </div>
-  );
+  return <div className="w-full h-full bg-black" />;
 }
