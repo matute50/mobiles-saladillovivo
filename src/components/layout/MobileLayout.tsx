@@ -7,14 +7,12 @@ import VideoSection from './VideoSection';
 import { PageData, Video } from '@/lib/types'; 
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Controller } from 'swiper/modules';
-// AGREGADO: Importamos Download
 import { Play, ChevronLeft, ChevronRight, FileText, X, Sun, Moon, Share2, Search, HelpCircle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Swiper as SwiperClass } from 'swiper';
 
 import 'swiper/css';
 
-// --- PALABRAS A OMITIR (STOP WORDS) ---
 const STOP_WORDS = new Set([
   "el","la","los","las","un","una","unos","unas","lo","al","del","a","ante","bajo","con","contra","de","desde",
   "durante","en","entre","hacia","hasta","mediante","para","por","según","sin","sobre","tras","y","o","u","e",
@@ -25,14 +23,12 @@ const STOP_WORDS = new Set([
   "así","tambien","también","solo","sólo","todo","todos","todas","algo","nada"
 ]);
 
-// --- MOCK DATA ---
 const MOCK_DATA = {
   articles: { featuredNews: null, secondaryNews: [], otherNews: [] },
   videos: { allVideos: [], liveStream: null },
   ads: []
 };
 
-// --- DICCIONARIO CATEGORÍAS ---
 const CATEGORY_MAP: Record<string, string> = {
   'export': 'Gente de Acá',
   'SEMBRANDO FUTURO': 'Sembrando Futuro',
@@ -44,7 +40,6 @@ const CATEGORY_MAP: Record<string, string> = {
   'TU BUSQUEDA': 'TU BUSQUEDA' 
 };
 
-// --- LÓGICA INTELIGENTE DE CATEGORÍAS ---
 const getDisplayCategory = (dbCat: string) => {
   if (!dbCat) return 'VARIOS';
   
@@ -69,8 +64,6 @@ const getYouTubeThumbnail = (url: string) => {
     ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` 
     : '/placeholder.png';
 };
-
-// --- HOOKS DE UTILIDAD ---
 
 function useOrientation() {
   const [isLandscape, setIsLandscape] = useState(false);
@@ -103,8 +96,6 @@ function useTheme() {
 
   return { isDark: mounted ? isDark : true, toggleTheme };
 }
-
-// --- COMPONENTES ---
 
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFeatured: boolean; onClick: () => void; isDark: boolean }) {
   if (!news) return null;
@@ -233,8 +224,6 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
   );
 }
 
-// --- LAYOUT PRINCIPAL ---
-
 export default function MobileLayout({ data, isMobile }: { data: PageData; isMobile: boolean }) {
   const safeData = data || MOCK_DATA;
   const { articles, videos, ads } = safeData as PageData;
@@ -247,19 +236,16 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const [adsSwiper, setAdsSwiper] = useState<SwiperClass | null>(null);
 
-  // Estados de UI
   const [infoModal, setInfoModal] = useState<{ open: boolean; view: 'DECRETO' | 'BIO' }>({ open: false, view: 'DECRETO' });
   const openModal = (view: 'DECRETO' | 'BIO') => setInfoModal({ open: true, view });
   const closeModal = () => setInfoModal({ ...infoModal, open: false });
   const toggleModalView = () => setInfoModal(prev => ({ ...prev, view: prev.view === 'DECRETO' ? 'BIO' : 'DECRETO' }));
 
-  // ESTADOS DE BÚSQUEDA
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // ESTADO DE INSTALACIÓN PWA
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const logoSrc = isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png';
@@ -282,11 +268,10 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     }
   }, [videos, setVideoPool]);
 
-  // EFECTO PWA: Escuchar evento de instalación
   useEffect(() => {
     const handler = (e: any) => {
-      e.preventDefault(); // Prevenir que Chrome muestre el banner automático (si quisieras controlarlo tú)
-      setDeferredPrompt(e); // Guardar el evento para dispararlo cuando queramos
+      e.preventDefault(); 
+      setDeferredPrompt(e); 
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
@@ -301,7 +286,6 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     }
   };
 
-  // Lógica de Búsqueda
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredVideos([]);
@@ -503,7 +487,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
 
                {!isSearchOpen && (
                  <>
-                   {/* NUEVO: Botón de INSTALAR PWA (Solo aparece si el navegador lo permite) */}
+                   {/* Botón de INSTALAR PWA */}
                    {deferredPrompt && (
                      <button onClick={handleInstallClick} className={cn("active:scale-90 transition-transform animate-pulse text-green-500 hover:text-green-600")}>
                         <Download size={20} strokeWidth={2.5} />

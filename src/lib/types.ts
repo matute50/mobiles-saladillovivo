@@ -9,7 +9,7 @@ export interface Article {
   contenido: string;
   etiquetas: string[];
   url_slide?: string | null;
-  animation_duration?: number; // <--- CAMPO CRÍTICO AGREGADO
+  animation_duration?: number; 
 }
 
 export interface Video {
