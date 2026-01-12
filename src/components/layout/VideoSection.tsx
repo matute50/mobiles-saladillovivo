@@ -6,6 +6,7 @@ import VideoPlayer from '@/components/player/VideoPlayer';
 import { cn } from '@/lib/utils';
 import ReactPlayer from 'react-player';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Article } from '@/lib/types';
 
 declare global {
   namespace JSX {
@@ -24,10 +25,10 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserMuted, setIsUserMuted] = useState(true);
   const [showBars, setShowBars] = useState(true);
 
-  // DETECCIÓN INFALIBLE: Es video si tiene propiedad 'url'
-  const isVideo = currentContent && 'url' in currentContent;
+  // DETECCIÓN: Es slide si tiene url_slide
+  const isSlide = currentContent && 'url_slide' in currentContent && (currentContent as Article).url_slide != null;
+  const isVideo = !isSlide; // Si no es slide, mostramos barras de cine
   
-  // Detectamos si el intro actual es el de noticias
   const isNewsIntro = currentIntro ? currentIntro.includes('noticias.mp4') : false;
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* BARRAS DE CINE (Solo para Videos) */}
+       {/* BARRAS DE CINE (Solo si NO es Slide) */}
        {isVideo && (
          <>
            <div className={cn("absolute top-0 left-0 right-0 h-[19%] bg-black z-30 transition-transform duration-500 ease-in-out", showBars ? "translate-y-0" : "-translate-y-full")} />

@@ -50,15 +50,14 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const triggerTransition = useCallback((nextContent: Video | Article | null) => {
     if (!nextContent) return;
 
-    // --- DETECCIÓN INFALIBLE ---
-    // Si tiene 'url', es un video de YouTube. Si NO la tiene, asumimos que es Noticia.
-    const isVideo = 'url' in nextContent;
-    const isArticle = !isVideo;
+    // --- DETECCIÓN ESTRICTA POR 'url_slide' ---
+    // Si tiene la propiedad url_slide y tiene valor, es un SLIDE DE NOTICIA.
+    const isSlide = 'url_slide' in nextContent && (nextContent as Article).url_slide != null;
     
     // Asignación de intro
-    const newIntro = isArticle ? NEWS_INTRO : getRandomIntro();
+    const newIntro = isSlide ? NEWS_INTRO : getRandomIntro();
 
-    console.log("🔄 [Context] Reproduciendo:", isArticle ? "NOTICIA" : "VIDEO");
+    console.log("🔄 [Context] Reproduciendo:", isSlide ? "NOTICIA (url_slide)" : "VIDEO (YouTube)");
     
     setState(prev => ({
       ...prev,
@@ -68,10 +67,11 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       isContentPlaying: true 
     }));
 
-    if (isArticle) {
-      // SI ES NOTICIA: Intro en loop infinito hasta que el slide avise (sin timeout)
+    if (isSlide) {
+      // SI ES NOTICIA: Intro en loop infinito. NO activamos timeout.
+      // Esperamos a que VideoPlayer avise que cargó el iframe.
     } else {
-      // SI ES VIDEO: Intro dura 4 segundos fijos
+      // SI ES VIDEO: Timeout fijo de 4 segundos
       setTimeout(() => {
         setState(prev => ({
           ...prev,

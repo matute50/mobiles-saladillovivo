@@ -38,17 +38,19 @@ export default function VideoPlayer({
 
   // --- 0. PRE-CÁLCULOS SEGUROS ---
   
-  // Detección: Si NO tiene URL de video, es una noticia.
-  const isArticle = useMemo(() => {
-    return content && !('url' in content);
-  }, [content]);
+  // Extraemos url_slide de forma segura
+  const rawSlideUrl = (content as Article)?.url_slide;
+  
+  // DEFINICIÓN FINAL: Es slide si rawSlideUrl existe y no es nulo/vacío
+  const isSlide = useMemo(() => {
+    return !!rawSlideUrl;
+  }, [rawSlideUrl]);
 
-  const articleData = isArticle ? (content as Article) : null;
-
+  // Construimos la URL final con timestamp
   const slideUrl = useMemo(() => {
-    if (!articleData || !articleData.url_slide) return null;
-    return `${articleData.url_slide}?autoplay=1&mute=0&t=${new Date().getTime()}`;
-  }, [articleData?.url_slide, articleData?.id]);
+    if (!rawSlideUrl) return null;
+    return `${rawSlideUrl}?autoplay=1&mute=0&t=${new Date().getTime()}`;
+  }, [rawSlideUrl, (content as Article)?.id]); // Dependencia en ID para cambiar al siguiente slide
 
 
   // --- 1. LÓGICA DE RESETEO ---
@@ -60,9 +62,9 @@ export default function VideoPlayer({
     durationRef.current = 0;
   }, [content]);
 
-  // --- 2. LÓGICA PARA ARTÍCULOS ---
+  // --- 2. LÓGICA PARA ARTÍCULOS (SLIDES) ---
   useEffect(() => {
-    if (!isArticle || !isPlaying || !isActive) return;
+    if (!isSlide || !isPlaying || !isActive) return;
 
     setIsTuning(true);
 
@@ -78,7 +80,6 @@ export default function VideoPlayer({
       onEnded();
     }, totalDuration);
 
-    // Timer de seguridad
     const safetyTimer = setTimeout(() => {
        setIsLoaded(true);
        setIsTuning(false);
@@ -90,7 +91,7 @@ export default function VideoPlayer({
       clearTimeout(endTimer);
       clearTimeout(safetyTimer);
     };
-  }, [content, isPlaying, isActive, onEnded, isArticle, onReady]);
+  }, [content, isPlaying, isActive, onEnded, isSlide, onReady]);
 
   // --- 3. LÓGICA PARA VIDEOS ---
   const handleDuration = (duration: number) => {
@@ -132,10 +133,11 @@ export default function VideoPlayer({
   );
 
   // --- RENDERIZADO ---
+  
   if (!content) return <div className="w-full h-full bg-black" />;
 
-  // A. VIDEO
-  if (!isArticle) {
+  // A. VIDEO (Si NO es slide)
+  if (!isSlide) {
     const video = content as Video;
     const showStatic = !isLoaded || isBuffering;
 
@@ -163,9 +165,9 @@ export default function VideoPlayer({
         <div className="w-full h-full relative">
           {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
           <iframe
-              key={articleData?.id} src={slideUrl}
+              key={(content as Article)?.id} src={slideUrl}
               className={cn("w-full h-full border-0 pointer-events-none transition-opacity duration-500", (!isTuning && !isFadingOut) ? "opacity-100" : "opacity-0")}
-              scrolling="no" title={articleData?.titulo} loading="eager"
+              scrolling="no" title={(content as Article)?.titulo} loading="eager"
               allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
               sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
               onLoad={handleSlideLoad}
