@@ -25,23 +25,22 @@ export default function VideoPlayer({
   
   const playerRef = useRef<ReactPlayer>(null);
   
-  // Estados de carga y finalización
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  
-  // NUEVO: Estado para saber si YouTube está "pensando" (ruedita de carga)
   const [isBuffering, setIsBuffering] = useState(false);
 
-  const durationRef = useRef<number>(0);
+  // NUEVO: Estado para forzar estática extra en slides (Buffer visual)
+  const [isTuning, setIsTuning] = useState(false);
 
-  // CONFIGURACIÓN DE FILTROS
+  const durationRef = useRef<number>(0);
   const ENABLE_FILTERS = true; 
 
   // --- 1. LÓGICA DE RESETEO ---
   useEffect(() => {
     setIsFadingOut(false);
     setIsLoaded(false); 
-    setIsBuffering(false); // Reseteamos buffer al cambiar video
+    setIsBuffering(false);
+    setIsTuning(false); // Reseteamos sintonización
     durationRef.current = 0;
   }, [content]);
 
@@ -50,6 +49,9 @@ export default function VideoPlayer({
     const isArticle = content && !('url' in content && typeof (content as Video).url === 'string');
     
     if (!isArticle || !isPlaying || !isActive) return;
+
+    // Al entrar un artículo, activamos el "Modo Sintonización" (Estática forzada)
+    setIsTuning(true);
 
     const article = content as Article;
     const totalDuration = (article.animation_duration || 15) * 1000;
@@ -75,41 +77,40 @@ export default function VideoPlayer({
   };
 
   const handleProgress = (state: OnProgressProps) => {
-    // Si estamos reproduciendo, seguro no estamos buferizando
     if (state.playedSeconds > 0 && isBuffering) setIsBuffering(false);
-
     if (!durationRef.current || durationRef.current === 0) return;
+    
     const timeLeft = durationRef.current - state.playedSeconds;
-
     if (timeLeft < 0.6 && !isFadingOut) setIsFadingOut(true);
     if (timeLeft < 0.2) onEnded();
   };
 
+  // --- MANEJADOR DE CARGA DE SLIDES (EL SECRETO DEL NO-PARPADEO) ---
+  const handleSlideLoad = () => {
+    // El iframe dice que cargó, pero esperamos 500ms más con la estática puesta
+    // para asegurar que el renderizado visual esté listo y animándose.
+    setTimeout(() => {
+      setIsLoaded(true);
+      setIsTuning(false); // Quitamos la estática suavemente
+    }, 500);
+  };
 
-  // --- COMPONENTE DE FILTROS (DINÁMICO) ---
-  // Recibe 'isHeavy' para saber si debe tapar todo o ser sutil
+
+  // --- COMPONENTE DE FILTROS ---
   const RetroFilters = ({ isHeavy }: { isHeavy: boolean }) => (
     <div 
       className={cn(
-        "absolute inset-0 z-[15] pointer-events-none transition-opacity duration-300",
-        // Si es Heavy (Cargando/Buffer) -> Opacidad 100% (Tapa el video)
-        // Si no es Heavy (Reproduciendo) -> Opacidad 20% (Efecto sutil) o 0% si prefieres limpio
+        "absolute inset-0 z-[15] pointer-events-none transition-opacity duration-700 ease-out",
+        // Usamos una transición más lenta (700ms) para que la lluvia se vaya suave
         isHeavy ? "opacity-100 bg-black" : "opacity-20"
       )}
     >
-      {/* 1. Viñeta */}
       <div className="tv-vignette" />
-      
-      {/* 2. Scanlines */}
       <div className="tv-scanlines opacity-50" />
-      
-      {/* 3. Ruido/Estática */}
       <div className="absolute inset-0 overflow-hidden">
-         {/* Si es Heavy, aumentamos la opacidad del ruido css */}
          <div className={cn("tv-noise", isHeavy ? "opacity-30" : "opacity-10")} />
       </div>
       
-      {/* Texto opcional "CARGANDO SEÑAL..." si está en modo Heavy */}
       {isHeavy && (
         <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-white/50 font-mono text-xs animate-pulse tracking-widest">SINTONIZANDO...</p>
@@ -122,14 +123,9 @@ export default function VideoPlayer({
   // --- RENDERIZADO ---
   if (!content) return <div className="w-full h-full bg-black" />;
 
-  // A. ES UN VIDEO (YouTube / Mp4)
+  // A. VIDEO
   if ('url' in content && typeof (content as any).url === 'string' && !('url_slide' in content)) {
     const video = content as Video;
-    
-    // CALCULAMOS CUÁNDO MOSTRAR ESTÁTICA FUERTE:
-    // 1. Si no ha cargado el inicio (!isLoaded)
-    // 2. Si está buferizando (isBuffering)
-    // 3. Si está saliendo (isFadingOut) - Opcional, para transición suave
     const showStatic = !isLoaded || isBuffering;
 
     return (
@@ -140,7 +136,6 @@ export default function VideoPlayer({
             (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
           )}
         >
-            {/* CAPA DE FILTROS INTELIGENTE */}
             {ENABLE_FILTERS && <RetroFilters isHeavy={showStatic} />}
 
             <ReactPlayer
@@ -151,12 +146,9 @@ export default function VideoPlayer({
               playing={isActive && isPlaying}
               muted={muted} 
               volume={1}
-              
-              // EVENTOS DE BUFFERING (CLAVE PARA TU PEDIDO)
               onReady={() => setIsLoaded(true)} 
-              onBuffer={() => setIsBuffering(true)}      // Empieza a cargar -> Muestra estática
-              onBufferEnd={() => setIsBuffering(false)}  // Termina de cargar -> Muestra video
-              
+              onBuffer={() => setIsBuffering(true)}      
+              onBufferEnd={() => setIsBuffering(false)}  
               onDuration={handleDuration}       
               onProgress={handleProgress}       
               onEnded={onEnded}                 
@@ -165,13 +157,7 @@ export default function VideoPlayer({
                 youtube: {
                   playerVars: {
                     autoplay: 1,
-                    controls: 0,        
-                    modestbranding: 1,  
-                    rel: 0,             
-                    showinfo: 0,
-                    iv_load_policy: 3,  
-                    fs: 0,              
-                    disablekb: 1,       
+                    controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1,
                   }
                 }
               }}
@@ -181,40 +167,37 @@ export default function VideoPlayer({
     );
   }
 
-  // B. ES UN ARTÍCULO (SLIDE .HTML)
+  // B. SLIDE (.HTML)
   const article = content as Article;
   const slideUrl = article.url_slide 
     ? `${article.url_slide}?t=${new Date().getTime()}` 
     : null;
 
-  if (!slideUrl) {
-     return <div className="w-full h-full bg-black flex items-center justify-center text-white">Sin slide disponible</div>;
-  }
+  if (!slideUrl) return <div className="w-full h-full bg-black text-white">Sin slide</div>;
 
-  // Para los slides, mostramos estática mientras carga el iframe (isLoaded es false)
-  const showSlideStatic = !isLoaded;
+  // Mostramos estática SI: No cargó (isLoaded=false) O estamos sintonizando (isTuning=true)
+  const showSlideStatic = !isLoaded || isTuning;
 
   return (
     <div className="w-full h-full bg-black overflow-hidden relative">
-        <div 
-          className={cn(
-            "w-full h-full transition-opacity duration-700 ease-in-out relative", 
-            // En slides no usamos opacity 0 para ocultar, usamos la estática encima
-            "opacity-100" 
-          )}
-        >
-          {/* CAPA DE FILTROS EN SLIDES */}
+        <div className="w-full h-full relative">
+          
+          {/* CAPA DE FILTROS: Tapa el iframe mientras carga Y un poquito más */}
           {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
 
           <iframe
               key={article.id} 
               src={slideUrl}
-              className="w-full h-full border-0 pointer-events-none"
+              className={cn(
+                  "w-full h-full border-0 pointer-events-none transition-opacity duration-500",
+                  // El iframe aparece visualmente solo cuando terminamos de sintonizar
+                  (!isTuning && !isFadingOut) ? "opacity-100" : "opacity-0"
+              )}
               scrolling="no"
               title={article.titulo}
               loading="eager"
               sandbox="allow-scripts allow-same-origin"
-              onLoad={() => setIsLoaded(true)}
+              onLoad={handleSlideLoad} // Usamos el manejador con retardo
           />
         </div>
     </div>

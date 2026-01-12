@@ -122,18 +122,13 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* === CAPA 4: BARRAS DE CINE (MAS ALTAS) === */}
-       {/* CAMBIO: h-[16%] -> h-[19%] (3% extra) */}
-       
-       {/* BARRA SUPERIOR */}
+       {/* === CAPA 4: BARRAS DE CINE === */}
        <div 
          className={cn(
            "absolute top-0 left-0 right-0 h-[19%] bg-black z-30 transition-transform duration-500 ease-in-out", 
            showBars ? "translate-y-0" : "-translate-y-full"
          )} 
        />
-       
-       {/* BARRA INFERIOR */}
        <div 
          className={cn(
            "absolute bottom-0 left-0 right-0 h-[19%] bg-black z-30 transition-transform duration-500 ease-in-out", 
@@ -148,6 +143,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
            showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
          )}
        >
+          {/* BOTÓN MUTE PEQUEÑO (Esquina Superior Izquierda) - Opcional, lo dejamos por consistencia */}
           <button 
             onClick={toggleMute}
             className="absolute top-3 left-3 p-2 rounded-full bg-black/40 text-white backdrop-blur-md border border-white/10 active:scale-95 transition-all"
@@ -155,16 +151,32 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
              {isUserMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
 
+          {/* BOTÓN CHROMECAST (Esquina Superior Derecha) */}
           <div className="absolute top-3 right-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
              <google-cast-launcher style={{ width: '40px', height: '40px', display: 'block' }}></google-cast-launcher>
           </div>
 
-          <button 
-            onClick={togglePlay}
-            className="p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white shadow-2xl scale-110 active:scale-95 transition-all"
-          >
-            {isPlaying ? <Pause size={48} fill="currentColor" /> : <Play size={48} fill="currentColor" />}
-          </button>
+          {/* GRUPO CENTRAL: MUTE GRANDE + PLAY/PAUSE */}
+          <div className="flex items-center gap-8">
+            
+            {/* NUEVO: LOGO MUTE ROJO (Solo visible si está muteado) */}
+            {isUserMuted && (
+              <button 
+                onClick={toggleMute}
+                className="p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-red-500 shadow-2xl scale-110 active:scale-95 transition-all animate-in zoom-in duration-200"
+              >
+                <VolumeX size={48} fill="currentColor" />
+              </button>
+            )}
+
+            {/* BOTÓN PLAY/PAUSE */}
+            <button 
+              onClick={togglePlay}
+              className="p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white shadow-2xl scale-110 active:scale-95 transition-all"
+            >
+              {isPlaying ? <Pause size={48} fill="currentColor" /> : <Play size={48} fill="currentColor" />}
+            </button>
+          </div>
        </div>
     </div>
   );
