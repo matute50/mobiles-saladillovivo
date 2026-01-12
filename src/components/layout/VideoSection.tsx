@@ -25,9 +25,13 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserMuted, setIsUserMuted] = useState(true);
   const [showBars, setShowBars] = useState(true);
 
-  // DETECCIÓN: Es slide si tiene url_slide
-  const isSlide = currentContent && 'url_slide' in currentContent && (currentContent as Article).url_slide != null;
-  const isVideo = !isSlide; // Si no es slide, mostramos barras de cine
+  // DETECCIÓN ESTRICTA
+  const isSlide = currentContent && 
+                  'url_slide' in currentContent && 
+                  typeof (currentContent as Article).url_slide === 'string' &&
+                  (currentContent as Article).url_slide.length > 0;
+                  
+  const isVideo = !isSlide; // Si no es slide, asumimos video para la UI
   
   const isNewsIntro = currentIntro ? currentIntro.includes('noticias.mp4') : false;
 
@@ -86,7 +90,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* CAPA INTRO */}
        <div className={cn("absolute inset-0 z-40 transition-opacity duration-500 ease-out", isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
          {currentIntro && (
             <ReactPlayer
@@ -106,7 +109,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* BARRAS DE CINE (Solo si NO es Slide) */}
        {isVideo && (
          <>
            <div className={cn("absolute top-0 left-0 right-0 h-[19%] bg-black z-30 transition-transform duration-500 ease-in-out", showBars ? "translate-y-0" : "-translate-y-full")} />

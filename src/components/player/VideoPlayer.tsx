@@ -38,20 +38,18 @@ export default function VideoPlayer({
 
   // --- 0. PRE-CÁLCULOS SEGUROS ---
   
-  // Extraemos url_slide de forma segura
+  // Extraemos y validamos url_slide
   const rawSlideUrl = (content as Article)?.url_slide;
   
-  // DEFINICIÓN FINAL: Es slide si rawSlideUrl existe y no es nulo/vacío
   const isSlide = useMemo(() => {
-    return !!rawSlideUrl;
+    // Debe existir, ser string y no estar vacía
+    return typeof rawSlideUrl === 'string' && rawSlideUrl.length > 0;
   }, [rawSlideUrl]);
 
-  // Construimos la URL final con timestamp
   const slideUrl = useMemo(() => {
-    if (!rawSlideUrl) return null;
+    if (!isSlide) return null;
     return `${rawSlideUrl}?autoplay=1&mute=0&t=${new Date().getTime()}`;
-  }, [rawSlideUrl, (content as Article)?.id]); // Dependencia en ID para cambiar al siguiente slide
-
+  }, [isSlide, rawSlideUrl, (content as Article)?.id]);
 
   // --- 1. LÓGICA DE RESETEO ---
   useEffect(() => {
@@ -62,7 +60,7 @@ export default function VideoPlayer({
     durationRef.current = 0;
   }, [content]);
 
-  // --- 2. LÓGICA PARA ARTÍCULOS (SLIDES) ---
+  // --- 2. LÓGICA PARA ARTÍCULOS ---
   useEffect(() => {
     if (!isSlide || !isPlaying || !isActive) return;
 
@@ -133,46 +131,46 @@ export default function VideoPlayer({
   );
 
   // --- RENDERIZADO ---
-  
   if (!content) return <div className="w-full h-full bg-black" />;
 
-  // A. VIDEO (Si NO es slide)
-  if (!isSlide) {
-    const video = content as Video;
-    const showStatic = !isLoaded || isBuffering;
+  // CASO 1: Es un Slide (NOTICIA)
+  if (isSlide) {
+    if (!slideUrl) return <div className="w-full h-full bg-black text-white">Cargando slide...</div>;
+    const showSlideStatic = !isLoaded || isTuning;
 
     return (
       <div className="w-full h-full bg-black overflow-hidden relative">
-        <div className={cn("w-full h-full transition-opacity duration-500 ease-in-out relative", (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0")}>
-            {ENABLE_FILTERS && <RetroFilters isHeavy={showStatic} />}
-            <ReactPlayer
-              ref={playerRef} url={video.url} width="100%" height="100%" playing={isActive && isPlaying} muted={muted} volume={1}
-              onReady={() => setIsLoaded(true)} onBuffer={() => setIsBuffering(true)} onBufferEnd={() => setIsBuffering(false)}
-              onDuration={handleDuration} onProgress={handleProgress} onEnded={onEnded} playsinline
-              config={{ youtube: { playerVars: { autoplay: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1 } } }}
+          <div className="w-full h-full relative">
+            {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
+            <iframe
+                key={(content as Article)?.id} src={slideUrl}
+                className={cn("w-full h-full border-0 pointer-events-none transition-opacity duration-500", (!isTuning && !isFadingOut) ? "opacity-100" : "opacity-0")}
+                scrolling="no" title={(content as Article)?.titulo} loading="eager"
+                allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
+                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+                onLoad={handleSlideLoad}
             />
-        </div>
+          </div>
       </div>
     );
   }
 
-  // B. SLIDE
-  if (!slideUrl) return <div className="w-full h-full bg-black text-white">Sin slide</div>;
-  const showSlideStatic = !isLoaded || isTuning;
+  // CASO 2: Es un Video (YouTube)
+  // Solo llegamos aquí si isSlide es FALSE.
+  const video = content as Video;
+  const showStatic = !isLoaded || isBuffering;
 
   return (
     <div className="w-full h-full bg-black overflow-hidden relative">
-        <div className="w-full h-full relative">
-          {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
-          <iframe
-              key={(content as Article)?.id} src={slideUrl}
-              className={cn("w-full h-full border-0 pointer-events-none transition-opacity duration-500", (!isTuning && !isFadingOut) ? "opacity-100" : "opacity-0")}
-              scrolling="no" title={(content as Article)?.titulo} loading="eager"
-              allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
-              sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
-              onLoad={handleSlideLoad}
+      <div className={cn("w-full h-full transition-opacity duration-500 ease-in-out relative", (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0")}>
+          {ENABLE_FILTERS && <RetroFilters isHeavy={showStatic} />}
+          <ReactPlayer
+            ref={playerRef} url={video.url} width="100%" height="100%" playing={isActive && isPlaying} muted={muted} volume={1}
+            onReady={() => setIsLoaded(true)} onBuffer={() => setIsBuffering(true)} onBufferEnd={() => setIsBuffering(false)}
+            onDuration={handleDuration} onProgress={handleProgress} onEnded={onEnded} playsinline
+            config={{ youtube: { playerVars: { autoplay: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1 } } }}
           />
-        </div>
+      </div>
     </div>
   );
 }
