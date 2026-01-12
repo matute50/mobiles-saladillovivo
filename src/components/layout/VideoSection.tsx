@@ -26,12 +26,11 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   // Estado para las barras negras
   const [showBars, setShowBars] = useState(true);
 
-  // --- LÓGICA DE BARRAS DE CINE AL INICIO (INTRO) ---
+  // --- LÓGICA DE BARRAS DE CINE ---
   useEffect(() => {
     if (isIntroVisible) {
       setShowBars(true); 
     } else {
-      // Al terminar el intro, esperamos 2 segundos antes de retirar las barras
       const timer = setTimeout(() => setShowBars(false), 2000);
       return () => clearTimeout(timer);
     }
@@ -44,23 +43,16 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     return () => clearTimeout(timer);
   }, [showControls, isPlaying]);
 
-  // --- LÓGICA DE PLAY / PAUSA CON RETRASO DE BARRAS ---
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation(); 
     
-    const willPlay = !isPlaying; // Calculamos el nuevo estado
+    const willPlay = !isPlaying; 
     setIsPlaying(willPlay);
     setShowControls(true);
 
     if (willPlay) {
-      // AL QUITAR LA PAUSA (PLAY):
-      // Queremos que las barras se queden 1 segundo más en total.
-      // La animación CSS (slide out) dura 0.5s (duration-500).
-      // Por lo tanto, esperamos 500ms aquí + 500ms de animación = 1000ms (1s) total.
       setTimeout(() => setShowBars(false), 500);
     } else {
-      // AL PONER PAUSA:
-      // Las barras bajan inmediatamente (estilo Netflix/YouTube)
       setShowBars(true); 
     }
   };
@@ -100,7 +92,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          onClick={handleInteraction}
        />
 
-       {/* === CAPA 3: INTRO === */}
+       {/* === CAPA 3: INTRO (CON FADE OUT) === */}
        <div 
          className={cn(
            "absolute inset-0 z-40 transition-opacity duration-500 ease-out", 
@@ -130,19 +122,21 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* === CAPA 4: BARRAS DE CINE (CON SLIDE OUT) === */}
-       {/* BARRA SUPERIOR: Sube (-translate-y-full) */}
+       {/* === CAPA 4: BARRAS DE CINE (MAS ALTAS) === */}
+       {/* CAMBIO: h-[14%] -> h-[16%] para aumentar su altura un 10-15% */}
+       
+       {/* BARRA SUPERIOR */}
        <div 
          className={cn(
-           "absolute top-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500 ease-in-out", 
+           "absolute top-0 left-0 right-0 h-[16%] bg-black z-30 transition-transform duration-500 ease-in-out", 
            showBars ? "translate-y-0" : "-translate-y-full"
          )} 
        />
        
-       {/* BARRA INFERIOR: Baja (translate-y-full) */}
+       {/* BARRA INFERIOR */}
        <div 
          className={cn(
-           "absolute bottom-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500 ease-in-out", 
+           "absolute bottom-0 left-0 right-0 h-[16%] bg-black z-30 transition-transform duration-500 ease-in-out", 
            showBars ? "translate-y-0" : "translate-y-full"
          )} 
        />
