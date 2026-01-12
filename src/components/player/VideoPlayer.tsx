@@ -12,7 +12,6 @@ interface VideoPlayerProps {
   isActive: boolean;
   shouldPreload?: boolean;
   onEnded: () => void;
-  // NUEVA PROP: Para avisar que el contenido está listo y cortar el intro
   onReady?: () => void; 
   muted?: boolean; 
   isPlaying: boolean;
@@ -37,8 +36,11 @@ export default function VideoPlayer({
   const durationRef = useRef<number>(0);
   const ENABLE_FILTERS = true; 
 
+  // --- 0. PRE-CÁLCULOS SEGUROS ---
+  
+  // Detección robusta: ¿Tiene 'titulo'? -> Es Noticia.
   const isArticle = useMemo(() => {
-    return content && !('url' in content && typeof (content as Video).url === 'string');
+    return content && 'titulo' in content;
   }, [content]);
 
   const articleData = isArticle ? (content as Article) : null;
@@ -48,6 +50,8 @@ export default function VideoPlayer({
     return `${articleData.url_slide}?autoplay=1&mute=0&t=${new Date().getTime()}`;
   }, [articleData?.url_slide, articleData?.id]);
 
+
+  // --- 1. LÓGICA DE RESETEO ---
   useEffect(() => {
     setIsFadingOut(false);
     setIsLoaded(false); 
@@ -56,7 +60,7 @@ export default function VideoPlayer({
     durationRef.current = 0;
   }, [content]);
 
-  // LÓGICA PARA ARTÍCULOS
+  // --- 2. LÓGICA PARA ARTÍCULOS ---
   useEffect(() => {
     if (!isArticle || !isPlaying || !isActive) return;
 
@@ -74,11 +78,11 @@ export default function VideoPlayer({
       onEnded();
     }, totalDuration);
 
-    // Timer de Seguridad: Si en 3s no cargó, cortamos todo igual para no trabar el loop
+    // Timer de seguridad: Si falla la carga, cortamos el intro igual.
     const safetyTimer = setTimeout(() => {
        setIsLoaded(true);
        setIsTuning(false);
-       if (onReady) onReady(); // Cortar Intro a la fuerza
+       if (onReady) onReady();
     }, 3000);
 
     return () => {
@@ -88,7 +92,7 @@ export default function VideoPlayer({
     };
   }, [content, isPlaying, isActive, onEnded, isArticle, onReady]);
 
-  // LÓGICA PARA VIDEOS
+  // --- 3. LÓGICA PARA VIDEOS ---
   const handleDuration = (duration: number) => {
     durationRef.current = duration;
   };
@@ -102,13 +106,11 @@ export default function VideoPlayer({
     if (timeLeft < 0.2) onEnded();
   };
 
-  // MANEJADOR DE CARGA DE SLIDES
   const handleSlideLoad = () => {
-    // Cuando el slide carga, esperamos un poquito para estabilizar y...
     setTimeout(() => {
       setIsLoaded(true);
       setIsTuning(false); 
-      if (onReady) onReady(); // ...AVISAMOS QUE CORTE EL INTRO (STOP LOOP)
+      if (onReady) onReady();
     }, 500);
   };
 
@@ -129,6 +131,8 @@ export default function VideoPlayer({
     </div>
   );
 
+  // --- RENDERIZADO ---
+  
   if (!content) return <div className="w-full h-full bg-black" />;
 
   // A. VIDEO
