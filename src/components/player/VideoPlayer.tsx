@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import ReactPlayer from 'react-player';
 import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -28,8 +28,6 @@ export default function VideoPlayer({
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-
-  // NUEVO: Estado para forzar estática extra en slides (Buffer visual)
   const [isTuning, setIsTuning] = useState(false);
 
   const durationRef = useRef<number>(0);
@@ -40,7 +38,7 @@ export default function VideoPlayer({
     setIsFadingOut(false);
     setIsLoaded(false); 
     setIsBuffering(false);
-    setIsTuning(false); // Reseteamos sintonización
+    setIsTuning(false); 
     durationRef.current = 0;
   }, [content]);
 
@@ -50,7 +48,6 @@ export default function VideoPlayer({
     
     if (!isArticle || !isPlaying || !isActive) return;
 
-    // Al entrar un artículo, activamos el "Modo Sintonización" (Estática forzada)
     setIsTuning(true);
 
     const article = content as Article;
@@ -85,23 +82,18 @@ export default function VideoPlayer({
     if (timeLeft < 0.2) onEnded();
   };
 
-  // --- MANEJADOR DE CARGA DE SLIDES (EL SECRETO DEL NO-PARPADEO) ---
   const handleSlideLoad = () => {
-    // El iframe dice que cargó, pero esperamos 500ms más con la estática puesta
-    // para asegurar que el renderizado visual esté listo y animándose.
     setTimeout(() => {
       setIsLoaded(true);
-      setIsTuning(false); // Quitamos la estática suavemente
+      setIsTuning(false); 
     }, 500);
   };
-
 
   // --- COMPONENTE DE FILTROS ---
   const RetroFilters = ({ isHeavy }: { isHeavy: boolean }) => (
     <div 
       className={cn(
         "absolute inset-0 z-[15] pointer-events-none transition-opacity duration-700 ease-out",
-        // Usamos una transición más lenta (700ms) para que la lluvia se vaya suave
         isHeavy ? "opacity-100 bg-black" : "opacity-20"
       )}
     >
@@ -118,7 +110,6 @@ export default function VideoPlayer({
       )}
     </div>
   );
-
 
   // --- RENDERIZADO ---
   if (!content) return <div className="w-full h-full bg-black" />;
@@ -169,20 +160,23 @@ export default function VideoPlayer({
 
   // B. SLIDE (.HTML)
   const article = content as Article;
-  const slideUrl = article.url_slide 
-    ? `${article.url_slide}?t=${new Date().getTime()}` 
-    : null;
+  
+  // SOLUCIÓN REINICIO: Usamos useMemo para que la URL (y su timestamp) no cambien
+  // en cada renderizado (por ejemplo, cuando se ocultan los controles), sino solo cuando cambia el artículo.
+  const slideUrl = useMemo(() => {
+    return article.url_slide 
+      ? `${article.url_slide}?t=${new Date().getTime()}` 
+      : null;
+  }, [article.url_slide, article.id]);
 
   if (!slideUrl) return <div className="w-full h-full bg-black text-white">Sin slide</div>;
 
-  // Mostramos estática SI: No cargó (isLoaded=false) O estamos sintonizando (isTuning=true)
   const showSlideStatic = !isLoaded || isTuning;
 
   return (
     <div className="w-full h-full bg-black overflow-hidden relative">
         <div className="w-full h-full relative">
           
-          {/* CAPA DE FILTROS: Tapa el iframe mientras carga Y un poquito más */}
           {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
 
           <iframe
@@ -190,14 +184,13 @@ export default function VideoPlayer({
               src={slideUrl}
               className={cn(
                   "w-full h-full border-0 pointer-events-none transition-opacity duration-500",
-                  // El iframe aparece visualmente solo cuando terminamos de sintonizar
                   (!isTuning && !isFadingOut) ? "opacity-100" : "opacity-0"
               )}
               scrolling="no"
               title={article.titulo}
               loading="eager"
               sandbox="allow-scripts allow-same-origin"
-              onLoad={handleSlideLoad} // Usamos el manejador con retardo
+              onLoad={handleSlideLoad}
           />
         </div>
     </div>
