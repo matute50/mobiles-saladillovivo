@@ -24,10 +24,11 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserMuted, setIsUserMuted] = useState(true);
   const [showBars, setShowBars] = useState(true);
 
-  const isVideo = currentContent && 'url' in currentContent && typeof (currentContent as any).url === 'string' && !('url_slide' in currentContent);
-
-  // Detectamos si el intro es el de noticias para activar el LOOP
-  const isNewsIntro = currentIntro?.includes('noticias.mp4');
+  // DETECCIÓN INFALIBLE: Es video si tiene propiedad 'url'
+  const isVideo = currentContent && 'url' in currentContent;
+  
+  // Detectamos si el intro actual es el de noticias
+  const isNewsIntro = currentIntro ? currentIntro.includes('noticias.mp4') : false;
 
   useEffect(() => {
     if (isIntroVisible) {
@@ -70,24 +71,21 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
       onClick={handleInteraction}
       onMouseMove={handleInteraction}
     >
-       {/* === CAPA 1: VIDEO YOUTUBE / SLIDE === */}
        <div className="absolute inset-0 z-10 pointer-events-none"> 
           <VideoPlayer 
             content={currentContent}
             isActive={true} 
             shouldPreload={true}
             onEnded={handleContentEnded}
-            // PASAMOS LA FUNCIÓN PARA CORTAR EL INTRO CUANDO CARGUE EL SLIDE
             onReady={hideIntro} 
             muted={isUserMuted || isIntroVisible} 
             isPlaying={isPlaying} 
           />
        </div>
 
-       {/* === CAPA 2: ESCUDO TRANSPARENTE === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA 3: INTRO (CON LOOP SI ES NOTICIA) === */}
+       {/* CAPA INTRO */}
        <div className={cn("absolute inset-0 z-40 transition-opacity duration-500 ease-out", isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
          {currentIntro && (
             <ReactPlayer
@@ -99,7 +97,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
               volume={1} 
               muted={false} 
               playsinline 
-              // SI ES NOTICIA, LOOPEAMOS HASTA QUE EL SLIDE ESTÉ LISTO
               loop={isNewsIntro} 
               style={{ backgroundColor: 'black' }} 
               onError={() => handleContentEnded()} 
@@ -108,7 +105,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* === CAPA 4: BARRAS DE CINE === */}
+       {/* BARRAS DE CINE (Solo para Videos) */}
        {isVideo && (
          <>
            <div className={cn("absolute top-0 left-0 right-0 h-[19%] bg-black z-30 transition-transform duration-500 ease-in-out", showBars ? "translate-y-0" : "-translate-y-full")} />
@@ -116,7 +113,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          </>
        )}
 
-       {/* === CAPA 5: BOTÓN MUTE PERSISTENTE === */}
        {isUserMuted && (
           <div className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-none">
               <button onClick={toggleMute} className="pointer-events-auto p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-red-500 shadow-2xl scale-110 active:scale-95 transition-all animate-in zoom-in duration-300">
@@ -125,7 +121,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
           </div>
        )}
 
-       {/* === CAPA 6: CONTROLES ESTÁNDAR === */}
        <div className={cn("absolute inset-0 z-50 flex items-center justify-center bg-black/30 transition-opacity duration-300", showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")}>
           <button onClick={toggleMute} className="absolute top-3 left-3 p-2 rounded-full bg-black/40 text-white backdrop-blur-md border border-white/10 active:scale-95 transition-all">
              {isUserMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}

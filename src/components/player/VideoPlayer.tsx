@@ -38,9 +38,9 @@ export default function VideoPlayer({
 
   // --- 0. PRE-CÁLCULOS SEGUROS ---
   
-  // Detección robusta: ¿Tiene 'titulo'? -> Es Noticia.
+  // Detección: Si NO tiene URL de video, es una noticia.
   const isArticle = useMemo(() => {
-    return content && 'titulo' in content;
+    return content && !('url' in content);
   }, [content]);
 
   const articleData = isArticle ? (content as Article) : null;
@@ -78,7 +78,7 @@ export default function VideoPlayer({
       onEnded();
     }, totalDuration);
 
-    // Timer de seguridad: Si falla la carga, cortamos el intro igual.
+    // Timer de seguridad
     const safetyTimer = setTimeout(() => {
        setIsLoaded(true);
        setIsTuning(false);
@@ -132,7 +132,6 @@ export default function VideoPlayer({
   );
 
   // --- RENDERIZADO ---
-  
   if (!content) return <div className="w-full h-full bg-black" />;
 
   // A. VIDEO

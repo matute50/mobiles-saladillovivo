@@ -50,16 +50,16 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const triggerTransition = useCallback((nextContent: Video | Article | null) => {
     if (!nextContent) return;
 
-    // --- CORRECCIÓN CRÍTICA ---
-    // Usamos 'titulo' para identificar Noticias (Slides) vs 'nombre' para Videos
-    const isArticle = 'titulo' in nextContent;
+    // --- DETECCIÓN INFALIBLE ---
+    // Si tiene 'url', es un video de YouTube. Si NO la tiene, asumimos que es Noticia.
+    const isVideo = 'url' in nextContent;
+    const isArticle = !isVideo;
     
-    // Si es noticia -> NEWS_INTRO. Si es video -> Random.
+    // Asignación de intro
     const newIntro = isArticle ? NEWS_INTRO : getRandomIntro();
 
-    console.log("🔄 [Transition] Tipo detectado:", isArticle ? "NOTICIA (Slide)" : "VIDEO (YouTube)");
-    console.log("🎬 [Transition] Intro asignado:", newIntro);
-
+    console.log("🔄 [Context] Reproduciendo:", isArticle ? "NOTICIA" : "VIDEO");
+    
     setState(prev => ({
       ...prev,
       isIntroVisible: true, 
@@ -69,9 +69,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }));
 
     if (isArticle) {
-      // SI ES NOTICIA: NO hay timeout. Esperamos a que VideoPlayer llame a hideIntro()
+      // SI ES NOTICIA: Intro en loop infinito hasta que el slide avise (sin timeout)
     } else {
-      // SI ES VIDEO: Timeout fijo de 4 segundos
+      // SI ES VIDEO: Intro dura 4 segundos fijos
       setTimeout(() => {
         setState(prev => ({
           ...prev,
