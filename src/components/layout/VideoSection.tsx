@@ -6,6 +6,7 @@ import VideoPlayer from '@/components/player/VideoPlayer';
 import { cn } from '@/lib/utils';
 import ReactPlayer from 'react-player';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Article } from '@/lib/types';
 
 declare global {
   namespace JSX {
@@ -24,10 +25,10 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserMuted, setIsUserMuted] = useState(true);
   const [showBars, setShowBars] = useState(true);
 
-  // DETECCIÓN POR PRIORIDAD
+  // DETECCIÓN
   const rawSlide = (currentContent as any)?.url_slide;
   const isSlide = typeof rawSlide === 'string' && rawSlide.trim().length > 0;
-  const isVideo = !isSlide; // Si es slide, NO es video.
+  const isVideo = !isSlide; 
   
   const isNewsIntro = currentIntro ? currentIntro.includes('noticias.mp4') : false;
 
@@ -98,15 +99,17 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
               volume={1} 
               muted={false} 
               playsinline 
+              // Loop activado si es intro de noticias
               loop={isNewsIntro} 
               style={{ backgroundColor: 'black' }} 
-              onError={() => handleContentEnded()} 
+              onError={() => hideIntro()}
+              // Si no está en loop, se oculta al terminar
+              onEnded={() => !isNewsIntro && hideIntro()}
               config={{ file: { attributes: { style: { objectFit: 'cover', width: '100%', height: '100%' } } } }}
             />
          )}
        </div>
 
-       {/* BARRAS DE CINE (SOLO SI NO ES SLIDE) */}
        {isVideo && (
          <>
            <div className={cn("absolute top-0 left-0 right-0 h-[19%] bg-black z-30 transition-transform duration-500 ease-in-out", showBars ? "translate-y-0" : "-translate-y-full")} />

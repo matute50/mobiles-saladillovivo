@@ -50,28 +50,29 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const triggerTransition = useCallback((nextContent: Video | Article | null) => {
     if (!nextContent) return;
 
-    // --- DETECCIÓN POR PRIORIDAD ---
-    // 1. ¿Tiene url_slide? -> ES SLIDE (Sin importar qué diga 'url')
+    // DETECCIÓN INTELIGENTE DE INTRO
     const rawSlide = (nextContent as any).url_slide;
     const isSlide = typeof rawSlide === 'string' && rawSlide.trim().length > 0;
     
-    // Asignación de intro
+    // POLÍTICA DE INTROS:
+    // 1. Si es Noticia (Slide) -> Intro "Noticias" (Marca)
+    // 2. Si es Video -> Intro "Aleatorio" (Variedad)
     const newIntro = isSlide ? NEWS_INTRO : getRandomIntro();
 
-    console.log("🔄 [Context] Play:", isSlide ? "SLIDE (url_slide)" : "VIDEO");
-    
     setState(prev => ({
       ...prev,
-      isIntroVisible: true, 
+      isIntroVisible: true,     // <--- SIEMPRE visible al iniciar nuevo contenido
       currentIntro: newIntro,
       currentContent: nextContent, 
       isContentPlaying: true 
     }));
 
+    // GESTIÓN DE DURACIÓN DEL CONTENIDO
     if (isSlide) {
-      // MODO SLIDE: Sin timeout. Loop infinito hasta carga.
+      // SLIDE: El componente VideoPlayer manejará el tiempo exacto usando animation_duration
+      // y llamará a handleContentEnded() cuando termine.
     } else {
-      // MODO VIDEO: Timeout 4s.
+      // VIDEO: Solo controlamos el tiempo del intro (4s), el video dura lo que dura.
       setTimeout(() => {
         setState(prev => ({
           ...prev,
@@ -95,18 +96,15 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   const handleContentEnded = () => {
     if (videoPool.length === 0) return;
+    // Selección aleatoria del siguiente contenido
     const nextRandom = videoPool[Math.floor(Math.random() * videoPool.length)];
+    // Transición inmediata
     triggerTransition(nextRandom);
   };
 
   return (
     <MediaPlayerContext.Provider value={{ 
-      state, 
-      videoPool, 
-      setVideoPool, 
-      playManual, 
-      handleContentEnded,
-      hideIntro 
+      state, videoPool, setVideoPool, playManual, handleContentEnded, hideIntro 
     }}>
       {children}
     </MediaPlayerContext.Provider>
