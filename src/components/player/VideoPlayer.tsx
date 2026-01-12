@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { OnProgressProps } from 'react-player/base';
 
 interface VideoPlayerProps {
   content: Video | Article | null;
@@ -24,32 +25,39 @@ export default function VideoPlayer({
   
   const playerRef = useRef<ReactPlayer>(null);
   
-  // Estado para controlar el Fade Out final
+  // Estado para controlar el Fade Out (Salida)
   const [isFadingOut, setIsFadingOut] = useState(false);
   
-  // NUEVO: Estado para controlar el Fade In inicial (evita parpadeos)
+  // Estado para controlar el Fade In (Entrada suave)
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- LÓGICA DE TIEMPO PARA ARTÍCULOS (.html) ---
+  // Referencia para guardar la duración total del video YouTube
+  const durationRef = useRef<number>(0);
+
+  // --- 1. LÓGICA DE RESETEO AL CAMBIAR CONTENIDO ---
+  useEffect(() => {
+    // Cada vez que entra un video nuevo, reseteamos visuales
+    setIsFadingOut(false);
+    setIsLoaded(false); 
+    durationRef.current = 0;
+  }, [content]);
+
+  // --- 2. LÓGICA PARA ARTÍCULOS (.html) ---
   useEffect(() => {
     const isArticle = content && !('url' in content && typeof (content as Video).url === 'string');
     
-    // Reseteamos estados visuales al cambiar de contenido
-    setIsFadingOut(false);
-    setIsLoaded(false); // <--- Importante: Ocultamos hasta que cargue el nuevo
-
     if (!isArticle || !isPlaying || !isActive) return;
 
     const article = content as Article;
     const totalDuration = (article.animation_duration || 15) * 1000;
-    const fadeDuration = 500; 
+    const fadeDuration = 500; // 0.5 seg de fade out
 
     // Timer para iniciar el desvanecimiento final
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
     }, totalDuration - fadeDuration);
 
-    // Timer para terminar y cambiar de video
+    // Timer para terminar
     const endTimer = setTimeout(() => {
       onEnded();
     }, totalDuration);
@@ -60,45 +68,83 @@ export default function VideoPlayer({
     };
   }, [content, isPlaying, isActive, onEnded]);
 
+  // --- 3. LÓGICA PARA VIDEOS YOUTUBE (Corte Anticipado) ---
+  const handleDuration = (duration: number) => {
+    durationRef.current = duration;
+  };
+
+  const handleProgress = (state: OnProgressProps) => {
+    if (!durationRef.current || durationRef.current === 0) return;
+
+    // Calculamos cuánto falta para terminar
+    const timeLeft = durationRef.current - state.playedSeconds;
+
+    // FADE OUT: Si falta menos de 0.6 segundos, empezamos a desvanecer
+    // (Usamos 0.6 para asegurar que la animación de 0.5s se vea completa)
+    if (timeLeft < 0.6 && !isFadingOut) {
+      setIsFadingOut(true);
+    }
+
+    // KILL SWITCH: Si falta menos de 0.2 segundos, cortamos YA.
+    // Esto evita que llegue al segundo 0.0 y muestre la grilla de YouTube.
+    if (timeLeft < 0.2) {
+      onEnded();
+    }
+  };
+
 
   // --- RENDERIZADO ---
   if (!content) return <div className="w-full h-full bg-black" />;
 
-  // 1. ES UN VIDEO (YouTube / Mp4)
+  // A. ES UN VIDEO (YouTube / Mp4)
   if ('url' in content && typeof (content as any).url === 'string' && !('url_slide' in content)) {
     const video = content as Video;
     return (
-      <div className="w-full h-full bg-black">
-        <ReactPlayer
-          ref={playerRef}
-          url={video.url}
-          width="100%"
-          height="100%"
-          playing={isActive && isPlaying}
-          muted={muted} 
-          volume={1}
-          onEnded={onEnded}
-          playsinline={true} 
-          config={{
-            youtube: {
-              playerVars: {
-                autoplay: 1,
-                controls: 0,        
-                modestbranding: 1,  
-                rel: 0,             
-                showinfo: 0,
-                iv_load_policy: 3,  
-                fs: 0,              
-                disablekb: 1,       
-              }
-            }
-          }}
-        />
+      <div className="w-full h-full bg-black overflow-hidden relative">
+        <div 
+          className={cn(
+            "w-full h-full transition-opacity duration-500 ease-in-out",
+            // Se ve solo si cargó Y no se está yendo
+            (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
+          )}
+        >
+            <ReactPlayer
+              ref={playerRef}
+              url={video.url}
+              width="100%"
+              height="100%"
+              playing={isActive && isPlaying}
+              muted={muted} 
+              volume={1}
+              
+              // EVENTOS CRÍTICOS
+              onReady={() => setIsLoaded(true)} // Fade In al cargar
+              onDuration={handleDuration}       // Guardamos duración total
+              onProgress={handleProgress}       // Monitoreamos el final
+              onEnded={onEnded}                 // Fallback por si acaso
+              
+              playsinline={true} 
+              config={{
+                youtube: {
+                  playerVars: {
+                    autoplay: 1,
+                    controls: 0,        
+                    modestbranding: 1,  
+                    rel: 0,             
+                    showinfo: 0,
+                    iv_load_policy: 3,  
+                    fs: 0,              
+                    disablekb: 1,       
+                  }
+                }
+              }}
+            />
+        </div>
       </div>
     );
   }
 
-  // 2. ES UN ARTÍCULO (SLIDE .HTML)
+  // B. ES UN ARTÍCULO (SLIDE .HTML)
   const article = content as Article;
   
   const slideUrl = article.url_slide 
@@ -111,14 +157,10 @@ export default function VideoPlayer({
 
   return (
     <div className="w-full h-full bg-black overflow-hidden relative">
-        {/* LÓGICA DE VISIBILIDAD:
-            - isLoaded && !isFadingOut -> Opacity 100 (Visible)
-            - !isLoaded (Cargando) -> Opacity 0 (Invisible/Negro)
-            - isFadingOut (Terminando) -> Opacity 0 (Invisible/Negro)
-        */}
+        {/* Contenedor del Slide con doble transición: Entrada (Load) y Salida (End) */}
         <div 
           className={cn(
-            "w-full h-full transition-opacity duration-700 ease-in-out", // Aumenté a 700ms para mayor suavidad
+            "w-full h-full transition-opacity duration-700 ease-in-out", 
             (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
           )}
         >
@@ -130,17 +172,9 @@ export default function VideoPlayer({
               title={article.titulo}
               loading="eager"
               sandbox="allow-scripts allow-same-origin"
-              // ESTO ES CLAVE: Cuando el HTML termina de cargar, hacemos visible el contenedor
               onLoad={() => setIsLoaded(true)}
           />
         </div>
-        
-        {/* Loader opcional (mientras está en negro) */}
-        {!isLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black z-0">
-               {/* Puedes poner un spinner aquí si quieres, o dejarlo negro limpio */}
-            </div>
-        )}
     </div>
   );
 }
