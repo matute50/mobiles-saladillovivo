@@ -33,16 +33,13 @@ export default function VideoPlayer({
   const durationRef = useRef<number>(0);
   const ENABLE_FILTERS = true; 
 
-  // --- 0. PRE-CÁLCULOS SEGUROS (HOOKS SIEMPRE AL PRINCIPIO) ---
-  
-  // Determinamos si es un artículo de forma segura
+  // --- 0. PRE-CÁLCULOS SEGUROS ---
   const isArticle = useMemo(() => {
     return content && !('url' in content && typeof (content as Video).url === 'string');
   }, [content]);
 
   const articleData = isArticle ? (content as Article) : null;
 
-  // Calculamos la URL del slide AQUÍ ARRIBA (Antes de cualquier return)
   const slideUrl = useMemo(() => {
     if (!articleData || !articleData.url_slide) return null;
     return `${articleData.url_slide}?t=${new Date().getTime()}`;
@@ -62,23 +59,33 @@ export default function VideoPlayer({
   useEffect(() => {
     if (!isArticle || !isPlaying || !isActive) return;
 
-    setIsTuning(true);
+    setIsTuning(true); // Activar estática de "Sintonizando"
 
     const article = content as Article;
     const totalDuration = (article.animation_duration || 15) * 1000;
     const fadeDuration = 500; 
 
+    // Timer para fade out normal
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
     }, totalDuration - fadeDuration);
 
+    // Timer para terminar el slide
     const endTimer = setTimeout(() => {
       onEnded();
     }, totalDuration);
 
+    // === TIMER DE SEGURIDAD (FALLBACK) ===
+    // Si en 2.5 segundos el iframe no avisó que cargó, destrabamos todo a la fuerza.
+    const safetyTimer = setTimeout(() => {
+       setIsLoaded(true);
+       setIsTuning(false);
+    }, 2500);
+
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(endTimer);
+      clearTimeout(safetyTimer); // Limpiar timer de seguridad
     };
   }, [content, isPlaying, isActive, onEnded, isArticle]);
 
@@ -126,7 +133,6 @@ export default function VideoPlayer({
   );
 
   // --- RENDERIZADO ---
-  
   if (!content) return <div className="w-full h-full bg-black" />;
 
   // A. VIDEO
