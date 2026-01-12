@@ -25,24 +25,27 @@ export default function VideoPlayer({
   
   const playerRef = useRef<ReactPlayer>(null);
   
-  // Estado para controlar el Fade Out (Salida)
+  // Estados de carga y finalización
   const [isFadingOut, setIsFadingOut] = useState(false);
-  
-  // Estado para controlar el Fade In (Entrada suave)
   const [isLoaded, setIsLoaded] = useState(false);
+  
+  // NUEVO: Estado para saber si YouTube está "pensando" (ruedita de carga)
+  const [isBuffering, setIsBuffering] = useState(false);
 
-  // Referencia para guardar la duración total del video YouTube
   const durationRef = useRef<number>(0);
 
-  // --- 1. LÓGICA DE RESETEO AL CAMBIAR CONTENIDO ---
+  // CONFIGURACIÓN DE FILTROS
+  const ENABLE_FILTERS = true; 
+
+  // --- 1. LÓGICA DE RESETEO ---
   useEffect(() => {
-    // Cada vez que entra un video nuevo, reseteamos visuales
     setIsFadingOut(false);
     setIsLoaded(false); 
+    setIsBuffering(false); // Reseteamos buffer al cambiar video
     durationRef.current = 0;
   }, [content]);
 
-  // --- 2. LÓGICA PARA ARTÍCULOS (.html) ---
+  // --- 2. LÓGICA PARA ARTÍCULOS ---
   useEffect(() => {
     const isArticle = content && !('url' in content && typeof (content as Video).url === 'string');
     
@@ -50,14 +53,12 @@ export default function VideoPlayer({
 
     const article = content as Article;
     const totalDuration = (article.animation_duration || 15) * 1000;
-    const fadeDuration = 500; // 0.5 seg de fade out
+    const fadeDuration = 500; 
 
-    // Timer para iniciar el desvanecimiento final
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
     }, totalDuration - fadeDuration);
 
-    // Timer para terminar
     const endTimer = setTimeout(() => {
       onEnded();
     }, totalDuration);
@@ -68,29 +69,54 @@ export default function VideoPlayer({
     };
   }, [content, isPlaying, isActive, onEnded]);
 
-  // --- 3. LÓGICA PARA VIDEOS YOUTUBE (Corte Anticipado) ---
+  // --- 3. LÓGICA PARA VIDEOS ---
   const handleDuration = (duration: number) => {
     durationRef.current = duration;
   };
 
   const handleProgress = (state: OnProgressProps) => {
-    if (!durationRef.current || durationRef.current === 0) return;
+    // Si estamos reproduciendo, seguro no estamos buferizando
+    if (state.playedSeconds > 0 && isBuffering) setIsBuffering(false);
 
-    // Calculamos cuánto falta para terminar
+    if (!durationRef.current || durationRef.current === 0) return;
     const timeLeft = durationRef.current - state.playedSeconds;
 
-    // FADE OUT: Si falta menos de 0.6 segundos, empezamos a desvanecer
-    // (Usamos 0.6 para asegurar que la animación de 0.5s se vea completa)
-    if (timeLeft < 0.6 && !isFadingOut) {
-      setIsFadingOut(true);
-    }
-
-    // KILL SWITCH: Si falta menos de 0.2 segundos, cortamos YA.
-    // Esto evita que llegue al segundo 0.0 y muestre la grilla de YouTube.
-    if (timeLeft < 0.2) {
-      onEnded();
-    }
+    if (timeLeft < 0.6 && !isFadingOut) setIsFadingOut(true);
+    if (timeLeft < 0.2) onEnded();
   };
+
+
+  // --- COMPONENTE DE FILTROS (DINÁMICO) ---
+  // Recibe 'isHeavy' para saber si debe tapar todo o ser sutil
+  const RetroFilters = ({ isHeavy }: { isHeavy: boolean }) => (
+    <div 
+      className={cn(
+        "absolute inset-0 z-[15] pointer-events-none transition-opacity duration-300",
+        // Si es Heavy (Cargando/Buffer) -> Opacidad 100% (Tapa el video)
+        // Si no es Heavy (Reproduciendo) -> Opacidad 20% (Efecto sutil) o 0% si prefieres limpio
+        isHeavy ? "opacity-100 bg-black" : "opacity-20"
+      )}
+    >
+      {/* 1. Viñeta */}
+      <div className="tv-vignette" />
+      
+      {/* 2. Scanlines */}
+      <div className="tv-scanlines opacity-50" />
+      
+      {/* 3. Ruido/Estática */}
+      <div className="absolute inset-0 overflow-hidden">
+         {/* Si es Heavy, aumentamos la opacidad del ruido css */}
+         <div className={cn("tv-noise", isHeavy ? "opacity-30" : "opacity-10")} />
+      </div>
+      
+      {/* Texto opcional "CARGANDO SEÑAL..." si está en modo Heavy */}
+      {isHeavy && (
+        <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-white/50 font-mono text-xs animate-pulse tracking-widest">SINTONIZANDO...</p>
+        </div>
+      )}
+    </div>
+  );
 
 
   // --- RENDERIZADO ---
@@ -99,15 +125,24 @@ export default function VideoPlayer({
   // A. ES UN VIDEO (YouTube / Mp4)
   if ('url' in content && typeof (content as any).url === 'string' && !('url_slide' in content)) {
     const video = content as Video;
+    
+    // CALCULAMOS CUÁNDO MOSTRAR ESTÁTICA FUERTE:
+    // 1. Si no ha cargado el inicio (!isLoaded)
+    // 2. Si está buferizando (isBuffering)
+    // 3. Si está saliendo (isFadingOut) - Opcional, para transición suave
+    const showStatic = !isLoaded || isBuffering;
+
     return (
       <div className="w-full h-full bg-black overflow-hidden relative">
         <div 
           className={cn(
-            "w-full h-full transition-opacity duration-500 ease-in-out",
-            // Se ve solo si cargó Y no se está yendo
+            "w-full h-full transition-opacity duration-500 ease-in-out relative",
             (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
           )}
         >
+            {/* CAPA DE FILTROS INTELIGENTE */}
+            {ENABLE_FILTERS && <RetroFilters isHeavy={showStatic} />}
+
             <ReactPlayer
               ref={playerRef}
               url={video.url}
@@ -117,12 +152,14 @@ export default function VideoPlayer({
               muted={muted} 
               volume={1}
               
-              // EVENTOS CRÍTICOS
-              onReady={() => setIsLoaded(true)} // Fade In al cargar
-              onDuration={handleDuration}       // Guardamos duración total
-              onProgress={handleProgress}       // Monitoreamos el final
-              onEnded={onEnded}                 // Fallback por si acaso
+              // EVENTOS DE BUFFERING (CLAVE PARA TU PEDIDO)
+              onReady={() => setIsLoaded(true)} 
+              onBuffer={() => setIsBuffering(true)}      // Empieza a cargar -> Muestra estática
+              onBufferEnd={() => setIsBuffering(false)}  // Termina de cargar -> Muestra video
               
+              onDuration={handleDuration}       
+              onProgress={handleProgress}       
+              onEnded={onEnded}                 
               playsinline={true} 
               config={{
                 youtube: {
@@ -146,7 +183,6 @@ export default function VideoPlayer({
 
   // B. ES UN ARTÍCULO (SLIDE .HTML)
   const article = content as Article;
-  
   const slideUrl = article.url_slide 
     ? `${article.url_slide}?t=${new Date().getTime()}` 
     : null;
@@ -155,15 +191,21 @@ export default function VideoPlayer({
      return <div className="w-full h-full bg-black flex items-center justify-center text-white">Sin slide disponible</div>;
   }
 
+  // Para los slides, mostramos estática mientras carga el iframe (isLoaded es false)
+  const showSlideStatic = !isLoaded;
+
   return (
     <div className="w-full h-full bg-black overflow-hidden relative">
-        {/* Contenedor del Slide con doble transición: Entrada (Load) y Salida (End) */}
         <div 
           className={cn(
-            "w-full h-full transition-opacity duration-700 ease-in-out", 
-            (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
+            "w-full h-full transition-opacity duration-700 ease-in-out relative", 
+            // En slides no usamos opacity 0 para ocultar, usamos la estática encima
+            "opacity-100" 
           )}
         >
+          {/* CAPA DE FILTROS EN SLIDES */}
+          {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
+
           <iframe
               key={article.id} 
               src={slideUrl}
