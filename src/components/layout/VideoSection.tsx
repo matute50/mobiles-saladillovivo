@@ -31,8 +31,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     if (isIntroVisible) {
       setShowBars(true); 
     } else {
-      // CAMBIO: Aumentado a 2000ms (2 segundos)
-      // Esto da 1 segundo extra de cobertura y permite el fade-out final
+      // Mantenemos las barras 2 segundos antes de retirarlas
       const timer = setTimeout(() => setShowBars(false), 2000);
       return () => clearTimeout(timer);
     }
@@ -89,14 +88,12 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        />
 
        {/* === CAPA 3: INTRO (CON FADE OUT) === */}
-       {/* CAMBIO: Usamos opacity + pointer-events-none en lugar de 'hidden' para lograr el Fade Out */}
        <div 
          className={cn(
            "absolute inset-0 z-40 transition-opacity duration-500 ease-out", 
            isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none" 
          )}
        >
-         {/* Renderizamos el player siempre que haya URL, lo ocultamos visualmente con CSS */}
          {currentIntro && (
             <ReactPlayer
               key={currentIntro} 
@@ -120,10 +117,22 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* === CAPA 4: BANDAS (CON FADE OUT) === */}
-       {/* CAMBIO: Controlamos la opacidad con clases CSS en lugar de desmontar el componente */}
-       <div className={cn("absolute top-0 left-0 right-0 h-[14%] bg-black z-30 transition-opacity duration-500", showBars ? "opacity-100" : "opacity-0 pointer-events-none")} />
-       <div className={cn("absolute bottom-0 left-0 right-0 h-[14%] bg-black z-30 transition-opacity duration-500", showBars ? "opacity-100" : "opacity-0 pointer-events-none")} />
+       {/* === CAPA 4: BANDAS DE CINE (CON SLIDE OUT) === */}
+       {/* BARRA SUPERIOR: Se retira hacia arriba (-translate-y-full) */}
+       <div 
+         className={cn(
+           "absolute top-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500 ease-in-out", 
+           showBars ? "translate-y-0" : "-translate-y-full"
+         )} 
+       />
+       
+       {/* BARRA INFERIOR: Se retira hacia abajo (translate-y-full) */}
+       <div 
+         className={cn(
+           "absolute bottom-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500 ease-in-out", 
+           showBars ? "translate-y-0" : "translate-y-full"
+         )} 
+       />
 
        {/* === CAPA 5: CONTROLES PROPIOS === */}
        <div 
@@ -132,7 +141,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
            showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
          )}
        >
-          {/* BOTÓN MUTE */}
           <button 
             onClick={toggleMute}
             className="absolute top-3 left-3 p-2 rounded-full bg-black/40 text-white backdrop-blur-md border border-white/10 active:scale-95 transition-all"
@@ -140,12 +148,10 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
              {isUserMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
 
-          {/* BOTÓN CHROMECAST */}
           <div className="absolute top-3 right-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
              <google-cast-launcher style={{ width: '40px', height: '40px', display: 'block' }}></google-cast-launcher>
           </div>
 
-          {/* BOTÓN PLAY/PAUSE */}
           <button 
             onClick={togglePlay}
             className="p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white shadow-2xl scale-110 active:scale-95 transition-all"

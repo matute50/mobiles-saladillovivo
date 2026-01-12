@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
 import { Video, Article } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface VideoPlayerProps {
   content: Video | Article | null;
   isActive: boolean;
   shouldPreload?: boolean;
   onEnded: () => void;
-  muted?: boolean; // CAMBIO: Renombrado de forceMute a muted para ser más claro
+  muted?: boolean; 
   isPlaying: boolean;
 }
 
@@ -17,26 +18,42 @@ export default function VideoPlayer({
   content, 
   isActive, 
   onEnded, 
-  muted = true, // Por defecto true para autoplay
+  muted = true, 
   isPlaying = true 
 }: VideoPlayerProps) {
   
   const playerRef = useRef<ReactPlayer>(null);
+  
+  // Estado para controlar el Fade Out visual del slide
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   // --- LÓGICA DE TIEMPO PARA ARTÍCULOS (.html) ---
   useEffect(() => {
     const isArticle = content && !('url' in content && typeof (content as Video).url === 'string');
     
+    // Reseteamos el fade out cuando cambia el contenido
+    setIsFadingOut(false);
+
     if (!isArticle || !isPlaying || !isActive) return;
 
     const article = content as Article;
-    const duration = (article.animation_duration || 15) * 1000;
+    const totalDuration = (article.animation_duration || 15) * 1000;
+    const fadeDuration = 500; // 0.5 segundos de fade out
 
-    const timer = setTimeout(() => {
+    // 1. Timer para iniciar el desvanecimiento
+    const fadeTimer = setTimeout(() => {
+      setIsFadingOut(true);
+    }, totalDuration - fadeDuration);
+
+    // 2. Timer para terminar y cambiar de video (onEnded)
+    const endTimer = setTimeout(() => {
       onEnded();
-    }, duration);
+    }, totalDuration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(endTimer);
+    };
   }, [content, isPlaying, isActive, onEnded]);
 
 
@@ -54,7 +71,7 @@ export default function VideoPlayer({
           width="100%"
           height="100%"
           playing={isActive && isPlaying}
-          muted={muted} // AQUI SE APLICA EL MUTE CONTROLADO POR EL BOTÓN
+          muted={muted} 
           volume={1}
           onEnded={onEnded}
           playsinline={true} 
@@ -90,15 +107,23 @@ export default function VideoPlayer({
 
   return (
     <div className="w-full h-full bg-black overflow-hidden relative">
-        <iframe
-            key={article.id} 
-            src={slideUrl}
-            className="w-full h-full border-0 pointer-events-none"
-            scrolling="no"
-            title={article.titulo}
-            loading="eager"
-            sandbox="allow-scripts allow-same-origin"
-        />
+        {/* Contenedor con transición de opacidad controlada por isFadingOut */}
+        <div 
+          className={cn(
+            "w-full h-full transition-opacity duration-500 ease-in-out",
+            isFadingOut ? "opacity-0" : "opacity-100"
+          )}
+        >
+          <iframe
+              key={article.id} 
+              src={slideUrl}
+              className="w-full h-full border-0 pointer-events-none"
+              scrolling="no"
+              title={article.titulo}
+              loading="eager"
+              sandbox="allow-scripts allow-same-origin"
+          />
+        </div>
     </div>
   );
 }
