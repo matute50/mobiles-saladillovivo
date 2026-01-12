@@ -24,28 +24,32 @@ export default function VideoPlayer({
   
   const playerRef = useRef<ReactPlayer>(null);
   
-  // Estado para controlar el Fade Out visual del slide
+  // Estado para controlar el Fade Out final
   const [isFadingOut, setIsFadingOut] = useState(false);
+  
+  // NUEVO: Estado para controlar el Fade In inicial (evita parpadeos)
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // --- LÓGICA DE TIEMPO PARA ARTÍCULOS (.html) ---
   useEffect(() => {
     const isArticle = content && !('url' in content && typeof (content as Video).url === 'string');
     
-    // Reseteamos el fade out cuando cambia el contenido
+    // Reseteamos estados visuales al cambiar de contenido
     setIsFadingOut(false);
+    setIsLoaded(false); // <--- Importante: Ocultamos hasta que cargue el nuevo
 
     if (!isArticle || !isPlaying || !isActive) return;
 
     const article = content as Article;
     const totalDuration = (article.animation_duration || 15) * 1000;
-    const fadeDuration = 500; // 0.5 segundos de fade out
+    const fadeDuration = 500; 
 
-    // 1. Timer para iniciar el desvanecimiento
+    // Timer para iniciar el desvanecimiento final
     const fadeTimer = setTimeout(() => {
       setIsFadingOut(true);
     }, totalDuration - fadeDuration);
 
-    // 2. Timer para terminar y cambiar de video (onEnded)
+    // Timer para terminar y cambiar de video
     const endTimer = setTimeout(() => {
       onEnded();
     }, totalDuration);
@@ -107,11 +111,15 @@ export default function VideoPlayer({
 
   return (
     <div className="w-full h-full bg-black overflow-hidden relative">
-        {/* Contenedor con transición de opacidad controlada por isFadingOut */}
+        {/* LÓGICA DE VISIBILIDAD:
+            - isLoaded && !isFadingOut -> Opacity 100 (Visible)
+            - !isLoaded (Cargando) -> Opacity 0 (Invisible/Negro)
+            - isFadingOut (Terminando) -> Opacity 0 (Invisible/Negro)
+        */}
         <div 
           className={cn(
-            "w-full h-full transition-opacity duration-500 ease-in-out",
-            isFadingOut ? "opacity-0" : "opacity-100"
+            "w-full h-full transition-opacity duration-700 ease-in-out", // Aumenté a 700ms para mayor suavidad
+            (isLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
           )}
         >
           <iframe
@@ -122,8 +130,17 @@ export default function VideoPlayer({
               title={article.titulo}
               loading="eager"
               sandbox="allow-scripts allow-same-origin"
+              // ESTO ES CLAVE: Cuando el HTML termina de cargar, hacemos visible el contenedor
+              onLoad={() => setIsLoaded(true)}
           />
         </div>
+        
+        {/* Loader opcional (mientras está en negro) */}
+        {!isLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black z-0">
+               {/* Puedes poner un spinner aquí si quieres, o dejarlo negro limpio */}
+            </div>
+        )}
     </div>
   );
 }
