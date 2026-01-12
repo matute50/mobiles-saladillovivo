@@ -33,6 +33,22 @@ export default function VideoPlayer({
   const durationRef = useRef<number>(0);
   const ENABLE_FILTERS = true; 
 
+  // --- 0. PRE-CÁLCULOS SEGUROS (HOOKS SIEMPRE AL PRINCIPIO) ---
+  
+  // Determinamos si es un artículo de forma segura
+  const isArticle = useMemo(() => {
+    return content && !('url' in content && typeof (content as Video).url === 'string');
+  }, [content]);
+
+  const articleData = isArticle ? (content as Article) : null;
+
+  // Calculamos la URL del slide AQUÍ ARRIBA (Antes de cualquier return)
+  const slideUrl = useMemo(() => {
+    if (!articleData || !articleData.url_slide) return null;
+    return `${articleData.url_slide}?t=${new Date().getTime()}`;
+  }, [articleData?.url_slide, articleData?.id]);
+
+
   // --- 1. LÓGICA DE RESETEO ---
   useEffect(() => {
     setIsFadingOut(false);
@@ -44,8 +60,6 @@ export default function VideoPlayer({
 
   // --- 2. LÓGICA PARA ARTÍCULOS ---
   useEffect(() => {
-    const isArticle = content && !('url' in content && typeof (content as Video).url === 'string');
-    
     if (!isArticle || !isPlaying || !isActive) return;
 
     setIsTuning(true);
@@ -66,7 +80,7 @@ export default function VideoPlayer({
       clearTimeout(fadeTimer);
       clearTimeout(endTimer);
     };
-  }, [content, isPlaying, isActive, onEnded]);
+  }, [content, isPlaying, isActive, onEnded, isArticle]);
 
   // --- 3. LÓGICA PARA VIDEOS ---
   const handleDuration = (duration: number) => {
@@ -100,7 +114,7 @@ export default function VideoPlayer({
       <div className="tv-vignette" />
       <div className="tv-scanlines opacity-50" />
       <div className="absolute inset-0 overflow-hidden">
-         <div className={cn("tv-noise", isHeavy ? "opacity-30" : "opacity-10")} />
+         <div className={cn("tv-noise", isHeavy ? "opacity-30" : "opacity-1")} />
       </div>
       
       {isHeavy && (
@@ -112,10 +126,11 @@ export default function VideoPlayer({
   );
 
   // --- RENDERIZADO ---
+  
   if (!content) return <div className="w-full h-full bg-black" />;
 
   // A. VIDEO
-  if ('url' in content && typeof (content as any).url === 'string' && !('url_slide' in content)) {
+  if (!isArticle) {
     const video = content as Video;
     const showStatic = !isLoaded || isBuffering;
 
@@ -159,16 +174,6 @@ export default function VideoPlayer({
   }
 
   // B. SLIDE (.HTML)
-  const article = content as Article;
-  
-  // SOLUCIÓN REINICIO: Usamos useMemo para que la URL (y su timestamp) no cambien
-  // en cada renderizado (por ejemplo, cuando se ocultan los controles), sino solo cuando cambia el artículo.
-  const slideUrl = useMemo(() => {
-    return article.url_slide 
-      ? `${article.url_slide}?t=${new Date().getTime()}` 
-      : null;
-  }, [article.url_slide, article.id]);
-
   if (!slideUrl) return <div className="w-full h-full bg-black text-white">Sin slide</div>;
 
   const showSlideStatic = !isLoaded || isTuning;
@@ -180,14 +185,14 @@ export default function VideoPlayer({
           {ENABLE_FILTERS && <RetroFilters isHeavy={showSlideStatic} />}
 
           <iframe
-              key={article.id} 
+              key={articleData?.id} 
               src={slideUrl}
               className={cn(
                   "w-full h-full border-0 pointer-events-none transition-opacity duration-500",
                   (!isTuning && !isFadingOut) ? "opacity-100" : "opacity-0"
               )}
               scrolling="no"
-              title={article.titulo}
+              title={articleData?.titulo}
               loading="eager"
               sandbox="allow-scripts allow-same-origin"
               onLoad={handleSlideLoad}
