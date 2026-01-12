@@ -26,12 +26,12 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   // Estado para las barras negras
   const [showBars, setShowBars] = useState(true);
 
-  // --- LÓGICA DE BARRAS DE CINE ---
+  // --- LÓGICA DE BARRAS DE CINE AL INICIO (INTRO) ---
   useEffect(() => {
     if (isIntroVisible) {
       setShowBars(true); 
     } else {
-      // Mantenemos las barras 2 segundos antes de retirarlas
+      // Al terminar el intro, esperamos 2 segundos antes de retirar las barras
       const timer = setTimeout(() => setShowBars(false), 2000);
       return () => clearTimeout(timer);
     }
@@ -44,12 +44,25 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     return () => clearTimeout(timer);
   }, [showControls, isPlaying]);
 
+  // --- LÓGICA DE PLAY / PAUSA CON RETRASO DE BARRAS ---
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation(); 
-    setIsPlaying(!isPlaying);
+    
+    const willPlay = !isPlaying; // Calculamos el nuevo estado
+    setIsPlaying(willPlay);
     setShowControls(true);
-    if (!isPlaying) setShowBars(false); 
-    else setShowBars(true); 
+
+    if (willPlay) {
+      // AL QUITAR LA PAUSA (PLAY):
+      // Queremos que las barras se queden 1 segundo más en total.
+      // La animación CSS (slide out) dura 0.5s (duration-500).
+      // Por lo tanto, esperamos 500ms aquí + 500ms de animación = 1000ms (1s) total.
+      setTimeout(() => setShowBars(false), 500);
+    } else {
+      // AL PONER PAUSA:
+      // Las barras bajan inmediatamente (estilo Netflix/YouTube)
+      setShowBars(true); 
+    }
   };
 
   const toggleMute = (e: React.MouseEvent) => {
@@ -87,7 +100,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          onClick={handleInteraction}
        />
 
-       {/* === CAPA 3: INTRO (CON FADE OUT) === */}
+       {/* === CAPA 3: INTRO === */}
        <div 
          className={cn(
            "absolute inset-0 z-40 transition-opacity duration-500 ease-out", 
@@ -117,8 +130,8 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )}
        </div>
 
-       {/* === CAPA 4: BANDAS DE CINE (CON SLIDE OUT) === */}
-       {/* BARRA SUPERIOR: Se retira hacia arriba (-translate-y-full) */}
+       {/* === CAPA 4: BARRAS DE CINE (CON SLIDE OUT) === */}
+       {/* BARRA SUPERIOR: Sube (-translate-y-full) */}
        <div 
          className={cn(
            "absolute top-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500 ease-in-out", 
@@ -126,7 +139,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )} 
        />
        
-       {/* BARRA INFERIOR: Se retira hacia abajo (translate-y-full) */}
+       {/* BARRA INFERIOR: Baja (translate-y-full) */}
        <div 
          className={cn(
            "absolute bottom-0 left-0 right-0 h-[14%] bg-black z-30 transition-transform duration-500 ease-in-out", 
@@ -134,7 +147,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          )} 
        />
 
-       {/* === CAPA 5: CONTROLES PROPIOS === */}
+       {/* === CAPA 5: CONTROLES === */}
        <div 
          className={cn(
            "absolute inset-0 z-50 flex items-center justify-center bg-black/30 transition-opacity duration-300",
