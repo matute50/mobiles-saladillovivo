@@ -6,7 +6,6 @@ import VideoPlayer from '@/components/player/VideoPlayer';
 import { cn } from '@/lib/utils';
 import ReactPlayer from 'react-player';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
-import { Video } from '@/lib/types'; 
 
 declare global {
   namespace JSX {
@@ -17,7 +16,7 @@ declare global {
 }
 
 export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
-  const { state, handleContentEnded } = useMediaPlayer();
+  const { state, handleContentEnded, hideIntro } = useMediaPlayer();
   const { currentContent, currentIntro, isIntroVisible } = state;
   
   const [isPlaying, setIsPlaying] = useState(true);
@@ -27,7 +26,9 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
   const isVideo = currentContent && 'url' in currentContent && typeof (currentContent as any).url === 'string' && !('url_slide' in currentContent);
 
-  // --- LÓGICA DE BARRAS DE CINE ---
+  // Detectamos si el intro es el de noticias para activar el LOOP
+  const isNewsIntro = currentIntro?.includes('noticias.mp4');
+
   useEffect(() => {
     if (isIntroVisible) {
       setShowBars(true); 
@@ -37,7 +38,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     }
   }, [isIntroVisible]);
 
-  // Auto-ocultar controles
   useEffect(() => {
     if (!showControls || !isPlaying) return; 
     const timer = setTimeout(() => setShowControls(false), 3000);
@@ -49,12 +49,8 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     const willPlay = !isPlaying; 
     setIsPlaying(willPlay);
     setShowControls(true);
-
-    if (willPlay) {
-      setTimeout(() => setShowBars(false), 500);
-    } else {
-      setShowBars(true); 
-    }
+    if (willPlay) setTimeout(() => setShowBars(false), 500);
+    else setShowBars(true); 
   };
 
   const toggleMute = (e: React.MouseEvent) => {
@@ -81,19 +77,31 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
             isActive={true} 
             shouldPreload={true}
             onEnded={handleContentEnded}
+            // PASAMOS LA FUNCIÓN PARA CORTAR EL INTRO CUANDO CARGUE EL SLIDE
+            onReady={hideIntro} 
             muted={isUserMuted || isIntroVisible} 
             isPlaying={isPlaying} 
           />
        </div>
 
-       {/* === CAPA 2: ESCUDO TRANSPARENT === */}
+       {/* === CAPA 2: ESCUDO TRANSPARENTE === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA 3: INTRO === */}
+       {/* === CAPA 3: INTRO (CON LOOP SI ES NOTICIA) === */}
        <div className={cn("absolute inset-0 z-40 transition-opacity duration-500 ease-out", isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
          {currentIntro && (
             <ReactPlayer
-              key={currentIntro} url={currentIntro} playing={true} width="100%" height="100%" volume={1} muted={false} playsinline style={{ backgroundColor: 'black' }} 
+              key={currentIntro} 
+              url={currentIntro} 
+              playing={true} 
+              width="100%" 
+              height="100%" 
+              volume={1} 
+              muted={false} 
+              playsinline 
+              // SI ES NOTICIA, LOOPEAMOS HASTA QUE EL SLIDE ESTÉ LISTO
+              loop={isNewsIntro} 
+              style={{ backgroundColor: 'black' }} 
               onError={() => handleContentEnded()} 
               config={{ file: { attributes: { style: { objectFit: 'cover', width: '100%', height: '100%' } } } }}
             />
@@ -108,44 +116,25 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          </>
        )}
 
-       {/* === CAPA 5: BOTÓN MUTE PERSISTENTE (SIEMPRE VISIBLE SI ESTÁ MUTEADO) === */}
+       {/* === CAPA 5: BOTÓN MUTE PERSISTENTE === */}
        {isUserMuted && (
           <div className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-none">
-              <button 
-                onClick={toggleMute}
-                className="pointer-events-auto p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-red-500 shadow-2xl scale-110 active:scale-95 transition-all animate-in zoom-in duration-300"
-              >
+              <button onClick={toggleMute} className="pointer-events-auto p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-red-500 shadow-2xl scale-110 active:scale-95 transition-all animate-in zoom-in duration-300">
                 <VolumeX size={48} fill="currentColor" />
               </button>
           </div>
        )}
 
-       {/* === CAPA 6: CONTROLES ESTÁNDAR (AUTO-HIDE) === */}
-       <div 
-         className={cn(
-           "absolute inset-0 z-50 flex items-center justify-center bg-black/30 transition-opacity duration-300",
-           showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-         )}
-       >
-          {/* Botón Mute Pequeño (Esquina) - Opcional, útil si el usuario prefiere controles clásicos */}
-          <button 
-            onClick={toggleMute}
-            className="absolute top-3 left-3 p-2 rounded-full bg-black/40 text-white backdrop-blur-md border border-white/10 active:scale-95 transition-all"
-          >
+       {/* === CAPA 6: CONTROLES ESTÁNDAR === */}
+       <div className={cn("absolute inset-0 z-50 flex items-center justify-center bg-black/30 transition-opacity duration-300", showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")}>
+          <button onClick={toggleMute} className="absolute top-3 left-3 p-2 rounded-full bg-black/40 text-white backdrop-blur-md border border-white/10 active:scale-95 transition-all">
              {isUserMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
           </button>
-
           <div className="absolute top-3 right-3 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
              <google-cast-launcher style={{ width: '40px', height: '40px', display: 'block' }}></google-cast-launcher>
           </div>
-
-          {/* Botón Play Central (SOLO VISIBLE SI NO ESTÁ MUTEADO) */}
-          {/* Esto evita que se superponga con el botón rojo grande */}
           {!isUserMuted && (
-            <button 
-              onClick={togglePlay}
-              className="p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white shadow-2xl scale-110 active:scale-95 transition-all"
-            >
+            <button onClick={togglePlay} className="p-4 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white shadow-2xl scale-110 active:scale-95 transition-all">
               {isPlaying ? <Pause size={48} fill="currentColor" /> : <Play size={48} fill="currentColor" />}
             </button>
           )}

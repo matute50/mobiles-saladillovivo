@@ -1,9 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Video, Article, PageData } from '@/lib/types';
+import { Video, Article } from '@/lib/types';
 
-// LISTA DE INTROS LOCALES
 const INTRO_VIDEOS = [
   '/videos_intro/intro1.mp4',
   '/videos_intro/intro2.mp4',
@@ -11,6 +10,8 @@ const INTRO_VIDEOS = [
   '/videos_intro/intro4.mp4',
   '/videos_intro/intro5.mp4',
 ];
+
+const NEWS_INTRO = '/videos_intro/noticias.mp4'; // Intro específico para slides
 
 interface MediaPlayerState {
   currentContent: Video | Article | null; 
@@ -25,6 +26,7 @@ interface MediaPlayerContextType {
   setVideoPool: (videos: Video[]) => void;
   playManual: (item: Video | Article) => void; 
   handleContentEnded: () => void;              
+  hideIntro: () => void; // NUEVO: Función para ocultar intro manualmente
 }
 
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
@@ -35,57 +37,64 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const [state, setState] = useState<MediaPlayerState>({
     currentContent: null,
     currentIntro: null,
-    isIntroVisible: true, // Arranca visible
+    isIntroVisible: true, 
     isContentPlaying: false,
   });
 
   const getRandomIntro = () => INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
 
-  const getRandomVideo = useCallback(() => {
-    if (videoPool.length === 0) return null;
-    const randomIndex = Math.floor(Math.random() * videoPool.length);
-    return videoPool[randomIndex];
-  }, [videoPool]);
+  // Función para forzar el ocultamiento del intro (usada por los Slides al cargar)
+  const hideIntro = useCallback(() => {
+    setState(prev => ({ ...prev, isIntroVisible: false }));
+  }, []);
 
-  // --- TRANSICIÓN ROBUSTA ---
   const triggerTransition = useCallback((nextContent: Video | Article | null) => {
     if (!nextContent) return;
 
-    const newIntro = getRandomIntro();
+    // Detectamos si es Artículo (Slide) o Video
+    const isArticle = !('url' in nextContent && typeof (nextContent as Video).url === 'string');
+    
+    // Si es Artículo -> Usamos 'noticias.mp4'. Si es Video -> Random.
+    const newIntro = isArticle ? NEWS_INTRO : getRandomIntro();
 
-    // 1. Iniciar Intro y Cargar Contenido (Muteado)
     setState(prev => ({
       ...prev,
       isIntroVisible: true,
       currentIntro: newIntro,
       currentContent: nextContent,
-      isContentPlaying: true // IMPORTANTE: True para que YouTube empiece a cargar en background
+      isContentPlaying: true 
     }));
 
-    // 2. Ocultar Intro después de 4 segundos
-    setTimeout(() => {
-      setState(prev => ({
-        ...prev,
-        isIntroVisible: false
-      }));
-    }, 4000);
+    // LÓGICA DE TIEMPO:
+    if (isArticle) {
+      // SI ES NOTICIA: NO ponemos timer. El intro 'loopeará' hasta que el slide avise que cargó.
+      // (La lógica de ocultar dependerá de la función hideIntro llamada desde el componente)
+    } else {
+      // SI ES VIDEO: Mantenemos el comportamiento de 4 segundos fijos.
+      setTimeout(() => {
+        setState(prev => ({
+          ...prev,
+          isIntroVisible: false
+        }));
+      }, 4000);
+    }
 
   }, []);
 
-  // INICIO AUTOMÁTICO
   useEffect(() => {
     if (videoPool.length > 0 && !state.currentContent) {
-      const firstVideo = getRandomVideo();
+      const firstVideo = videoPool[Math.floor(Math.random() * videoPool.length)];
       triggerTransition(firstVideo);
     }
-  }, [videoPool, getRandomVideo, triggerTransition, state.currentContent]);
+  }, [videoPool, triggerTransition, state.currentContent]);
 
   const playManual = (item: Video | Article) => {
     triggerTransition(item);
   };
 
   const handleContentEnded = () => {
-    const nextRandom = getRandomVideo();
+    if (videoPool.length === 0) return;
+    const nextRandom = videoPool[Math.floor(Math.random() * videoPool.length)];
     triggerTransition(nextRandom);
   };
 
@@ -95,7 +104,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       videoPool, 
       setVideoPool, 
       playManual, 
-      handleContentEnded 
+      handleContentEnded,
+      hideIntro 
     }}>
       {children}
     </MediaPlayerContext.Provider>
