@@ -140,13 +140,13 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFe
                     "flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 shadow-2xl transition-transform duration-300 group-active:scale-90",
                     // COLOR INSTITUCIONAL AZUL CON 50% TRANSPARENCIA
                     "bg-[#003399]/50",
-                    // MODIFICACION: p-5 a p-4
+                    // AJUSTE: p-5 a p-4 en featured
                     isFeatured ? "p-4" : "p-3",
                     // AJUSTE: 20px total hacia arriba en featured
                     isFeatured && "-translate-y-[20px]"
                 )}>
                     <Play 
-                        // MODIFICACION: size 48 a 38
+                        // AJUSTE: size 48 a 38 en featured
                         size={isFeatured ? 38 : 28} 
                         fill="currentColor" 
                         className="text-white ml-1 opacity-90" 
@@ -220,7 +220,8 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
   return (
     <div className="flex flex-col gap-0 h-full w-full">
       <div className={cn(
-        "flex items-center justify-between px-2 py-2 shrink-0 rounded-lg border mx-1 transition-colors",
+        // AJUSTE: py-2 a py-0.5 para reducir altura ~20%
+        "flex items-center justify-between px-2 py-0.5 shrink-0 rounded-lg border mx-1 transition-colors",
         isDark ? "bg-neutral-900/50 border-white/5" : "bg-neutral-100 border-neutral-200"
       )}>
         <button onClick={handlePrevCat} className={cn("p-2 transition-colors active:scale-90 -mt-[20px]", isDark ? "text-neutral-400 hover:text-orange-500" : "text-neutral-500 hover:text-orange-600")}>
