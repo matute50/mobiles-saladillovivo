@@ -97,43 +97,86 @@ function useTheme() {
   return { isDark: mounted ? isDark : true, toggleTheme };
 }
 
+// --- TARJETA DE NOTICIA ---
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFeatured: boolean; onClick: () => void; isDark: boolean }) {
   if (!news) return null;
   return (
     <div 
       onClick={onClick}
       className={cn(
-        "relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform",
+        "relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform group",
         isDark ? "bg-neutral-900 border border-neutral-800" : "bg-white border border-neutral-200",
         isFeatured ? "w-full h-full" : "w-[49%] h-full"
       )}
     >
       <div className="relative w-full h-full">
+        {/* IMAGEN DE FONDO */}
         <Image
           src={news.imagen || '/placeholder.png'}
           alt={news.titulo || 'Noticia'}
           fill
           priority={isFeatured}
           sizes="(max-width: 768px) 100vw, 50vw" 
-          className="object-cover opacity-90"
+          className="object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"
         />
+        
+        {/* GRADIENTE */}
         <div className={cn(
-          "absolute inset-0 bg-gradient-to-t",
-          isDark ? "from-black via-black/40 to-transparent" : "from-black/80 via-black/20 to-transparent"
+          "absolute inset-0 bg-gradient-to-t z-10",
+          isDark 
+            ? "from-black via-black/60 to-transparent" 
+            : "from-black/90 via-black/50 to-transparent"
         )} />
         
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 p-2 rounded-full border border-white/30 backdrop-blur-sm z-10">
-          <FileText size={isFeatured ? 24 : 16} className="text-white" />
-        </div>
+        {/* CONTENEDOR FLEX PRINCIPAL (Z-20) */}
+        <div className="absolute inset-0 z-20 flex flex-col">
+            
+            {/* 1. ESPACIO SUPERIOR (FLEX-1) - BOTÓN PLAY */}
+            <div className={cn(
+               "flex-1 flex items-center justify-center min-h-0",
+               isFeatured && "pt-16" // Empuje base hacia abajo
+            )}>
+                <div className={cn(
+                    "flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 shadow-2xl transition-transform duration-300 group-active:scale-90",
+                    // COLOR INSTITUCIONAL AZUL CON 50% TRANSPARENCIA
+                    "bg-[#003399]/50",
+                    isFeatured ? "p-5" : "p-3",
+                    // AJUSTE: 20px total hacia arriba en featured
+                    isFeatured && "-translate-y-[20px]"
+                )}>
+                    <Play 
+                        size={isFeatured ? 48 : 28} 
+                        fill="currentColor" 
+                        className="text-white ml-1 opacity-90" 
+                        strokeWidth={0}
+                    />
+                </div>
+            </div>
 
-        <div className="absolute bottom-0 left-0 p-2 w-full z-20">
-          <h3 className={cn(
-            "font-['CenturyGothic'] font-bold text-white leading-tight line-clamp-2", 
-            isFeatured ? "text-lg mb-1" : "text-xs mb-0.5"
-          )}>
-            {news.titulo}
-          </h3>
-          {isFeatured && <p className="text-xs text-gray-300 line-clamp-2 font-light">{news.bajada}</p>}
+            {/* 2. TEXTO INFERIOR (SHRINK-0) */}
+            <div className={cn(
+               "shrink-0 w-full flex flex-col justify-end",
+               isFeatured ? "p-4 pb-2" : "p-2 pb-3"
+            )}>
+                <h3 
+                    className={cn(
+                    "text-white font-black uppercase tracking-tight leading-[0.9] text-balance drop-shadow-md text-center",
+                    isFeatured ? "line-clamp-3 mb-1" : "line-clamp-4 mb-0"
+                    )}
+                    style={{ 
+                        fontSize: isFeatured ? 'clamp(1.3rem, 6vw, 2.2rem)' : 'clamp(0.95rem, 4.5vw, 1.6rem)',
+                        textShadow: '0 2px 10px rgba(0,0,0,0.9)'
+                    }}
+                >
+                    {news.titulo}
+                </h3>
+                
+                {isFeatured && news.bajada && (
+                    <p className="text-xs text-gray-300 line-clamp-2 font-medium text-center opacity-80 leading-tight mx-auto max-w-[90%]">
+                    {news.bajada}
+                    </p>
+                )}
+            </div>
         </div>
       </div>
     </div>
