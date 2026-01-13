@@ -162,7 +162,8 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFe
             )}>
                 <h3 
                     className={cn(
-                    "text-white font-black uppercase tracking-tight leading-[0.9] text-balance drop-shadow-md text-center",
+                    // CAMBIO AQUI: Se cambió drop-shadow-md por drop-shadow-xl para más sombra
+                    "text-white font-black uppercase tracking-tight leading-[0.9] text-balance drop-shadow-xl text-center",
                     isFeatured ? "line-clamp-3 mb-1" : "line-clamp-4 mb-0"
                     )}
                     style={{ 
@@ -262,7 +263,7 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
                       </div>
                    </div>
                    <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
-                      <p className="text-[14px] text-white font-bold line-clamp-3 leading-tight text-center">{video.nombre}</p>
+                      <p className="text-[14px] text-white font-bold line-clamp-3 leading-tight text-center uppercase drop-shadow-md">{video.nombre}</p>
                    </div>
                </div>
             </SwiperSlide>
@@ -546,8 +547,6 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
 
                {!isSearchOpen && (
                  <>
-                   {/* CAMBIO: Se invirtió el orden (primero TEMA, luego COMPARTIR) */}
-
                    {/* Botón Tema */}
                    <button onClick={toggleTheme} className={cn("active:scale-90 transition-transform", iconColor)}>{isDark ? <Sun size={20} strokeWidth={2} /> : <Moon size={20} strokeWidth={2} />}</button>
                    
