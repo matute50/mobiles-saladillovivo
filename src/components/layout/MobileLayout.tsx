@@ -220,22 +220,21 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
   return (
     <div className="flex flex-col gap-0 h-full w-full">
       <div className={cn(
-        // AJUSTE: py-2 a py-0.5 para reducir altura ~20%
         "flex items-center justify-between px-2 py-0.5 shrink-0 rounded-lg border mx-1 transition-colors",
         isDark ? "bg-neutral-900/50 border-white/5" : "bg-neutral-100 border-neutral-200"
       )}>
-        <button onClick={handlePrevCat} className={cn("p-2 transition-colors active:scale-90 -mt-[20px]", isDark ? "text-neutral-400 hover:text-orange-500" : "text-neutral-500 hover:text-orange-600")}>
+        <button onClick={handlePrevCat} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-orange-500" : "text-neutral-500 hover:text-orange-600")}>
           <ChevronLeft size={28} strokeWidth={3} />
         </button>
         
         <h2 className={cn(
-          "font-sans font-extrabold text-xl text-center uppercase tracking-wider truncate px-2 flex-1 drop-shadow-sm -mt-[20px]",
+          "font-sans font-extrabold text-xl text-center uppercase tracking-wider truncate px-2 flex-1 drop-shadow-sm -mt-[15px]",
           isDark ? "text-white" : "text-black"
         )}>
           {currentCat}
         </h2>
         
-        <button onClick={handleNextCat} className={cn("p-2 transition-colors active:scale-90 -mt-[20px]", isDark ? "text-neutral-400 hover:text-orange-500" : "text-neutral-500 hover:text-orange-600")}>
+        <button onClick={handleNextCat} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-orange-500" : "text-neutral-500 hover:text-orange-600")}>
           <ChevronRight size={28} strokeWidth={3} />
         </button>
       </div>
@@ -254,12 +253,16 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
                >
                   <Image src={thumbSrc} alt={video.nombre} fill className="object-cover opacity-90 group-hover:opacity-100 transition-opacity" sizes="150px" />
                    <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
-                      <div className="bg-black/40 p-1.5 rounded-full backdrop-blur-sm border border-white/10">
-                        <Play size={16} fill="white" className="text-white" />
+                      <div className={cn(
+                        "p-1.5 rounded-full backdrop-blur-sm border border-white/10",
+                        "-mt-[50px]",
+                        "bg-[#003399]/50"
+                      )}>
+                        <Play size={21} fill="white" className="text-white" />
                       </div>
                    </div>
                    <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
-                      <p className="text-[9px] text-white font-medium line-clamp-2 leading-tight text-center">{video.nombre}</p>
+                      <p className="text-[14px] text-white font-bold line-clamp-3 leading-tight text-center">{video.nombre}</p>
                    </div>
                </div>
             </SwiperSlide>
@@ -426,6 +429,16 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
 
   return (
     <>
+      <style>{`
+        @keyframes installPulse {
+          0%, 100% { color: #003399; }
+          50% { color: #6699ff; }
+        }
+        .install-pulse {
+          animation: installPulse 1.5s ease-in-out infinite;
+        }
+      `}</style>
+
       {/* MODAL INFO */}
       {infoModal.open && (
         <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={closeModal}>
@@ -533,16 +546,23 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
 
                {!isSearchOpen && (
                  <>
+                   {/* CAMBIO: Se invirtió el orden (primero TEMA, luego COMPARTIR) */}
+
+                   {/* Botón Tema */}
+                   <button onClick={toggleTheme} className={cn("active:scale-90 transition-transform", iconColor)}>{isDark ? <Sun size={20} strokeWidth={2} /> : <Moon size={20} strokeWidth={2} />}</button>
+                   
+                   {/* Botón Compartir */}
+                   <button onClick={handleShare} className={cn("active:scale-90 transition-transform", iconColor)}><Share2 size={20} strokeWidth={2} /></button>
+                   
+                   {/* Botón Ayuda/Info (Signo de Interrogación) */}
+                   <button onClick={() => openModal('DECRETO')} className={cn("active:scale-90 transition-transform", iconColor)}><HelpCircle size={20} strokeWidth={2} /></button>
+
                    {/* Botón de INSTALAR PWA */}
                    {deferredPrompt && (
-                     <button onClick={handleInstallClick} className={cn("active:scale-90 transition-transform animate-pulse text-green-500 hover:text-green-600")}>
+                     <button onClick={handleInstallClick} className={cn("active:scale-90 transition-transform install-pulse")}>
                         <Download size={20} strokeWidth={2.5} />
                      </button>
                    )}
-                   
-                   <button onClick={handleShare} className={cn("active:scale-90 transition-transform", iconColor)}><Share2 size={20} strokeWidth={2} /></button>
-                   <button onClick={toggleTheme} className={cn("active:scale-90 transition-transform", iconColor)}>{isDark ? <Sun size={20} strokeWidth={2} /> : <Moon size={20} strokeWidth={2} />}</button>
-                   <button onClick={() => openModal('DECRETO')} className={cn("active:scale-90 transition-transform", iconColor)}><HelpCircle size={20} strokeWidth={2} /></button>
                  </>
                )}
             </div>
@@ -583,7 +603,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
             </Swiper>
           </div>
           
-          <div className="h-[220px] shrink-0 flex flex-col -mt-[5px]">
+          <div className="h-[160px] shrink-0 flex flex-col -mt-[5px]">
               <div className={cn("flex-1 rounded-xl p-2 border transition-colors", themeClasses.containerVideo)}>
                  <VideoCarouselBlock videos={videosDisplay} isDark={isDark} />
               </div>
