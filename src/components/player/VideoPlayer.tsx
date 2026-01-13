@@ -63,7 +63,7 @@ export default function VideoPlayer({
     setInternalVolume(0); 
   }, [contentId]); 
 
-  // --- SUAVIZADO DE VOLUMEN (Fade In / Out) ---
+  // --- SUAVIZADO DE AUDIO ---
   useEffect(() => {
     let target = muted ? 0 : volume;
     if (isFadingOut) target = 0;
@@ -91,6 +91,7 @@ export default function VideoPlayer({
     return () => clearInterval(timer);
   }, [volume, internalVolume, muted, isFadingOut]); 
 
+  // --- TIEMPOS ESTRICTOS (SLIDES) ---
   useEffect(() => {
     if (!isArticle || !articleData || !isActive) return;
 
@@ -130,6 +131,7 @@ export default function VideoPlayer({
     isFadingOut ? "opacity-0" : "opacity-100"
   );
 
+  // VIDEO RENDER
   if (!isArticle && videoData) {
     return (
       <div className="w-full h-full bg-black overflow-hidden relative">
@@ -160,6 +162,7 @@ export default function VideoPlayer({
     );
   }
 
+  // SLIDE RENDER (CON TÍTULO SUPERPUESTO GIGANTE)
   if (isArticle && slideUrl) {
     return (
       <div className="w-full h-full bg-black overflow-hidden relative">
@@ -180,7 +183,7 @@ export default function VideoPlayer({
                 onLoad={() => setIsIframeLoaded(true)}
             />
 
-            {/* TÍTULO GIGANTE SUPERPUESTO */}
+            {/* TÍTULO SUPERPUESTO */}
             {isIframeLoaded && articleData?.titulo && (
                 <div className="absolute inset-0 z-20 flex flex-col justify-end pb-16 px-8 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none">
                     <h1 

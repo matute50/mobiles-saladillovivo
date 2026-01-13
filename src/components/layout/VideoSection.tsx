@@ -143,11 +143,11 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        <div className="absolute inset-0 z-10 pointer-events-none"> 
           <VideoPlayer 
             content={currentContent}
-            // --- CORRECCIÓN CRÍTICA ---
-            // Solo se activa si NO hay intro visible.
-            // Esto evita que el video de abajo robe recursos y congele el intro.
+            // --- CORRECCIÓN CRÍTICA: ---
+            // Solo activamos el video de fondo si NO hay intro visible.
+            // Esto evita el congelamiento del intro.
             isActive={!isIntroVisible} 
-            // --------------------------
+            // ---------------------------
             onEnded={handleContentEnded}
             muted={isUserMuted} 
             volume={1}
