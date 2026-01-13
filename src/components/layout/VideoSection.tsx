@@ -74,6 +74,71 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
       onClick={handleInteraction}
       onMouseMove={handleInteraction}
     >
+        {/* ESTILOS CAÓTICOS (DIGITAL GLITCH) */}
+        <style jsx>{`
+            /* COLORES DE SALADILLO VIVO - AJUSTA AQUI TUS CODIGOS HEX */
+            :root {
+                --brand-primary: #0088ff;  /* Azul (Ejemplo) */
+                --brand-secondary: #ff4400; /* Naranja/Rojo (Ejemplo) */
+                --brand-light: #ffffff;
+            }
+
+            .glitch-wrapper {
+                position: relative;
+                color: var(--brand-light);
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                animation: glitch-skew 1s infinite linear alternate-reverse;
+            }
+            .glitch-wrapper::before,
+            .glitch-wrapper::after {
+                content: attr(data-text);
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+            }
+            .glitch-wrapper::before {
+                left: 2px;
+                text-shadow: -2px 0 var(--brand-secondary);
+                clip-path: inset(0 0 0 0);
+                animation: glitch-anim-1 2s infinite linear alternate-reverse;
+            }
+            .glitch-wrapper::after {
+                left: -2px;
+                text-shadow: -2px 0 var(--brand-primary);
+                clip-path: inset(0 0 0 0);
+                animation: glitch-anim-2 3s infinite linear alternate-reverse;
+            }
+
+            @keyframes glitch-anim-1 {
+                0% { clip-path: inset(20% 0 80% 0); }
+                20% { clip-path: inset(60% 0 10% 0); }
+                40% { clip-path: inset(40% 0 50% 0); }
+                60% { clip-path: inset(80% 0 5% 0); }
+                80% { clip-path: inset(10% 0 70% 0); }
+                100% { clip-path: inset(30% 0 20% 0); }
+            }
+            @keyframes glitch-anim-2 {
+                0% { clip-path: inset(10% 0 60% 0); }
+                20% { clip-path: inset(80% 0 5% 0); }
+                40% { clip-path: inset(30% 0 20% 0); }
+                60% { clip-path: inset(10% 0 80% 0); }
+                80% { clip-path: inset(50% 0 30% 0); }
+                100% { clip-path: inset(70% 0 10% 0); }
+            }
+            @keyframes glitch-skew {
+                0% { transform: skew(0deg); }
+                20% { transform: skew(-2deg); }
+                40% { transform: skew(2deg); }
+                60% { transform: skew(-1deg); }
+                80% { transform: skew(3deg); }
+                100% { transform: skew(0deg); }
+            }
+        `}</style>
+
        {/* === CAPA 1: VIDEO YOUTUBE / SLIDE === */}
        <div className="absolute inset-0 z-10 pointer-events-none"> 
           <VideoPlayer 
@@ -89,33 +154,23 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA 2: ESCUDO TRANSPARENTE === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA 3: PUENTE DE CARGA (EFECTO TV SIN SEÑAL) === */}
+       {/* === CAPA 3: PUENTE DE CARGA (CAÓTICO) === */}
        {isIntroVisible && !isIntroReady && (
-         <div className="absolute inset-0 z-30 flex items-center justify-center bg-neutral-900 overflow-hidden">
+         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black overflow-hidden">
             
-            {/* 1. Efecto de Ruido Estático (Flicker rápido) */}
-            <div 
-              className="absolute inset-0 opacity-10 bg-white animate-pulse" 
-              style={{ animationDuration: '0.05s' }} 
-            />
+            {/* 1. Fondo Caótico (Parpadeos rápidos) */}
+            <div className="absolute inset-0 bg-white opacity-5 animate-[pulse_0.1s_ease-in-out_infinite]" />
             
-            {/* 2. Scanlines (Líneas horizontales de TV vieja) */}
-            <div 
-              className="absolute inset-0 z-10 pointer-events-none"
-              style={{
-                background: "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.4))",
-                backgroundSize: "100% 4px"
-              }}
-            />
+            {/* 2. Barras de Color Aleatorias (Marca) */}
+            <div className="absolute top-[10%] left-0 w-full h-2 bg-[var(--brand-primary)] opacity-60 animate-[pulse_0.2s_infinite]" />
+            <div className="absolute bottom-[20%] left-0 w-full h-8 bg-[var(--brand-secondary)] opacity-40 animate-[pulse_0.15s_infinite]" />
+            <div className="absolute top-[50%] left-0 w-full h-1 bg-white opacity-80 animate-[ping_0.5s_infinite]" />
 
-            {/* 3. Vignette (Esquinas oscuras de tubo CRT) */}
-            <div className="absolute inset-0 z-20 bg-[radial-gradient(circle,transparent_60%,black_120%)] pointer-events-none" />
-
-            {/* 4. Texto OSD (On Screen Display) estilo VCR */}
-            <div className="relative z-30 flex flex-col items-center">
-                <p className="text-green-500 font-mono text-xl md:text-3xl tracking-[0.2em] font-bold opacity-80 animate-pulse drop-shadow-[0_0_5px_rgba(0,255,0,0.8)]" style={{ textShadow: "2px 2px 0px rgba(0,0,0,0.5)" }}>
-                   SINTONIZANDO...
-                </p>
+            {/* 3. Texto Glitch Principal */}
+            <div className="relative z-40 p-4 bg-black/50 backdrop-blur-sm">
+                <h1 className="glitch-wrapper text-4xl md:text-6xl font-black" data-text="SINTONIZANDO...">
+                    SINTONIZANDO...
+                </h1>
             </div>
          </div>
        )}
