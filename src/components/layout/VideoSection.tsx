@@ -74,68 +74,74 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
       onClick={handleInteraction}
       onMouseMove={handleInteraction}
     >
-        {/* ESTILOS CAÓTICOS (DIGITAL GLITCH) */}
+        {/* ESTILOS ANALÓGICOS (TV SNOW / STATIC) */}
         <style jsx>{`
-            /* COLORES DE SALADILLO VIVO - AJUSTA AQUI TUS CODIGOS HEX */
-            :root {
-                --brand-primary: #0088ff;  /* Azul (Ejemplo) */
-                --brand-secondary: #ff4400; /* Naranja/Rojo (Ejemplo) */
-                --brand-light: #ffffff;
+            .analog-wrapper {
+                position: absolute;
+                inset: 0;
+                background-color: #0a0a0a;
+                overflow: hidden;
             }
 
-            .glitch-wrapper {
-                position: relative;
-                color: var(--brand-light);
-                font-weight: 900;
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-                animation: glitch-skew 1s infinite linear alternate-reverse;
+            /* Generador de Ruido (Static Snow) con CSS puro */
+            .analog-static {
+                position: absolute;
+                /* Hacemos el contenedor más grande para moverlo sin que se vea el borde */
+                top: -100%; left: -100%; right: -100%; bottom: -100%;
+                background-image: 
+                    repeating-radial-gradient(circle at 50% 50%, transparent 0, #000 1px, transparent 2px, rgba(255,255,255,0.3) 3px),
+                    repeating-linear-gradient(to right, rgba(100,100,100,0.1) 0, transparent 2px, rgba(200,200,200,0.1) 4px);
+                background-size: 8px 8px, 100% 100%;
+                animation: noise-shift 0.2s steps(4) infinite alternate-reverse;
+                opacity: 0.8;
             }
-            .glitch-wrapper::before,
-            .glitch-wrapper::after {
-                content: attr(data-text);
+
+            /* Scanlines (Líneas horizontales) */
+            .scanlines {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(to bottom, rgba(255,255,255,0) 50%, rgba(0,0,0,0.8) 50%);
+                background-size: 100% 3px;
+                pointer-events: none;
+                z-index: 5;
+                opacity: 0.6;
+            }
+
+            /* Defecto de Tracking (Línea borrosa que baja) */
+            .tracking-distortion {
                 position: absolute;
                 top: 0;
                 left: 0;
                 width: 100%;
-                height: 100%;
-            }
-            .glitch-wrapper::before {
-                left: 2px;
-                text-shadow: -2px 0 var(--brand-secondary);
-                clip-path: inset(0 0 0 0);
-                animation: glitch-anim-1 2s infinite linear alternate-reverse;
-            }
-            .glitch-wrapper::after {
-                left: -2px;
-                text-shadow: -2px 0 var(--brand-primary);
-                clip-path: inset(0 0 0 0);
-                animation: glitch-anim-2 3s infinite linear alternate-reverse;
+                height: 20%;
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(8px) contrast(1.5);
+                box-shadow: 0 0 20px rgba(255,255,255,0.2);
+                animation: tracking-scroll 4s linear infinite;
+                z-index: 4;
             }
 
-            @keyframes glitch-anim-1 {
-                0% { clip-path: inset(20% 0 80% 0); }
-                20% { clip-path: inset(60% 0 10% 0); }
-                40% { clip-path: inset(40% 0 50% 0); }
-                60% { clip-path: inset(80% 0 5% 0); }
-                80% { clip-path: inset(10% 0 70% 0); }
-                100% { clip-path: inset(30% 0 20% 0); }
+            /* Vignette (Esquinas oscuras CRT fuerte) */
+            .crt-vignette {
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(circle at center, transparent 40%, rgba(0,0,0,1) 130%);
+                z-index: 6;
             }
-            @keyframes glitch-anim-2 {
-                0% { clip-path: inset(10% 0 60% 0); }
-                20% { clip-path: inset(80% 0 5% 0); }
-                40% { clip-path: inset(30% 0 20% 0); }
-                60% { clip-path: inset(10% 0 80% 0); }
-                80% { clip-path: inset(50% 0 30% 0); }
-                100% { clip-path: inset(70% 0 10% 0); }
+
+            /* Animaciones */
+            @keyframes noise-shift {
+                0% { transform: translate(0,0); }
+                25% { transform: translate(-10px, 10px); }
+                50% { transform: translate(5px, -5px); }
+                75% { transform: translate(15px, 5px); }
+                100% { transform: translate(-5px, -15px); }
             }
-            @keyframes glitch-skew {
-                0% { transform: skew(0deg); }
-                20% { transform: skew(-2deg); }
-                40% { transform: skew(2deg); }
-                60% { transform: skew(-1deg); }
-                80% { transform: skew(3deg); }
-                100% { transform: skew(0deg); }
+            @keyframes tracking-scroll {
+                0% { top: -30%; opacity: 0; }
+                10% { opacity: 0.7; }
+                90% { opacity: 0.7; }
+                100% { top: 120%; opacity: 0; }
             }
         `}</style>
 
@@ -154,23 +160,25 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA 2: ESCUDO TRANSPARENTE === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA 3: PUENTE DE CARGA (CAÓTICO) === */}
+       {/* === CAPA 3: PUENTE DE CARGA (DEFECTO ANALÓGICO REALISTA) === */}
        {isIntroVisible && !isIntroReady && (
-         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black overflow-hidden">
+         <div className="analog-wrapper z-30 flex items-center justify-center">
             
-            {/* 1. Fondo Caótico (Parpadeos rápidos) */}
-            <div className="absolute inset-0 bg-white opacity-5 animate-[pulse_0.1s_ease-in-out_infinite]" />
-            
-            {/* 2. Barras de Color Aleatorias (Marca) */}
-            <div className="absolute top-[10%] left-0 w-full h-2 bg-[var(--brand-primary)] opacity-60 animate-[pulse_0.2s_infinite]" />
-            <div className="absolute bottom-[20%] left-0 w-full h-8 bg-[var(--brand-secondary)] opacity-40 animate-[pulse_0.15s_infinite]" />
-            <div className="absolute top-[50%] left-0 w-full h-1 bg-white opacity-80 animate-[ping_0.5s_infinite]" />
+            {/* 1. Capa base de ruido estático animado */}
+            <div className="analog-static" />
 
-            {/* 3. Texto Glitch Principal */}
-            <div className="relative z-40 p-4 bg-black/50 backdrop-blur-sm">
-                <h1 className="glitch-wrapper text-4xl md:text-6xl font-black" data-text="SINTONIZANDO...">
-                    SINTONIZANDO...
-                </h1>
+            {/* 2. Barra de distorsión de tracking */}
+            <div className="tracking-distortion" />
+
+            {/* 3. Capas de textura CRT final */}
+            <div className="scanlines" />
+            <div className="crt-vignette" />
+
+            {/* 4. Texto OSD minimalista (opcional, se puede quitar si prefieres solo ruido) */}
+            <div className="relative z-40 p-2 bg-black/20 backdrop-blur-[2px]">
+                <p className="text-white/40 font-mono text-xs md:text-sm tracking-[0.3em] animate-pulse drop-shadow-md">
+                    SIN SEÑAL
+                </p>
             </div>
          </div>
        )}
