@@ -162,7 +162,6 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFe
             )}>
                 <h3 
                     className={cn(
-                    // CAMBIO AQUI: Se cambió drop-shadow-md por drop-shadow-xl para más sombra
                     "text-white font-black uppercase tracking-tight leading-[0.9] text-balance drop-shadow-xl text-center",
                     isFeatured ? "line-clamp-3 mb-1" : "line-clamp-4 mb-0"
                     )}
@@ -220,11 +219,9 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
 
   return (
     <div className="flex flex-col gap-0 h-full w-full">
-      <div className={cn(
-        "flex items-center justify-between px-2 py-0.5 shrink-0 rounded-lg border mx-1 transition-colors",
-        isDark ? "bg-neutral-900/50 border-white/5" : "bg-neutral-100 border-neutral-200"
-      )}>
-        <button onClick={handlePrevCat} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-orange-500" : "text-neutral-500 hover:text-orange-600")}>
+      {/* CAMBIO: Se eliminaron bordes y background, ahora es transparente */}
+      <div className="flex items-center justify-between px-2 py-0.5 shrink-0 rounded-lg mx-1 transition-colors bg-transparent">
+        <button onClick={handlePrevCat} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-red-500" : "text-neutral-500 hover:text-red-600")}>
           <ChevronLeft size={28} strokeWidth={3} />
         </button>
         
@@ -235,7 +232,7 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
           {currentCat}
         </h2>
         
-        <button onClick={handleNextCat} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-orange-500" : "text-neutral-500 hover:text-orange-600")}>
+        <button onClick={handleNextCat} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-red-500" : "text-neutral-500 hover:text-red-600")}>
           <ChevronRight size={28} strokeWidth={3} />
         </button>
       </div>
@@ -308,7 +305,8 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     header: isDark 
       ? "bg-gradient-to-b from-neutral-600 to-black" 
       : "bg-gradient-to-b from-neutral-400 to-white",
-    containerVideo: isDark ? "bg-neutral-900/30 border-white/5" : "bg-white border-neutral-200 shadow-sm",
+    // CAMBIO: Fondo transparente y sin bordes para el contenedor principal de videos
+    containerVideo: "bg-transparent border-none shadow-none", 
     playerWrapper: isDark ? "bg-black border-white/5" : "bg-white border-neutral-200",
   };
 
