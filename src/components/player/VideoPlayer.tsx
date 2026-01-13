@@ -51,10 +51,12 @@ export default function VideoPlayer({
   
   const contentId = isArticle ? articleData?.id : videoData?.url;
 
+  // --- MODIFICACIÓN: URL LIMPIA (SIN AGREGADOS) ---
   const slideUrl = useMemo(() => {
     if (!articleData || !articleData.url_slide) return null;
-    return `${articleData.url_slide}?autoplay=1&mute=0&t=${new Date().getTime()}`;
-  }, [articleData?.url_slide, articleData?.id]);
+    // Se usa estrictamente la URL de la base de datos sin parámetros extra
+    return articleData.url_slide; 
+  }, [articleData?.url_slide]);
 
   useEffect(() => {
     setIsFadingOut(false);
@@ -63,7 +65,7 @@ export default function VideoPlayer({
     setInternalVolume(0); 
   }, [contentId]); 
 
-  // --- SUAVIZADO DE AUDIO ---
+  // --- SUAVIZADO DE VOLUMEN ---
   useEffect(() => {
     let target = muted ? 0 : volume;
     if (isFadingOut) target = 0;
@@ -162,7 +164,7 @@ export default function VideoPlayer({
     );
   }
 
-  // SLIDE RENDER (CON TÍTULO SUPERPUESTO GIGANTE)
+  // SLIDE RENDER
   if (isArticle && slideUrl) {
     return (
       <div className="w-full h-full bg-black overflow-hidden relative">
@@ -183,20 +185,7 @@ export default function VideoPlayer({
                 onLoad={() => setIsIframeLoaded(true)}
             />
 
-            {/* TÍTULO SUPERPUESTO */}
-            {isIframeLoaded && articleData?.titulo && (
-                <div className="absolute inset-0 z-20 flex flex-col justify-end pb-16 px-8 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none">
-                    <h1 
-                        className="text-white text-center font-black uppercase tracking-tight leading-[0.85] drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700"
-                        style={{ 
-                            fontSize: 'clamp(3.5rem, 8vw, 7rem)', 
-                            textShadow: '0 4px 16px rgba(0,0,0,0.9)' 
-                        }}
-                    >
-                        {articleData.titulo}
-                    </h1>
-                </div>
-            )}
+            {/* NOTA: SE ELIMINÓ EL OVERLAY DE TÍTULO PARA QUE EL HTML SEA PURO */}
         </div>
       </div>
     );
