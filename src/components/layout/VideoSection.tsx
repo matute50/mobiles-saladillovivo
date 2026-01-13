@@ -144,10 +144,10 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
           <VideoPlayer 
             content={currentContent}
             // --- CORRECCIÓN CRÍTICA ---
-            // Solo activamos el video de fondo si el INTRO NO ES VISIBLE.
-            // Esto evita que suene antes de tiempo y que congele el intro por carga de CPU.
+            // Solo se activa si NO hay intro visible.
+            // Esto evita que el video de abajo robe recursos y congele el intro.
             isActive={!isIntroVisible} 
-            // ---------------------------
+            // --------------------------
             onEnded={handleContentEnded}
             muted={isUserMuted} 
             volume={1}

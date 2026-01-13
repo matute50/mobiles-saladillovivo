@@ -33,7 +33,6 @@ export default function VideoPlayer({
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isIframeLoaded, setIsIframeLoaded] = useState(false);
 
-  // Volumen interno real que se aplica al player
   const [internalVolume, setInternalVolume] = useState(0);
 
   const durationRef = useRef<number>(0);
@@ -57,30 +56,22 @@ export default function VideoPlayer({
     return `${articleData.url_slide}?autoplay=1&mute=0&t=${new Date().getTime()}`;
   }, [articleData?.url_slide, articleData?.id]);
 
-  // --- RESETEO E INICIO (FADE IN) ---
   useEffect(() => {
     setIsFadingOut(false);
     setIsIframeLoaded(false);
     durationRef.current = 0;
-    
-    // Al cambiar video, reseteamos a 0 para asegurar Fade In
     setInternalVolume(0); 
   }, [contentId]); 
 
-  // --- MAQUINA DE SUAVIZADO DE AUDIO (FADE IN / FADE OUT) ---
+  // --- SUAVIZADO DE VOLUMEN (Fade In / Out) ---
   useEffect(() => {
-    // Definimos el objetivo:
-    // Si el usuario muteó globalmente -> 0
-    // Si estamos en Fade Out (final del video) -> 0
-    // Si no -> volumen deseado (1)
     let target = muted ? 0 : volume;
     if (isFadingOut) target = 0;
 
-    // Si ya estamos cerca del objetivo, no hacemos nada
     if (Math.abs(internalVolume - target) < 0.01) return;
 
-    const DURATION = 500; // 0.5s duración del fade
-    const INTERVAL = 50;  // updates cada 50ms
+    const DURATION = 500; 
+    const INTERVAL = 50;  
     const STEPS = DURATION / INTERVAL; 
     
     const diff = target - internalVolume;
@@ -89,7 +80,6 @@ export default function VideoPlayer({
     const timer = setInterval(() => {
       setInternalVolume(prev => {
         const next = prev + stepAmount;
-        // Evitamos pasarnos del objetivo
         if ((stepAmount > 0 && next >= target) || (stepAmount < 0 && next <= target)) {
           clearInterval(timer);
           return target;
@@ -101,8 +91,6 @@ export default function VideoPlayer({
     return () => clearInterval(timer);
   }, [volume, internalVolume, muted, isFadingOut]); 
 
-
-  // --- TIEMPOS ESTRICTOS (SLIDES) ---
   useEffect(() => {
     if (!isArticle || !articleData || !isActive) return;
 
@@ -111,7 +99,7 @@ export default function VideoPlayer({
     const fadeOutTimeMs = Math.max(0, exactDurationMs - 500);
 
     const fadeTimer = setTimeout(() => {
-      setIsFadingOut(true); // Esto activará el Fade Out de audio en el useEffect de arriba
+      setIsFadingOut(true); 
     }, fadeOutTimeMs);
 
     const endTimer = setTimeout(() => {
@@ -131,8 +119,6 @@ export default function VideoPlayer({
   const handleProgress = (state: OnProgressProps) => {
     if (!durationRef.current) return;
     const timeLeft = durationRef.current - state.playedSeconds;
-    
-    // Activar Fade Out al final del video
     if (timeLeft < 0.6 && !isFadingOut) setIsFadingOut(true);
     if (timeLeft < 0.2) onEnded();
   };
@@ -144,7 +130,6 @@ export default function VideoPlayer({
     isFadingOut ? "opacity-0" : "opacity-100"
   );
 
-  // VIDEO RENDER
   if (!isArticle && videoData) {
     return (
       <div className="w-full h-full bg-black overflow-hidden relative">
@@ -155,9 +140,7 @@ export default function VideoPlayer({
             width="100%"
             height="100%"
             playing={isActive && isPlaying}
-            // El mute real se controla via volumen 0
             muted={false} 
-            // Usamos internalVolume que hace la transición suave
             volume={internalVolume} 
             onDuration={handleDuration}       
             onProgress={handleProgress}       
@@ -177,24 +160,41 @@ export default function VideoPlayer({
     );
   }
 
-  // SLIDE RENDER
   if (isArticle && slideUrl) {
     return (
       <div className="w-full h-full bg-black overflow-hidden relative">
-        <iframe
-            key={articleData?.id} 
-            src={slideUrl}
-            className={cn(
-              "w-full h-full border-0 pointer-events-none transition-opacity duration-500",
-              (isIframeLoaded && !isFadingOut) ? "opacity-100" : "opacity-0"
+        <div className={cn("w-full h-full relative", transitionClass)}>
+            
+            <iframe
+                key={articleData?.id} 
+                src={slideUrl}
+                className={cn(
+                "w-full h-full border-0 pointer-events-none transition-opacity duration-500",
+                isIframeLoaded ? "opacity-100" : "opacity-0"
+                )}
+                scrolling="no"
+                title={articleData?.titulo}
+                loading="eager"
+                allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
+                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+                onLoad={() => setIsIframeLoaded(true)}
+            />
+
+            {/* TÍTULO GIGANTE SUPERPUESTO */}
+            {isIframeLoaded && articleData?.titulo && (
+                <div className="absolute inset-0 z-20 flex flex-col justify-end pb-16 px-8 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none">
+                    <h1 
+                        className="text-white text-center font-black uppercase tracking-tight leading-[0.85] drop-shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700"
+                        style={{ 
+                            fontSize: 'clamp(3.5rem, 8vw, 7rem)', 
+                            textShadow: '0 4px 16px rgba(0,0,0,0.9)' 
+                        }}
+                    >
+                        {articleData.titulo}
+                    </h1>
+                </div>
             )}
-            scrolling="no"
-            title={articleData?.titulo}
-            loading="eager"
-            allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
-            sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
-            onLoad={() => setIsIframeLoaded(true)}
-        />
+        </div>
       </div>
     );
   }
