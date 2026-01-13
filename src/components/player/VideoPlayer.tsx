@@ -7,189 +7,103 @@ import { cn } from '@/lib/utils';
 import { OnProgressProps } from 'react-player/base';
 
 interface VideoPlayerProps {
-  content: Video | Article | null;
-  isActive: boolean;
+  content: Video | Article;
+  shouldPlay: boolean; // Controlado por la lógica Z-index (4s rule)
   onEnded: () => void;
-  muted?: boolean; 
-  volume?: number; 
-  isPlaying: boolean;
+  muted: boolean;
 }
 
 export default function VideoPlayer({ 
   content, 
-  isActive, 
+  shouldPlay, 
   onEnded, 
-  muted = true, 
-  volume = 1, 
-  isPlaying = true 
+  muted
 }: VideoPlayerProps) {
   
   const playerRef = useRef<ReactPlayer>(null);
+  const [internalVolume, setInternalVolume] = useState(0); // Arrancamos en 0 para el Fade In
+  const [isReady, setIsReady] = useState(false);
   
-  const onEndedRef = useRef(onEnded);
-  useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
-
-  const [hasMounted, setHasMounted] = useState(false);
-  const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
-
-  const [internalVolume, setInternalVolume] = useState(0);
-
-  const durationRef = useRef<number>(0);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  const isArticle = useMemo(() => {
-    if (!content) return false;
-    return 'url_slide' in content || !('url' in content);
-  }, [content]);
-
+  const isArticle = 'url_slide' in content || !('url' in content);
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
-  
-  const contentId = isArticle ? articleData?.id : videoData?.url;
 
-  // --- MODIFICACIÓN: URL LIMPIA (SIN AGREGADOS) ---
-  const slideUrl = useMemo(() => {
-    if (!articleData || !articleData.url_slide) return null;
-    // Se usa estrictamente la URL de la base de datos sin parámetros extra
-    return articleData.url_slide; 
-  }, [articleData?.url_slide]);
-
+  // --- REGLA: Fade In de volumen al iniciar (0 a 100% en 0.5s) ---
   useEffect(() => {
-    setIsFadingOut(false);
-    setIsIframeLoaded(false);
-    durationRef.current = 0;
-    setInternalVolume(0); 
-  }, [contentId]); 
+    if (shouldPlay && !muted) {
+        // Simular Fade In
+        let vol = 0;
+        const interval = setInterval(() => {
+            vol += 0.1;
+            if (vol >= 1) {
+                vol = 1;
+                clearInterval(interval);
+            }
+            setInternalVolume(vol);
+        }, 50); // 10 pasos de 50ms = 500ms
+        return () => clearInterval(interval);
+    } else if (muted) {
+        setInternalVolume(0);
+    }
+  }, [shouldPlay, muted]);
 
-  // --- SUAVIZADO DE VOLUMEN ---
+  // --- REGLA: Recordar volumen anterior (Implementación simple por ahora) ---
+  // Nota: Para la regla de "igual volumen que tenía 10s antes", idealmente
+  // el contexto pasaría un prop `initialVolume`. Por ahora usamos 100% tras fade.
+
+  // --- LOGICA NOTICIAS (Slides) ---
   useEffect(() => {
-    let target = muted ? 0 : volume;
-    if (isFadingOut) target = 0;
+    if (isArticle && shouldPlay) {
+        const durationSec = articleData?.animation_duration || 15;
+        const timer = setTimeout(() => {
+            onEnded();
+        }, durationSec * 1000);
+        return () => clearTimeout(timer);
+    }
+  }, [isArticle, shouldPlay, articleData, onEnded]);
 
-    if (Math.abs(internalVolume - target) < 0.01) return;
 
-    const DURATION = 500; 
-    const INTERVAL = 50;  
-    const STEPS = DURATION / INTERVAL; 
-    
-    const diff = target - internalVolume;
-    const stepAmount = diff / STEPS;
+  if (isArticle) {
+     if (!articleData?.url_slide) return null;
+     return (
+        <iframe 
+           src={articleData.url_slide}
+           className="w-full h-full border-0 bg-black"
+           scrolling="no"
+           // El slide carga inmediatamente, pero está oculto por la Capa Z-20 hasta que termina la intro
+        />
+     );
+  }
 
-    const timer = setInterval(() => {
-      setInternalVolume(prev => {
-        const next = prev + stepAmount;
-        if ((stepAmount > 0 && next >= target) || (stepAmount < 0 && next <= target)) {
-          clearInterval(timer);
-          return target;
-        }
-        return next;
-      });
-    }, INTERVAL);
-
-    return () => clearInterval(timer);
-  }, [volume, internalVolume, muted, isFadingOut]); 
-
-  // --- TIEMPOS ESTRICTOS (SLIDES) ---
-  useEffect(() => {
-    if (!isArticle || !articleData || !isActive) return;
-
-    const exactDurationSeconds = articleData.animation_duration || 15;
-    const exactDurationMs = exactDurationSeconds * 1000;
-    const fadeOutTimeMs = Math.max(0, exactDurationMs - 500);
-
-    const fadeTimer = setTimeout(() => {
-      setIsFadingOut(true); 
-    }, fadeOutTimeMs);
-
-    const endTimer = setTimeout(() => {
-      if (onEndedRef.current) onEndedRef.current();
-    }, exactDurationMs);
-
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(endTimer);
-    };
-  }, [articleData?.id, isArticle, isActive]); 
-
-  const handleDuration = (duration: number) => {
-    durationRef.current = duration;
-  };
-
-  const handleProgress = (state: OnProgressProps) => {
-    if (!durationRef.current) return;
-    const timeLeft = durationRef.current - state.playedSeconds;
-    if (timeLeft < 0.6 && !isFadingOut) setIsFadingOut(true);
-    if (timeLeft < 0.2) onEnded();
-  };
-
-  if (!hasMounted || !content) return <div className="w-full h-full bg-black" />;
-
-  const transitionClass = cn(
-    "w-full h-full transition-opacity duration-500 ease-in-out",
-    isFadingOut ? "opacity-0" : "opacity-100"
-  );
-
-  // VIDEO RENDER
-  if (!isArticle && videoData) {
-    return (
-      <div className="w-full h-full bg-black overflow-hidden relative">
-        <div className={transitionClass}>
-          <ReactPlayer
+  if (videoData) {
+     return (
+        <ReactPlayer
             ref={playerRef}
             url={videoData.url}
             width="100%"
             height="100%"
-            playing={isActive && isPlaying}
-            muted={false} 
-            volume={internalVolume} 
-            onDuration={handleDuration}       
-            onProgress={handleProgress}       
-            onEnded={onEnded}                 
-            playsinline={true} 
+            playing={shouldPlay} // Aquí ocurre la magia: playing={true} mientras está tapado por la intro
+            muted={muted} // O el usuario lo muteó
+            volume={internalVolume} // Controlado por el Fade In
+            onEnded={onEnded}
+            onReady={() => setIsReady(true)}
+            playsinline
             config={{
-              youtube: {
-                playerVars: {
-                  autoplay: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1,
-                  origin: typeof window !== 'undefined' ? window.location.origin : undefined
+                youtube: {
+                    playerVars: {
+                        controls: 0, 
+                        modestbranding: 1, 
+                        showinfo: 0, 
+                        rel: 0,
+                        iv_load_policy: 3,
+                        disablekb: 1
+                    }
                 }
-              }
             }}
-          />
-        </div>
-      </div>
-    );
+            style={{ opacity: isReady ? 1 : 0, transition: 'opacity 0.5s' }}
+        />
+     );
   }
 
-  // SLIDE RENDER
-  if (isArticle && slideUrl) {
-    return (
-      <div className="w-full h-full bg-black overflow-hidden relative">
-        <div className={cn("w-full h-full relative", transitionClass)}>
-            
-            <iframe
-                key={articleData?.id} 
-                src={slideUrl}
-                className={cn(
-                "w-full h-full border-0 pointer-events-none transition-opacity duration-500",
-                isIframeLoaded ? "opacity-100" : "opacity-0"
-                )}
-                scrolling="no"
-                title={articleData?.titulo}
-                loading="eager"
-                allow="accelerometer; autoplay *; camera *; encrypted-media *; fullscreen *; gyroscope; microphone *; picture-in-picture *; web-share *"
-                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
-                onLoad={() => setIsIframeLoaded(true)}
-            />
-
-            {/* NOTA: SE ELIMINÓ EL OVERLAY DE TÍTULO PARA QUE EL HTML SEA PURO */}
-        </div>
-      </div>
-    );
-  }
-
-  return <div className="w-full h-full bg-black" />;
+  return null;
 }

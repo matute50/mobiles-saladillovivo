@@ -12,105 +12,157 @@ const INTRO_VIDEOS = [
 ];
 
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
+const FORBIDDEN_CATEGORY = 'HCD DE SALADILLO - Período 2025';
 
 interface MediaPlayerState {
-  currentContent: Video | Article | null; 
-  currentIntro: string | null;            
-  isIntroVisible: boolean;                
-  isContentPlaying: boolean;              
+  currentContent: Video | Article | null;
+  nextContent: Video | Article | null; // Precarga lógica
+  currentIntroUrl: string | null;
+  isIntroActive: boolean; // Si la intro se está reproduciendo (Capa Superior)
+  isContentReadyToPlay: boolean; // Señal para dar Play al contenido de abajo (Capa Inferior)
 }
 
 interface MediaPlayerContextType {
   state: MediaPlayerState;
   videoPool: Video[];
   setVideoPool: (videos: Video[]) => void;
-  playManual: (item: Video | Article) => void; 
+  playManual: (item: Video | Article) => void;
+  handleIntroProgress: (remainingTime: number) => void; // Comunicación Intro -> Contexto
+  handleIntroEnded: () => void;
   handleContentEnded: () => void;
-  dismissIntro: () => void;
 }
 
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
 
 export function MediaPlayerProvider({ children }: { children: React.ReactNode }) {
   const [videoPool, setVideoPool] = useState<Video[]>([]);
-  
+  const lastCategoryRef = useRef<string>(''); // Para evitar categorías repetidas
+  const interruptedVideoRef = useRef<Video | null>(null); // Para volver al video si se ve una noticia
+
   const [state, setState] = useState<MediaPlayerState>({
     currentContent: null,
-    currentIntro: null,
-    isIntroVisible: true,
-    isContentPlaying: false,
+    nextContent: null,
+    currentIntroUrl: null,
+    isIntroActive: true,
+    isContentReadyToPlay: false,
   });
 
-  const introStartTimeRef = useRef<number>(0);
-
-  const getRandomIntro = () => INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
-
-  const getRandomVideo = useCallback(() => {
+  // --- 1. LÓGICA DE SELECCIÓN (Regla de Oro: No HCD, Categoría Distinta) ---
+  const getNextRandomVideo = useCallback(() => {
     if (videoPool.length === 0) return null;
-    const randomIndex = Math.floor(Math.random() * videoPool.length);
-    return videoPool[randomIndex];
+
+    // A. Filtrar prohibidos y repetidos de categoría
+    let validVideos = videoPool.filter(v => 
+      v.categoria !== FORBIDDEN_CATEGORY && 
+      v.categoria !== lastCategoryRef.current
+    );
+
+    // Si el filtro es muy estricto y nos quedamos sin videos, relajamos la categoría anterior
+    // pero mantenemos la prohibición de HCD.
+    if (validVideos.length === 0) {
+       validVideos = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY);
+    }
+    
+    if (validVideos.length === 0) return null;
+
+    const randomIndex = Math.floor(Math.random() * validVideos.length);
+    const selected = validVideos[randomIndex];
+    
+    // Guardar categoría para la próxima
+    lastCategoryRef.current = selected.categoria;
+    return selected;
   }, [videoPool]);
 
-  // --- TRANSICIÓN ---
-  const triggerTransition = useCallback((nextContent: Video | Article | null) => {
-    if (!nextContent) return;
+  // --- 2. INICIAR TRANSICIÓN ---
+  const startTransition = useCallback((content: Video | Article, isResume = false) => {
+    const isNews = 'url_slide' in content || !('url' in content);
+    
+    // Si es noticia usamos el video específico, si no, uno al azar
+    const introUrl = isNews ? NEWS_INTRO_VIDEO : INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
 
-    const isNewsArticle = 'url_slide' in nextContent || !('url' in nextContent);
-    const newIntro = isNewsArticle ? NEWS_INTRO_VIDEO : getRandomIntro();
+    setState({
+      currentContent: content, // Esto monta el componente abajo (Z-10)
+      nextContent: null,
+      currentIntroUrl: introUrl,
+      isIntroActive: true, // Esto muestra la intro arriba (Z-20)
+      isContentReadyToPlay: false, // Esperando señal de tiempo (4s antes)
+    });
 
-    introStartTimeRef.current = Date.now();
+  }, []);
 
-    setState(prev => ({
-      ...prev,
-      isIntroVisible: true, 
-      currentIntro: newIntro,
-      currentContent: nextContent,
-      isContentPlaying: true 
-    }));
-  }, []); // Dependencias estables
-
-  // --- OCULTAR INTRO ---
-  const dismissIntro = useCallback(() => {
-    const now = Date.now();
-    const elapsed = now - introStartTimeRef.current;
-    const MIN_DURATION = 2000; 
-
-    if (elapsed >= MIN_DURATION) {
-      setState(prev => ({ ...prev, isIntroVisible: false }));
+  // --- 3. INTERACCIÓN MANUAL (Carrusel / Click Noticia) ---
+  const playManual = useCallback((item: Video | Article) => {
+    const isNews = 'url_slide' in item || !('url' in item);
+    
+    if (isNews) {
+        // Si reproducimos una noticia manual, guardamos qué video estaba sonando (si era video)
+        // para cumplir la regla: "volverá a la producción del video interrumpido"
+        if (state.currentContent && 'url' in state.currentContent) {
+            interruptedVideoRef.current = state.currentContent as Video;
+        }
     } else {
-      const remaining = MIN_DURATION - elapsed;
-      setTimeout(() => {
-        setState(prev => ({ ...prev, isIntroVisible: false }));
-      }, remaining);
+        // Si el usuario elige un video manual, limpiamos la referencia de interrupción
+        interruptedVideoRef.current = null;
+    }
+
+    startTransition(item);
+  }, [state.currentContent, startTransition]);
+
+
+  // --- 4. GESTIÓN DEL FLUJO "INTRO -> CONTENT" ---
+  
+  // Llamado por VideoSection cuando a la Intro le faltan X segundos
+  const handleIntroProgress = useCallback((remainingTime: number) => {
+    // REGLA: Cuando faltan 4 segundos, activamos el play de abajo
+    if (remainingTime <= 4.0 && remainingTime > 0) {
+        setState(prev => {
+            if (!prev.isContentReadyToPlay) {
+                return { ...prev, isContentReadyToPlay: true };
+            }
+            return prev;
+        });
     }
   }, []);
 
-  // --- HANDLERS (MEMOIZADOS PARA EVITAR CRASH) ---
-  const playManual = useCallback((item: Video | Article) => {
-    triggerTransition(item);
-  }, [triggerTransition]);
+  // Llamado cuando la intro termina visualmente
+  const handleIntroEnded = useCallback(() => {
+    setState(prev => ({ ...prev, isIntroActive: false }));
+  }, []);
 
+  // --- 5. FIN DE CONTENIDO (Regla: Loop infinito o volver de noticia) ---
   const handleContentEnded = useCallback(() => {
-    const nextRandom = getRandomVideo();
-    triggerTransition(nextRandom);
-  }, [getRandomVideo, triggerTransition]);
+    // A. Si acabamos de ver una noticia y había un video interrumpido
+    if (interruptedVideoRef.current) {
+        const resumeVideo = interruptedVideoRef.current;
+        interruptedVideoRef.current = null; // Limpiamos
+        startTransition(resumeVideo, true);
+        return;
+    }
 
-  // INICIO AUTOMÁTICO
+    // B. Flujo Normal: Buscar siguiente video aleatorio
+    const nextVideo = getNextRandomVideo();
+    if (nextVideo) {
+        startTransition(nextVideo);
+    }
+  }, [getNextRandomVideo, startTransition]);
+
+  // Inicio Automático
   useEffect(() => {
     if (videoPool.length > 0 && !state.currentContent) {
-      const firstVideo = getRandomVideo();
-      triggerTransition(firstVideo);
+        const first = getNextRandomVideo();
+        if (first) startTransition(first);
     }
-  }, [videoPool, getRandomVideo, triggerTransition, state.currentContent]);
+  }, [videoPool, getNextRandomVideo, startTransition, state.currentContent]);
 
   return (
     <MediaPlayerContext.Provider value={{ 
       state, 
       videoPool, 
       setVideoPool, 
-      playManual, 
-      handleContentEnded,
-      dismissIntro 
+      playManual,
+      handleIntroProgress,
+      handleIntroEnded,
+      handleContentEnded
     }}>
       {children}
     </MediaPlayerContext.Provider>
