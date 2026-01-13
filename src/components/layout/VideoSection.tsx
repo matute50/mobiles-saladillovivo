@@ -83,10 +83,8 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
                 overflow: hidden;
             }
 
-            /* Generador de Ruido (Static Snow) con CSS puro */
             .analog-static {
                 position: absolute;
-                /* Hacemos el contenedor más grande para moverlo sin que se vea el borde */
                 top: -100%; left: -100%; right: -100%; bottom: -100%;
                 background-image: 
                     repeating-radial-gradient(circle at 50% 50%, transparent 0, #000 1px, transparent 2px, rgba(255,255,255,0.3) 3px),
@@ -96,7 +94,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
                 opacity: 0.8;
             }
 
-            /* Scanlines (Líneas horizontales) */
             .scanlines {
                 position: absolute;
                 inset: 0;
@@ -107,7 +104,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
                 opacity: 0.6;
             }
 
-            /* Defecto de Tracking (Línea borrosa que baja) */
             .tracking-distortion {
                 position: absolute;
                 top: 0;
@@ -121,7 +117,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
                 z-index: 4;
             }
 
-            /* Vignette (Esquinas oscuras CRT fuerte) */
             .crt-vignette {
                 position: absolute;
                 inset: 0;
@@ -129,7 +124,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
                 z-index: 6;
             }
 
-            /* Animaciones */
             @keyframes noise-shift {
                 0% { transform: translate(0,0); }
                 25% { transform: translate(-10px, 10px); }
@@ -149,7 +143,11 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        <div className="absolute inset-0 z-10 pointer-events-none"> 
           <VideoPlayer 
             content={currentContent}
-            isActive={true} 
+            // --- CORRECCIÓN CRÍTICA ---
+            // Solo activamos el video de fondo si el INTRO NO ES VISIBLE.
+            // Esto evita que suene antes de tiempo y que congele el intro por carga de CPU.
+            isActive={!isIntroVisible} 
+            // ---------------------------
             onEnded={handleContentEnded}
             muted={isUserMuted} 
             volume={1}
@@ -160,21 +158,13 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA 2: ESCUDO TRANSPARENTE === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA 3: PUENTE DE CARGA (DEFECTO ANALÓGICO REALISTA) === */}
+       {/* === CAPA 3: PUENTE DE CARGA (DEFECTO ANALÓGICO) === */}
        {isIntroVisible && !isIntroReady && (
          <div className="analog-wrapper z-30 flex items-center justify-center">
-            
-            {/* 1. Capa base de ruido estático animado */}
             <div className="analog-static" />
-
-            {/* 2. Barra de distorsión de tracking */}
             <div className="tracking-distortion" />
-
-            {/* 3. Capas de textura CRT final */}
             <div className="scanlines" />
             <div className="crt-vignette" />
-
-            {/* 4. Texto OSD minimalista (opcional, se puede quitar si prefieres solo ruido) */}
             <div className="relative z-40 p-2 bg-black/20 backdrop-blur-[2px]">
                 <p className="text-white/40 font-mono text-xs md:text-sm tracking-[0.3em] animate-pulse drop-shadow-md">
                     SIN SEÑAL
