@@ -20,13 +20,13 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, muted }: Vid
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
 
-  // Reset de estados al cambiar contenido (Evita residuos visuales)
+  // Reset de estados
   useEffect(() => {
     setIsFadingOut(false);
     setVolume(0);
   }, [content]);
 
-  // --- LÓGICA DE FADE IN & LIMPIEZA DE MEMORIA ---
+  // --- LÓGICA DE FADE IN & LIMPIEZA ---
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -45,7 +45,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, muted }: Vid
       setVolume(0);
     }
 
-    // CLEANUP: Evitar fugas de memoria si se desmonta
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -57,11 +56,10 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, muted }: Vid
     let endTimer: NodeJS.Timeout | null = null;
 
     if (isArticle && shouldPlay) {
-      // Prioridad 1: BD | Prioridad 2: 15s
       const exactDurationSeconds = articleData?.animation_duration || 15;
       const exactDurationMs = exactDurationSeconds * 1000;
       
-      // Timer A: Fade Out (0.5s antes)
+      // Timer A: Fade Out
       const fadeOutTime = Math.max(0, exactDurationMs - 500);
       fadeTimer = setTimeout(() => {
         setIsFadingOut(true);
@@ -91,15 +89,16 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, muted }: Vid
           src={articleData.url_slide}
           className="w-full h-full border-0"
           scrolling="no"
-          // SEGURIDAD: Sandbox estricto, sin access-control a la app padre
-          sandbox="allow-scripts allow-forms" 
+          // CRÍTICO: 'autoplay' permite el audio. 'sandbox' mantiene seguridad.
+          allow="autoplay; fullscreen; picture-in-picture"
+          sandbox="allow-scripts allow-forms allow-presentation" 
           title="Noticia Slide"
         />
       </div>
     );
   }
 
-  // === RENDER: VIDEO YOUTUBE (Anti-Branding Settings) ===
+  // === RENDER: VIDEO YOUTUBE ===
   if (videoData) {
     return (
       <ReactPlayer
@@ -110,18 +109,18 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, muted }: Vid
         muted={muted}
         volume={volume}
         onEnded={onEnded}
-        playsinline={true} // VITAL PARA iOS
+        playsinline={true} 
         config={{
           youtube: {
             playerVars: {
               autoplay: 1,
-              controls: 0,      // PROHIBIDO UI
+              controls: 0,      
               modestbranding: 1,
-              rel: 0,           // PROHIBIDO RELACIONADOS
+              rel: 0,           
               showinfo: 0,
               iv_load_policy: 3,
               fs: 0,
-              disablekb: 1,     // PROHIBIDO TECLADO
+              disablekb: 1,     
               origin: typeof window !== 'undefined' ? window.location.origin : undefined
             }
           }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import VideoPlayer from '@/components/player/VideoPlayer'; 
 import { cn } from '@/lib/utils';
@@ -26,15 +26,35 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserMuted, setIsUserMuted] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- LÓGICA DE EXISTENCIA DE BARRAS (Renderizado) ---
-  const shouldRenderCinemaBars = useMemo(() => {
-    // 1. Si es Slide (.html), NO renderizar barras nunca (necesitamos 100% pantalla)
-    if (currentContent && 'url_slide' in currentContent) {
-        return false;
+  // Estado para Barras de Cine (Inician visibles)
+  const [showCinemaBars, setShowCinemaBars] = useState(true);
+
+  // --- LÓGICA DE BARRAS DE CINE (3 Segundos y Fuera) ---
+  useEffect(() => {
+    // 1. Si estamos viendo la Intro o cargando, las barras se REINICIAN a visibles (preparando el terreno)
+    if (isIntroVisible) {
+        setShowCinemaBars(true);
+        return;
     }
-    // 2. Si es YouTube (o carga/intro), SÍ renderizar barras
-    return true;
-  }, [currentContent]);
+
+    // 2. Si la Intro terminó Y es un Video (no un Slide)
+    if (!isIntroVisible && currentContent && !('url_slide' in currentContent)) {
+        // Esperar 3 segundos con las barras puestas
+        const timer = setTimeout(() => {
+            // Retirar las barras
+            setShowCinemaBars(false);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }
+    
+    // 3. Si es un Slide, forzamos retiro inmediato (aunque el render condicional abajo también lo evita)
+    if (currentContent && 'url_slide' in currentContent) {
+        setShowCinemaBars(false);
+    }
+
+  }, [isIntroVisible, currentContent]);
+
 
   // --- LÓGICA REPRODUCTOR INTRO ---
   useEffect(() => {
@@ -58,14 +78,12 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     handleIntroEnded(); 
   };
 
-  // --- GESTIÓN DE INTERACCIÓN (Sincronización Controles + Barras) ---
+  // --- GESTIÓN DE INTERACCIÓN (Controles) ---
   const handleInteraction = () => {
-    setShowControls(true); // Activa Controles Y Retira Barras
-    
+    setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     
-    // Temporizador de 3 segundos
-    // Oculta controles Y Restaura Barras automáticamente
+    // Ocultar controles automáticamente tras 3 segundos (salvo si está muteado)
     if (isUserPlaying && !isIntroVisible && !isUserMuted) {
         controlsTimeoutRef.current = setTimeout(() => {
             setShowControls(false);
@@ -93,6 +111,9 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   };
 
   const isVideoActive = shouldPlayContent && isUserPlaying;
+  
+  // Helper para saber si es slide y no renderizar barras innecesarias en el DOM
+  const isSlide = currentContent && 'url_slide' in currentContent;
 
   return (
     <div 
@@ -130,22 +151,22 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA Z-20: ESCUDO FANTASMA === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA Z-30: BARRAS DE CINE (DINÁMICAS) === */}
-       {shouldRenderCinemaBars && (
+       {/* === CAPA Z-30: BARRAS DE CINE (AUTO-RETIRADA) === */}
+       {!isSlide && (
          <>
-            {/* Barra Superior: Sube (-translate-y-full) si showControls es TRUE */}
+            {/* Barra Superior: 20% altura. Se retira hacia arriba (-translate-y-full) */}
             <div 
               className={cn(
-                "absolute top-0 h-[19%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
-                showControls ? "-translate-y-full" : "translate-y-0"
+                "absolute top-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
+                showCinemaBars ? "translate-y-0" : "-translate-y-full"
               )} 
             />
             
-            {/* Barra Inferior: Baja (translate-y-full) si showControls es TRUE */}
+            {/* Barra Inferior: 20% altura. Se retira hacia abajo (translate-y-full) */}
             <div 
               className={cn(
-                "absolute bottom-0 h-[19%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
-                showControls ? "translate-y-full" : "translate-y-0"
+                "absolute bottom-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
+                showCinemaBars ? "translate-y-0" : "translate-y-full"
               )} 
             />
          </>
