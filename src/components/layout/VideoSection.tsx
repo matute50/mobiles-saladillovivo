@@ -20,7 +20,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const { currentContent, currentIntroUrl, isIntroVisible, shouldPlayContent } = state;
   
   // Consumimos el contexto global de volumen
-  const { isMuted, toggleMute, unmute } = useVolume(); 
+  const { isMuted, toggleMute } = useVolume(); 
   
   const introVideoRef = useRef<HTMLVideoElement>(null);
   
@@ -29,26 +29,36 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserPlaying, setIsUserPlaying] = useState(true); 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Estado para Barras de Cine
   const [showCinemaBars, setShowCinemaBars] = useState(true);
 
-  // --- LÓGICA DE BARRAS DE CINE (3 Segundos) ---
+  // --- LÓGICA DE BARRAS DE CINE (Reactiva a Play/Pause) ---
   useEffect(() => {
+    // 1. Si es Intro: Barras SIEMPRE visibles
     if (isIntroVisible) {
         setShowCinemaBars(true);
         return;
     }
-    // Si NO es Intro, hay contenido y NO es Slide
-    if (!isIntroVisible && currentContent && !('url_slide' in currentContent)) {
-        const timer = setTimeout(() => {
-            setShowCinemaBars(false);
-        }, 3000);
-        return () => clearTimeout(timer);
-    }
-    // Si es Slide
+
+    // 2. Si es Slide (.html): Barras NUNCA visibles
     if (currentContent && 'url_slide' in currentContent) {
         setShowCinemaBars(false);
+        return;
     }
-  }, [isIntroVisible, currentContent]);
+
+    // 3. Lógica Video YouTube (Play vs Pause)
+    if (!isUserPlaying) {
+        // AL PAUSAR: Aparecen inmediatamente
+        setShowCinemaBars(true);
+    } else {
+        // AL DAR PLAY: Desaparecen 1 segundo después
+        const timer = setTimeout(() => {
+            setShowCinemaBars(false);
+        }, 1000);
+        return () => clearTimeout(timer);
+    }
+
+  }, [isIntroVisible, currentContent, isUserPlaying]);
 
 
   // --- LÓGICA REPRODUCTOR INTRO ---
@@ -57,14 +67,11 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     if (isIntroVisible && currentIntroUrl && videoEl) {
         videoEl.src = currentIntroUrl;
         videoEl.load();
-        
-        // Sincronizar volumen del intro
         videoEl.muted = isMuted;
 
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
             playPromise.catch(() => {
-                console.warn("Autoplay intro bloqueado, forzando mute...");
                 videoEl.muted = true;
                 videoEl.play();
             });
@@ -77,17 +84,17 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     handleIntroEnded(); 
   };
 
-  // --- GESTIÓN DE INTERACCIÓN ---
+  // --- GESTIÓN DE INTERACCIÓN (Controles Fugaces) ---
   const handleInteraction = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     
-    // Ocultar controles automáticamente tras 3 segundos
-    // EXCEPCIÓN: Si está muteado, NO ocultar (El botón gigante debe seguir invitando a desmutear)
+    // Ocultar controles automáticamente tras 0.5 SEGUNDOS (500ms)
+    // Excepción: Si está muteado, mantenemos los controles para invitar a desmutear
     if (isUserPlaying && !isIntroVisible && !isMuted) {
         controlsTimeoutRef.current = setTimeout(() => {
             setShowControls(false);
-        }, 3000);
+        }, 500); // <--- TIEMPO REDUCIDO A 0.5s
     }
   };
 
@@ -96,9 +103,12 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     const newState = !isUserPlaying;
     setIsUserPlaying(newState);
     
+    // Al cambiar estado, gestionamos la visibilidad de controles
     if (newState) {
+        // Si dio Play -> Iniciar timer de ocultamiento rápido
         handleInteraction();
     } else {
+        // Si dio Pause -> Mantener controles fijos
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         setShowControls(true); 
     }
@@ -149,15 +159,17 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA Z-20: ESCUDO FANTASMA === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA Z-30: BARRAS DE CINE === */}
+       {/* === CAPA Z-30: BARRAS DE CINE (REACTIVAS) === */}
        {!isSlide && (
          <>
+            {/* Barra Superior */}
             <div 
               className={cn(
                 "absolute top-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
                 showCinemaBars ? "translate-y-0" : "-translate-y-full"
               )} 
             />
+            {/* Barra Inferior */}
             <div 
               className={cn(
                 "absolute bottom-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
@@ -180,18 +192,18 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
             playsInline
             onEnded={onIntroEnd}
             onError={onIntroEnd}
-            // Muted controlado por useEffect
          />
        </div>
 
        {/* === CAPA Z-50: CONTROLES PROPIOS === */}
        <div 
          className={cn(
-           "absolute inset-0 z-50 flex flex-col justify-between p-4 transition-all duration-500 pointer-events-none",
+           "absolute inset-0 z-50 flex flex-col justify-between p-4 transition-all duration-300 pointer-events-none",
+           // VISIBILIDAD: Muteado O ShowControls (ahora dura 0.5s)
            (isMuted || showControls) ? "opacity-100" : "opacity-0"
          )}
        >
-          {/* HEADER UI: Botón Mute Superior (Feedback extra) + Cast */}
+          {/* HEADER UI */}
           <div className="flex justify-between items-start w-full">
               <button 
                 onClick={handleToggleMute} 
@@ -210,15 +222,11 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
               </div>
           </div>
 
-          {/* === BOTÓN CENTRAL GIGANTE (UNMUTE / PLAY / PAUSE) === */}
-          {/* Ubicación: Centro Absoluto */}
+          {/* CENTER UI */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
              <button 
                onClick={(e) => {
                   e.stopPropagation();
-                  // LÓGICA DE ACCIÓN:
-                  // 1. Si está Muteado -> ACTIVAR SONIDO (Prioridad Máxima)
-                  // 2. Si tiene Sonido -> Alternar Play/Pause
                   if (isMuted) {
                     handleToggleMute(e);
                   } else {
@@ -226,31 +234,21 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
                   }
                }}
                className={cn(
-                 // CLON VISUAL SOLICITADO:
-                 // p-4 (o p-6 para mejor touch), bg-black/40, rounded-full, backdrop-blur-md
                  "pointer-events-auto group flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 shadow-2xl transition-all duration-300 ease-out",
                  "hover:bg-black/50 hover:scale-110 active:scale-95",
-                 
-                 // LÓGICA DE VISIBILIDAD:
-                 // Si está Muteado -> SIEMPRE VISIBLE (opacity-100)
-                 // Si tiene Sonido y No hay Controles -> OCULTO (opacity-0)
                  (!showControls && !isMuted) ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100 pointer-events-auto"
                )}
              >
                 {isMuted ? (
-                  /* ESTADO MUTEADO: Volumen Tachado Grande */
                   <VolumeX size={48} fill="white" className="text-white drop-shadow-md" />
                 ) : isUserPlaying ? (
-                  /* ESTADO PLAY: Pausa */
                   <Pause size={48} fill="white" className="text-white drop-shadow-md" />
                 ) : (
-                  /* ESTADO PAUSA: Play */
                   <Play size={48} fill="white" className="text-white ml-1 drop-shadow-md" />
                 )}
              </button>
           </div>
 
-          {/* Footer Spacer */}
           <div className="w-full h-10" />
        </div>
     </div>
