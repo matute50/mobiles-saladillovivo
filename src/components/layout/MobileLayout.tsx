@@ -160,6 +160,25 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     if (outcome === 'accepted') setDeferredPrompt(null);
   };
 
+  // --- AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA ---
+  const handleShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Saladillo Vivo',
+          text: 'Información local al instante.',
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+        // Fallback simple si no hay share nativo (opcional)
+        console.log("Web Share API no soportada");
+    }
+  };
+  // ----------------------------------------
+
   useEffect(() => {
     if (!searchQuery.trim()) { setFilteredVideos([]); return; }
     const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 0 && !STOP_WORDS.has(w)); 
@@ -235,7 +254,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
             </div>
         </header>
 
-        {/* CONTENEDOR VIDEO CON ASPECT-VIDEO */}
+        {/* CONTENEDOR VIDEO (aspect-video crítico) */}
         <div className={cn("shrink-0 sticky top-11 z-30 w-full aspect-video shadow-xl border-b transition-colors", themeClasses.playerWrapper)}>
           <VideoSection isMobile={true} />
         </div>
