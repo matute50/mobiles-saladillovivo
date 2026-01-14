@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import type { Swiper as SwiperClass } from 'swiper';
 import 'swiper/css';
 
-const STOP_WORDS = new Set(["el","la","los","las","un","una","unos","unas","lo","al","del","a","ante","bajo","con","contra","de","desde","durante","en","entre","hacia","hasta","mediante","para","por","según","sin","sobre","tras","y","o","u","e","ni","pero","aunque","sino","porque","como","que","si","me","te","se","nos","os","les","mi","mis","tu","tus","su","sus","nuestro","nuestra","nuestros","nuestras","este","esta","estos","estas","ese","esa","esos","esas","aquel","aquella","aquellos","aquellas","ser","estar","haber","tener","hacer","ir","ver","dar","decir","puede","pueden","fue","es","son","era","eran","esta","estan","hay","mas","más","menos","muy","ya","aqui","ahí","asi","así","tambien","también","solo","sólo","todo","todos","todas","algo","nada"]);
+const STOP_WORDS = new Set(["el","la","los","las","un","una","unos","unas","lo","al","del","a","ante","bajo","con","contra","de","desde","durante","en","entre","hacia","hasta","mediante","para","por","según","sin","sobre","tras","y","o","u","e","ni","pero","aunque","sino","porque","como","que","si","me","te","se","nos","os","les","mi","mis","tu","tus","su","sus","nuestro","nuestra","nuestros","nuevas","este","esta","estos","estas","ese","esa","esos","esas","aquel","aquella","aquellos","aquellas","ser","estar","haber","tener","hacer","ir","ver","dar","decir","puede","pueden","fue","es","son","era","eran","esta","estan","hay","mas","más","menos","muy","ya","aqui","ahí","asi","así","tambien","también","solo","sólo","todo","todos","todas","algo","nada"]);
 
 const getDisplayCategory = (dbCat: string) => {
   if (!dbCat) return 'VARIOS';
@@ -104,12 +104,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
-
-  // Estado para el Modal de Información
-  const [infoModal, setInfoModal] = useState<{ open: boolean; view: 'DECRETO' | 'BIO' }>({ open: false, view: 'DECRETO' });
-  const openModal = (view: 'DECRETO' | 'BIO') => setInfoModal({ open: true, view });
-  const closeModal = () => setInfoModal({ ...infoModal, open: false });
-  const toggleModalView = () => setInfoModal(prev => ({ ...prev, view: prev.view === 'DECRETO' ? 'BIO' : 'DECRETO' }));
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   useEffect(() => { if (data?.videos?.allVideos) setVideoPool(data.videos.allVideos); }, [data, setVideoPool]);
 
@@ -134,37 +129,17 @@ export default function MobileLayout({ data }: { data: PageData }) {
   return (
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden transition-colors", isDark ? "bg-black" : "bg-neutral-50")}>
       
-      {/* MODAL DE INFORMACIÓN (RESTAURADO) */}
-      {infoModal.open && (
-        <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={closeModal}>
-          <div className={cn("relative w-full max-w-md p-6 rounded-xl shadow-2xl overflow-y-auto max-h-[85vh] animate-in zoom-in-95 duration-200 flex flex-col items-center", isDark ? "bg-neutral-900 text-white border border-white/10" : "bg-white text-neutral-900")} onClick={(e) => e.stopPropagation()}>
-             <button onClick={closeModal} className="absolute top-3 right-3 p-1 opacity-70 hover:opacity-100 hover:bg-black/10 rounded-full transition-all"><X size={24} /></button>
-             
-             {infoModal.view === 'DECRETO' ? (
-               <div className="flex flex-col items-center w-full">
-                  <p className="text-sm font-bold text-center mb-4 uppercase tracking-wide leading-relaxed">Declarado de interés cultural<br/><span style={{ color: linkColor }}>DECRETO H.C.D. Nro. 37/2022</span></p>
-                  <div className="w-full h-auto shadow-2xl rounded-lg overflow-hidden border border-neutral-200 bg-white mb-6">
-                    <img src="/DECRETO.png" alt="Decreto HCD" className="w-full h-auto block" loading="eager" />
-                  </div>
-                  <button onClick={toggleModalView} className="mt-2 text-xs font-bold underline cursor-pointer hover:opacity-80 transition-opacity uppercase tracking-widest" style={{ color: linkColor }}>Conocé al Creador</button>
-               </div>
-             ) : (
-               <div className="w-full">
-                 <div className="flex flex-col items-center mb-6">
-                    <h2 className="text-3xl font-bold font-sans mb-1 text-center">Matías Vidal</h2>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-center border-b-2 pb-1" style={{ color: linkColor, borderColor: linkColor }}>CREADOR DE SALADILLO VIVO</p>
-                 </div>
-                 <div className={cn("space-y-4 text-sm leading-relaxed text-justify mb-4", isDark ? "text-neutral-300" : "text-neutral-700")}>
-                   <p>Soy el creador de <strong style={{ color: linkColor }}>SALADILLO VIVO</strong>, un medio local hecho desde cero.</p>
-                   <p>Desde las apps para TV, web y móviles hasta el sistema de noticias, todo lo programé yo.</p>
-                   <blockquote className={cn("pl-4 border-l-4 font-medium italic my-4 py-1", isDark ? "border-white/20 text-white" : "border-neutral-300 text-black")}>"Nunca fue mi intención poner a funcionar una plataforma más, sino crear identidad."</blockquote>
-                   <p>Quiero mostrar a Saladillo en su diversidad.</p>
-                 </div>
-                 <div className="w-full text-center">
-                    <button onClick={toggleModalView} className="text-xs font-bold underline cursor-pointer hover:opacity-80 transition-opacity uppercase tracking-widest" style={{ color: linkColor }}>Ver Decreto H.C.D.</button>
-                 </div>
-               </div>
-             )}
+      {/* MODAL DECRETO */}
+      {isInfoModalOpen && (
+        <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsInfoModalOpen(false)}>
+          <div className={cn("relative w-full max-w-md p-6 rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col items-center", isDark ? "bg-neutral-900 text-white border border-white/10" : "bg-white text-neutral-900")} onClick={(e) => e.stopPropagation()}>
+             <button onClick={() => setIsInfoModalOpen(false)} className="absolute top-3 right-3 p-1 opacity-70 hover:opacity-100 rounded-full transition-all"><X size={28} /></button>
+             <div className="flex flex-col items-center w-full">
+                <p className="text-sm font-bold text-center mb-5 uppercase tracking-wide leading-relaxed">Declarado de interés cultural<br/><span style={{ color: linkColor }}>DECRETO H.C.D. Nro. 37/2022</span></p>
+                <div className="w-full h-auto shadow-2xl rounded-lg overflow-hidden border border-neutral-200 bg-white">
+                  <img src="/DECRETO.png" alt="Decreto HCD" className="w-full h-auto block" />
+                </div>
+             </div>
           </div>
         </div>
       )}
@@ -179,7 +154,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
                <>
                  <button onClick={toggleTheme}>{isDark ? <Sun size={20} className="text-white"/> : <Moon size={20}/>}</button>
                  <button onClick={() => navigator.share && navigator.share({url: window.location.href})} className={isDark ? "text-white" : "text-black"}><Share2 size={20}/></button>
-                 <button onClick={() => openModal('DECRETO')} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
+                 <button onClick={() => setIsInfoModalOpen(true)} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
                  <button className={isDark ? "text-white" : "text-black"}><Download size={20}/></button>
                </>
              )}
