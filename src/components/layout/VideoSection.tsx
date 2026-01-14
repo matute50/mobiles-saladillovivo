@@ -1,9 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-// CAMBIO 1: Importamos la librería general, es más estable que '/youtube'
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+// USAMOS LAZY LOAD PARA EVITAR EL CRASH INICIAL
 import dynamic from 'next/dynamic';
-const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
+const ReactPlayer = dynamic(() => import('react-player/lazy'), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-black flex items-center justify-center text-white/20">Cargando player...</div>
+});
 
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
@@ -18,16 +21,15 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
   const { currentVideo, isPlaying, togglePlay } = useMediaPlayer();
   const { isMuted, toggleMute } = useVolume();
   
-  // Estado de montaje (Client-side check)
-  const [hasMounted, setHasMounted] = useState(false);
+  // 1. CONTROL DE MONTAJE (CRÍTICO PARA EVITAR APPLICATION ERROR)
+  const [isMounted, setIsMounted] = useState(false);
   
-  // Estados de interfaz
+  // 2. ESTADO VISUAL DE CONTROLES
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Evitar renderizado hasta que el cliente esté listo
   useEffect(() => {
-    setHasMounted(true);
+    setIsMounted(true);
   }, []);
 
   // Lógica de interacción (3 segundos)
@@ -35,7 +37,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     
-    // Solo ocultamos automáticamente si el video se está reproduciendo
+    // Solo ocultar si estamos reproduciendo
     if (isPlaying) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
@@ -43,33 +45,26 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
     }
   }, [isPlaying]);
 
-  // Efecto: Cuando cambia el estado de reproducción, gestionamos los controles
-  useEffect(() => {
-    handleInteraction();
-    return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
-  }, [isPlaying, handleInteraction]);
+  // Si no está montado en el cliente, devolvemos un div negro inerte (NO ROMPE LA APP)
+  if (!isMounted) return <div className="w-full h-full bg-black" />;
 
-  // 1. Si no estamos en el cliente, no renderizamos nada (Evita error de aplicación)
-  if (!hasMounted) return <div className="w-full h-full bg-black" />;
-
-  // 2. Si no hay video, mostramos cargando
+  // Si no hay video
   if (!currentVideo) {
     return (
       <div className="w-full h-full bg-black flex items-center justify-center text-white text-xs">
-        <p>Cargando video...</p>
+        <p>Seleccione un video</p>
       </div>
     );
   }
 
   return (
     <div 
-      className="relative w-full h-full bg-black overflow-hidden group"
+      className="relative w-full h-full bg-black overflow-hidden group select-none"
       onClick={handleInteraction}
-      onMouseMove={handleInteraction}
       onTouchStart={handleInteraction}
     >
       {/* CAPA DE VIDEO */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
         <ReactPlayer
           url={currentVideo.url}
           playing={isPlaying}
@@ -77,24 +72,25 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
           width="100%"
           height="100%"
           controls={false} // IMPORTANTE: Sin controles nativos
-          playsinline={true} // Importante para móviles (evita fullscreen forzado)
+          playsinline={true}
+          style={{ pointerEvents: 'none' }} // El usuario no interactúa con el video, solo con nuestros botones
           config={{
             youtube: {
-              playerVars: { showinfo: 0, modestbranding: 1, rel: 0, disablekb: 1, fs: 0 }
+              playerVars: { showinfo: 0, modestbranding: 1, rel: 0, disablekb: 1, fs: 0, iv_load_policy: 3 }
             }
           }}
-          // CAMBIO CRÍTICO: Eliminamos onPlay para evitar el bucle infinito que rompía la app
-          onEnded={() => setShowControls(true)}
+          // IMPORTANTE: NO usamos onPlay/onPause aquí para evitar bucles de estado.
+          // Confiamos en el estado global 'isPlaying'.
         />
       </div>
 
-      {/* BARRAS NEGRAS (Cine) */}
+      {/* BARRAS NEGRAS (CINE) */}
       <div className={cn("absolute top-0 left-0 right-0 bg-black z-30 h-[20%] transition-transform duration-500 ease-in-out pointer-events-none", showControls ? "-translate-y-full" : "translate-y-0")} />
       <div className={cn("absolute bottom-0 left-0 right-0 bg-black z-30 h-[20%] transition-transform duration-500 ease-in-out pointer-events-none", showControls ? "translate-y-full" : "translate-y-0")} />
 
-      {/* CONTROLES PROPIOS */}
+      {/* CONTROLES */}
       <div className={cn("absolute inset-0 z-40 flex flex-col justify-between p-4 transition-opacity duration-300", showControls ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none")}>
-        {/* Header Título */}
+        {/* Cabecera */}
         <div className="flex justify-between items-start">
            <h2 className="text-white text-sm font-bold drop-shadow-md line-clamp-1 bg-black/40 px-2 py-1 rounded backdrop-blur-sm border border-white/10">
              {currentVideo.nombre}
@@ -104,7 +100,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
         {/* Botón Central Play/Pause */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
            <button 
-             onClick={(e) => { e.stopPropagation(); togglePlay(); }} // Solo togglePlay manual
+             onClick={(e) => { e.stopPropagation(); togglePlay(); handleInteraction(); }}
              className="pointer-events-auto bg-black/40 p-4 rounded-full backdrop-blur-sm border border-white/20 hover:scale-110 transition-transform shadow-xl active:scale-95"
            >
               {isPlaying ? <Pause fill="white" size={32} className="text-white"/> : <Play fill="white" size={32} className="text-white ml-1"/>}
@@ -114,11 +110,11 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
         {/* Barra Inferior */}
         <div className="flex justify-between items-center bg-black/60 p-2 rounded-lg backdrop-blur-md border border-white/10">
            <div className="flex items-center gap-4">
-              <button onClick={(e) => { e.stopPropagation(); togglePlay(); }}>
+              <button onClick={(e) => { e.stopPropagation(); togglePlay(); handleInteraction(); }}>
                 {isPlaying ? <Pause size={20} className="text-white"/> : <Play size={20} className="text-white"/>}
               </button>
               
-              <button onClick={(e) => { e.stopPropagation(); toggleMute(); }}>
+              <button onClick={(e) => { e.stopPropagation(); toggleMute(); handleInteraction(); }}>
                 {isMuted ? <VolumeX size={20} className="text-red-500"/> : <Volume2 size={20} className="text-white"/>}
               </button>
               
@@ -129,10 +125,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
                  </span>
               )}
            </div>
-           
-           <div className="text-white/80 text-[10px] font-mono tracking-wider">
-              SALADILLO VIVO
-           </div>
+           <div className="text-white/80 text-[10px] font-mono tracking-wider">SALADILLO VIVO</div>
         </div>
       </div>
     </div>
