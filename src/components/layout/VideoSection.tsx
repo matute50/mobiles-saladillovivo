@@ -7,35 +7,45 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 
-// IMPORTACIÓN SEGURA: Se carga solo cuando se necesita
+// Importación segura del reproductor
 const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
+
+// --- VIDEO DE RESPALDO INTERNO (SALVAVIDAS) ---
+const INTERNAL_BACKUP = {
+  nombre: 'Saladillo Vivo',
+  url: 'https://www.youtube.com/watch?v=ysz5S6P_bsI', // Tu transmisión o video default
+  es_vivo: true
+};
 
 interface VideoSectionProps {
   isMobile?: boolean;
 }
 
 export default function VideoSection({ isMobile }: VideoSectionProps) {
-  // 1. ESTADO DE MONTAJE (La clave para evitar el error)
   const [isMounted, setIsMounted] = useState(false);
 
   // Hooks de contexto
   const { currentVideo, isPlaying, togglePlay } = useMediaPlayer();
   const { isMuted, toggleMute } = useVolume();
   
+  // ESTRATEGIA DE BYPASS:
+  // Si currentVideo es null (está cargando), usamos el INTERNAL_BACKUP inmediatamente.
+  // No mostramos pantalla de carga.
+  const activeVideo = currentVideo || INTERNAL_BACKUP;
+  
   // Estados visuales
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 2. EFECTO DE ACTIVACIÓN: Solo se activa cuando el navegador está listo
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Lógica de 3 segundos
   const handleInteraction = useCallback(() => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     
+    // Solo ocultamos controles si está reproduciendo
     if (isPlaying) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
@@ -43,24 +53,18 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
     }
   }, [isPlaying]);
 
-  // Sincronización
   useEffect(() => {
-    if (isMounted) {
-      handleInteraction();
-    }
+    if (isMounted) handleInteraction();
     return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
-  }, [isMounted, currentVideo, handleInteraction]);
+  }, [isMounted, activeVideo, handleInteraction]);
 
-  // --- PUNTO DE CONTROL CRÍTICO ---
-  // Si no está montado (servidor) O no hay video, devolvemos un div negro simple.
-  // ESTO EVITA QUE NEXT.JS LANCE EL ERROR.
-  if (!isMounted || !currentVideo) {
-    return (
-      <div className="w-full h-full bg-black flex items-center justify-center">
-        <span className="text-white/20 text-xs">Cargando...</span>
-      </div>
-    );
+  // Si no está montado (servidor), devolvemos div negro para evitar errores
+  if (!isMounted) {
+    return <div className="w-full h-full bg-black" />;
   }
+
+  // YA NO HAY "IF LOADING RETURN CARGANDO".
+  // Siempre renderizamos el reproductor con 'activeVideo'.
 
   return (
     <div 
@@ -71,7 +75,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
       {/* 1. REPRODUCTOR */}
       <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
         <ReactPlayer
-          url={currentVideo.url}
+          url={activeVideo.url}
           playing={isPlaying}
           muted={isMuted}
           width="100%"
@@ -84,7 +88,6 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
               playerVars: { showinfo: 0, modestbranding: 1, rel: 0, disablekb: 1, fs: 0 }
             }
           }}
-          // Eliminamos onPlay para seguridad máxima
         />
       </div>
 
@@ -97,7 +100,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
         {/* Cabecera */}
         <div className="flex justify-between items-start">
            <h2 className="text-white text-sm font-bold drop-shadow-md line-clamp-1 bg-black/40 px-2 py-1 rounded backdrop-blur-sm border border-white/10">
-             {currentVideo.nombre}
+             {activeVideo.nombre}
            </h2>
         </div>
 
@@ -122,7 +125,8 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
                 {isMuted ? <VolumeX size={20} className="text-red-500"/> : <Volume2 size={20} className="text-white"/>}
               </button>
               
-              {currentVideo.es_vivo && (
+              {/* Detectamos si es vivo chequeando la propiedad o si es el video por defecto */}
+              {((activeVideo as any).es_vivo || activeVideo.url === INTERNAL_BACKUP.url) && (
                  <span className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
                     <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"/>
                     <span className="text-[10px] font-bold text-red-500 uppercase">EN VIVO</span>
