@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
@@ -17,8 +17,7 @@ const STOP_WORDS = new Set(["el","la","los","las","un","una","unos","unas","lo",
 
 const getDisplayCategory = (dbCat: string) => {
   if (!dbCat) return 'VARIOS';
-  const original = dbCat.trim();
-  const upper = original.toUpperCase();
+  const upper = dbCat.trim().toUpperCase();
   if (upper.includes('HCD') && upper.includes('SALADILLO')) return 'HCD SALADILLO';
   if (upper.includes('ITEC') && upper.includes('CICAR')) return 'ITEC ¨A. Cicaré¨'; 
   return upper; 
@@ -52,15 +51,15 @@ function useTheme() {
 
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
   return (
-    <div onClick={onClick} className={cn("relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform group", isDark ? "bg-neutral-900 border border-neutral-800" : "bg-white border border-neutral-200", isFeatured ? "w-full h-full" : "w-[49%] h-full")}>
+    <div onClick={onClick} className={cn("relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform", isDark ? "bg-neutral-900 border border-neutral-800" : "bg-white border border-neutral-200", isFeatured ? "w-full h-full" : "w-[49%] h-full")}>
       <div className="relative w-full h-full">
-        <Image src={news.imagen || '/placeholder.png'} alt={news.titulo} fill className="object-cover opacity-90 transition-all duration-700" />
+        <Image src={news.imagen || '/placeholder.png'} alt={news.titulo} fill className="object-cover opacity-90" />
         <div className={cn("absolute inset-0 bg-gradient-to-t z-10", isDark ? "from-black via-black/60 to-transparent" : "from-black/90 via-black/50 to-transparent")} />
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center">
             <div className={cn("flex items-center justify-center rounded-full bg-[#003399]/50 backdrop-blur-sm border border-white/20 mb-2", isFeatured ? "p-4" : "p-3")}>
                 <Play size={isFeatured ? 32 : 24} fill="white" className="text-white ml-1"/>
             </div>
-            <h3 className={cn("text-white font-black uppercase tracking-tight leading-[0.9] text-balance", isFeatured ? "text-2xl line-clamp-3" : "text-sm line-clamp-4")}>{news.titulo}</h3>
+            <h3 className={cn("text-white font-black uppercase tracking-tight leading-[0.9]", isFeatured ? "text-2xl line-clamp-3" : "text-sm line-clamp-4")}>{news.titulo}</h3>
         </div>
       </div>
     </div>
@@ -75,7 +74,7 @@ function VideoCarouselBlock({ videos, isDark }: any) {
   const filtered = videos.filter((v: any) => getDisplayCategory(v.categoria) === currentCat);
 
   return (
-    <div className="flex flex-col gap-0 h-full w-full pt-[5px]">
+    <div className="flex flex-col h-full w-full pt-[5px]">
       <div className="flex items-center justify-between px-2 py-0.5 shrink-0">
         <button onClick={() => setActiveCatIndex(p => p === 0 ? categories.length - 1 : p - 1)} className={isDark ? "text-neutral-400" : "text-neutral-500"}><ChevronLeft size={28} /></button>
         <h2 className={cn("font-extrabold text-xl uppercase tracking-wider text-center flex-1 truncate px-2", isDark ? "text-white" : "text-black")}>{currentCat}</h2>
@@ -96,7 +95,6 @@ function VideoCarouselBlock({ videos, isDark }: any) {
   );
 }
 
-// CAMBIO CRÍTICO: Exportación por defecto para evitar error en page.tsx
 export default function MobileLayout({ data }: { data: PageData }) {
   const isLandscape = useOrientation(); 
   const { isDark, toggleTheme } = useTheme(); 
@@ -109,8 +107,11 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
   
-  // VARIABLE DEFINIDA: Corrige el error ReferenceError en Vercel
-  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  // Modal de info con vistas: 'decreto' o 'creador'
+  const [infoModal, setInfoModal] = useState<{ isOpen: boolean; view: 'decreto' | 'creador' }>({
+    isOpen: false,
+    view: 'decreto'
+  });
 
   useEffect(() => { if (data?.videos?.allVideos) setVideoPool(data.videos.allVideos); }, [data, setVideoPool]);
 
@@ -135,17 +136,54 @@ export default function MobileLayout({ data }: { data: PageData }) {
   return (
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden transition-colors", isDark ? "bg-black" : "bg-neutral-50")}>
       
-      {/* MODAL DECRETO (VERSION BLINDADA) */}
-      {isInfoModalOpen && (
-        <div className="fixed inset-0 z-[500] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setIsInfoModalOpen(false)}>
-          <div className={cn("relative w-full max-w-md p-5 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col items-center", isDark ? "bg-neutral-900 text-white border border-white/10" : "bg-white text-neutral-900")} onClick={(e) => e.stopPropagation()}>
-             <button onClick={() => setIsInfoModalOpen(false)} className="absolute top-2 right-2 p-2 opacity-80 hover:opacity-100 bg-black/10 rounded-full transition-all z-[501]"><X size={32} /></button>
-             <div className="flex flex-col items-center w-full pt-4">
-                <p className="text-[13px] font-black text-center mb-6 uppercase tracking-widest leading-tight">Declarado de interés cultural<br/><span style={{ color: linkColor }} className="text-[11px] opacity-80">DECRETO H.C.D. Nro. 37/2022</span></p>
-                <div className="w-full relative bg-white rounded-lg shadow-inner overflow-hidden border border-neutral-200">
-                  <img src="/DECRETO.png?v=2" alt="Decreto HCD" className="w-full h-auto block" style={{ display: 'block', width: '100%', height: 'auto' }} />
-                </div>
-             </div>
+      {/* MODAL MULTI-TARJETA */}
+      {infoModal.isOpen && (
+        <div className="fixed inset-0 z-[500] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setInfoModal({ ...infoModal, isOpen: false })}>
+          <div className={cn("relative w-full max-w-md p-6 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col items-center animate-in zoom-in-95 duration-200", isDark ? "bg-neutral-900 text-white border border-white/10" : "bg-white text-neutral-900")} onClick={(e) => e.stopPropagation()}>
+             <button onClick={() => setInfoModal({ ...infoModal, isOpen: false })} className="absolute top-2 right-2 p-2 opacity-80 hover:opacity-100 bg-black/10 rounded-full transition-all z-[501]"><X size={32} /></button>
+             
+             {infoModal.view === 'decreto' ? (
+               <div className="flex flex-col items-center w-full pt-4">
+                  <p className="text-[13px] font-black text-center mb-6 uppercase tracking-widest leading-tight">Declarado de interés cultural<br/><span style={{ color: linkColor }} className="text-[11px] opacity-80">DECRETO H.C.D. Nro. 37/2022</span></p>
+                  <div className="w-full relative bg-white rounded-lg shadow-inner overflow-hidden border border-neutral-200 mb-6">
+                    <img src="/DECRETO.png" alt="Decreto HCD" className="w-full h-auto block" />
+                  </div>
+                  <button 
+                    onClick={() => setInfoModal({ isOpen: true, view: 'creador' })}
+                    className="text-xs font-bold underline uppercase tracking-widest hover:opacity-70 transition-opacity"
+                    style={{ color: linkColor }}
+                  >
+                    Conoce al creador
+                  </button>
+               </div>
+             ) : (
+               <div className="flex flex-col items-center w-full pt-4">
+                  <div className="flex flex-col items-center mb-6">
+                    <h2 className="text-3xl font-black mb-1 text-center">Matías Vidal</h2>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded" style={{ backgroundColor: linkColor, color: 'white' }}>CREADOR DE SALADILLO VIVO</p>
+                  </div>
+                  
+                  <div className="w-[180px] h-[180px] relative mb-6 rounded-full border-4 shadow-xl overflow-hidden" style={{ borderColor: linkColor }}>
+                    <img src="/maraton.png" alt="Matías Vidal" className="w-full h-full object-cover" />
+                  </div>
+
+                  <div className={cn("space-y-4 text-[14px] leading-relaxed text-center px-2", isDark ? "text-neutral-300" : "text-neutral-700")}>
+                    <p>Soy el creador de <strong style={{ color: linkColor }}>SALADILLO VIVO</strong>, un medio local hecho desde cero con tecnología propia y una visión muy clara: conectar mi comunidad con contenidos relevantes y cercanos.</p>
+                    <p>Desde las apps para TV, web y móviles hasta el sistema de noticias, todo lo programé yo. No contraté a nadie, no tercericé tareas: el código, el acopio de contenidos, la cámara, la edición y hasta el streaming, salen de mis propias ideas.</p>
+                    <p className="font-black italic py-2 border-y border-neutral-500/20 italic">"Nunca fue mi intención poner a funcionar una plataforma más, sino crear identidad."</p>
+                    <p>Quiero mostrar a Saladillo en su diversidad: sus historias, sus voces, su arte, porque además de técnico, también soy parte de una red viva llena de talentosos e incansables a los que acompaño desde mi lugar, ofreciendo mi medio como espacio para que sus expresiones lleguen más lejos.</p>
+                    <p>El motor detrás de todo esto no es una estrategia de negocio. Es el amor por mi ciudad y el deseo de ver crecer a los demás.</p>
+                    <p className="text-sm font-medium pt-2">Es la misma energía que me lleva, cada semana, a correr muchos kilómetros entrenando para una nueva maratón, donde cada paso es constancia, esfuerzo, y visión de llegada.</p>
+                  </div>
+
+                  <button 
+                    onClick={() => setInfoModal({ isOpen: true, view: 'decreto' })}
+                    className="mt-8 text-xs font-bold underline uppercase tracking-widest hover:opacity-70 transition-opacity opacity-60"
+                  >
+                    Volver al Decreto
+                  </button>
+               </div>
+             )}
           </div>
         </div>
       )}
@@ -160,7 +198,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
                <>
                  <button onClick={toggleTheme}>{isDark ? <Sun size={20} className="text-white"/> : <Moon size={20}/>}</button>
                  <button onClick={() => navigator.share && navigator.share({url: window.location.href})} className={isDark ? "text-white" : "text-black"}><Share2 size={20}/></button>
-                 <button onClick={() => setIsInfoModalOpen(true)} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
+                 <button onClick={() => setInfoModal({ isOpen: true, view: 'decreto' })} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
                  <button className={isDark ? "text-white" : "text-black"}><Download size={20}/></button>
                </>
              )}
