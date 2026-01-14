@@ -26,14 +26,13 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [isUserMuted, setIsUserMuted] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- LÓGICA DE BARRAS DE CINE (CINEMA BARS) ---
-  const showCinemaBars = useMemo(() => {
-    // 1. Si hay contenido y es un Slide (.html), ocultar barras para aprovechar el 100% del canvas
+  // --- LÓGICA DE EXISTENCIA DE BARRAS (Renderizado) ---
+  const shouldRenderCinemaBars = useMemo(() => {
+    // 1. Si es Slide (.html), NO renderizar barras nunca (necesitamos 100% pantalla)
     if (currentContent && 'url_slide' in currentContent) {
         return false;
     }
-    // 2. Para todo lo demás (YouTube, Buffering, Nada/Ruido, Intro), mostrar barras
-    // Esto asegura el Anti-Branding persistente.
+    // 2. Si es YouTube (o carga/intro), SÍ renderizar barras
     return true;
   }, [currentContent]);
 
@@ -59,13 +58,14 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     handleIntroEnded(); 
   };
 
-  // --- GESTIÓN DE INTERACCIÓN ---
+  // --- GESTIÓN DE INTERACCIÓN (Sincronización Controles + Barras) ---
   const handleInteraction = () => {
-    setShowControls(true);
+    setShowControls(true); // Activa Controles Y Retira Barras
+    
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     
-    // Ocultar controles automáticamente solo si hay sonido y video corriendo.
-    // Si está muteado, los controles persisten para invitar al "Unmute".
+    // Temporizador de 3 segundos
+    // Oculta controles Y Restaura Barras automáticamente
     if (isUserPlaying && !isIntroVisible && !isUserMuted) {
         controlsTimeoutRef.current = setTimeout(() => {
             setShowControls(false);
@@ -130,12 +130,24 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA Z-20: ESCUDO FANTASMA === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA Z-30: BARRAS DE CINE (MASKING FUNCIONAL) === */}
-       {/* Solo se renderizan si showCinemaBars es TRUE (Videos YouTube) */}
-       {showCinemaBars && (
+       {/* === CAPA Z-30: BARRAS DE CINE (DINÁMICAS) === */}
+       {shouldRenderCinemaBars && (
          <>
-            <div className="absolute top-0 h-[19%] w-full bg-black z-30 pointer-events-none" />
-            <div className="absolute bottom-0 h-[19%] w-full bg-black z-30 pointer-events-none" />
+            {/* Barra Superior: Sube (-translate-y-full) si showControls es TRUE */}
+            <div 
+              className={cn(
+                "absolute top-0 h-[19%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
+                showControls ? "-translate-y-full" : "translate-y-0"
+              )} 
+            />
+            
+            {/* Barra Inferior: Baja (translate-y-full) si showControls es TRUE */}
+            <div 
+              className={cn(
+                "absolute bottom-0 h-[19%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
+                showControls ? "translate-y-full" : "translate-y-0"
+              )} 
+            />
          </>
        )}
 
