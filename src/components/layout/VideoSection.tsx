@@ -19,114 +19,64 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const { state, handleIntroEnded, handleContentEnded } = useMediaPlayer();
   const { currentContent, currentIntroUrl, isIntroVisible, shouldPlayContent } = state;
   
-  // Consumimos el contexto global de volumen
   const { isMuted, toggleMute } = useVolume(); 
   
   const introVideoRef = useRef<HTMLVideoElement>(null);
   
-  // Estados de Interfaz
   const [showControls, setShowControls] = useState(false);
   const [isUserPlaying, setIsUserPlaying] = useState(true); 
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Estado para Barras de Cine
   const [showCinemaBars, setShowCinemaBars] = useState(true);
 
-  // --- LÓGICA DE BARRAS DE CINE (Reactiva a Play/Pause) ---
+  // --- LÓGICA BARRAS DE CINE ---
   useEffect(() => {
-    // 1. Si es Intro: Barras SIEMPRE visibles
-    if (isIntroVisible) {
-        setShowCinemaBars(true);
-        return;
-    }
+    if (isIntroVisible) { setShowCinemaBars(true); return; }
+    if (currentContent && 'url_slide' in currentContent) { setShowCinemaBars(false); return; }
 
-    // 2. Si es Slide (.html): Barras NUNCA visibles
-    if (currentContent && 'url_slide' in currentContent) {
-        setShowCinemaBars(false);
-        return;
-    }
-
-    // 3. Lógica Video YouTube (Play vs Pause)
     if (!isUserPlaying) {
-        // AL PAUSAR: Aparecen inmediatamente
         setShowCinemaBars(true);
     } else {
-        // AL DAR PLAY: Desaparecen 1 segundo después
-        const timer = setTimeout(() => {
-            setShowCinemaBars(false);
-        }, 1000);
+        const timer = setTimeout(() => setShowCinemaBars(false), 1000);
         return () => clearTimeout(timer);
     }
-
   }, [isIntroVisible, currentContent, isUserPlaying]);
 
-
-  // --- LÓGICA REPRODUCTOR INTRO ---
+  // --- LÓGICA INTRO ---
   useEffect(() => {
     const videoEl = introVideoRef.current;
     if (isIntroVisible && currentIntroUrl && videoEl) {
         videoEl.src = currentIntroUrl;
         videoEl.load();
         videoEl.muted = isMuted;
-
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
-            playPromise.catch(() => {
-                videoEl.muted = true;
-                videoEl.play();
-            });
+            playPromise.catch(() => { videoEl.muted = true; videoEl.play(); });
         }
         setIsUserPlaying(true); 
     }
   }, [currentIntroUrl, isIntroVisible, isMuted]);
 
-  const onIntroEnd = () => {
-    handleIntroEnded(); 
-  };
+  const onIntroEnd = () => handleIntroEnded();
 
-  // --- GESTIÓN DE INTERACCIÓN (Controles Fugaces - 0.5s) ---
-  
-  // 1. Función simple: Solo registra que hubo actividad y muestra controles
+  // --- INTERACCIÓN Y TIMEOUTS ---
   const handleInteraction = () => {
     setShowControls(true);
-    // Limpiamos el timer anterior para reiniciar la cuenta de 0.5s
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-  };
-
-  // 2. Efecto para gestionar el auto-ocultamiento (Reactivo al estado)
-  useEffect(() => {
-    // Solo intentamos ocultar si los controles están visibles Y las condiciones se cumplen:
-    // - El usuario quiere reproducir (no está en pausa manual)
-    // - No es una intro
-    // - No está muteado (si está muteado, queremos que los controles sigan visibles)
-    if (showControls && isUserPlaying && !isIntroVisible && !isMuted) {
-        
-        // Aseguramos limpiar cualquier timer pendiente antes de poner uno nuevo
-        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-
-        // Iniciamos el timer de 0.5 segundos
+    
+    // Ocultar tras 0.5s si está reproduciendo y hay sonido
+    if (isUserPlaying && !isIntroVisible && !isMuted) {
         controlsTimeoutRef.current = setTimeout(() => {
             setShowControls(false);
         }, 500);
     }
-
-    // Cleanup al desmontar o si cambian las condiciones
-    return () => {
-        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    };
-  }, [showControls, isUserPlaying, isIntroVisible, isMuted]); // Dependencias críticas
-
+  };
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     const newState = !isUserPlaying;
     setIsUserPlaying(newState);
-    
-    if (newState) {
-        // Si dio Play, registramos interacción. El useEffect se encargará del timer.
-        handleInteraction();
-    } else {
-        // Si dio Pause, aseguramos que se muestren y limpiamos timers para que queden fijos.
+    if (newState) handleInteraction();
+    else {
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         setShowControls(true); 
     }
@@ -135,7 +85,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const handleToggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleMute(); 
-    // Al mutear/desmutear, registramos interacción. El useEffect evaluará si deben ocultarse.
     handleInteraction();
   };
 
@@ -148,7 +97,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
       onMouseMove={handleInteraction}
       onClick={handleInteraction}
     >
-       {/* === FONDO: SIN SEÑAL === */}
+       {/* FONDO SIN SEÑAL */}
        <style jsx>{`
             .static-noise {
                 background-image: repeating-radial-gradient(circle at 50% 50%, transparent 0, #000 1px, transparent 2px, #333 3px);
@@ -163,7 +112,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          </div>
        )}
 
-       {/* === CAPA Z-10: CONTENIDO === */}
+       {/* CONTENIDO */}
        <div className="absolute inset-0 z-10 pointer-events-none"> 
           {currentContent && (
              <VideoPlayer 
@@ -175,97 +124,73 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
           )}
        </div>
 
-       {/* === CAPA Z-20: ESCUDO FANTASMA === */}
+       {/* ESCUDO */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA Z-30: BARRAS DE CINE (REACTIVAS) === */}
+       {/* BARRAS DE CINE */}
        {!isSlide && (
          <>
-            {/* Barra Superior */}
-            <div 
-              className={cn(
-                "absolute top-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
-                showCinemaBars ? "translate-y-0" : "-translate-y-full"
-              )} 
-            />
-            {/* Barra Inferior */}
-            <div 
-              className={cn(
-                "absolute bottom-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
-                showCinemaBars ? "translate-y-0" : "translate-y-full"
-              )} 
-            />
+            <div className={cn("absolute top-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out", showCinemaBars ? "translate-y-0" : "-translate-y-full")} />
+            <div className={cn("absolute bottom-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out", showCinemaBars ? "translate-y-0" : "translate-y-full")} />
          </>
        )}
 
-       {/* === CAPA Z-40: VIDEO INTRO === */}
-       <div 
-         className={cn(
-            "absolute inset-0 z-40 bg-black transition-opacity duration-300",
-            isIntroVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-         )}
-       >
-         <video 
-            ref={introVideoRef}
-            className="w-full h-full object-cover"
-            playsInline
-            onEnded={onIntroEnd}
-            onError={onIntroEnd}
-         />
+       {/* INTRO */}
+       <div className={cn("absolute inset-0 z-40 bg-black transition-opacity duration-300", isIntroVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")}>
+         <video ref={introVideoRef} className="w-full h-full object-cover" playsInline onEnded={onIntroEnd} onError={onIntroEnd} />
        </div>
 
-       {/* === CAPA Z-50: CONTROLES PROPIOS === */}
-       <div 
-         className={cn(
+       {/* CAPA DE CONTROLES (Z-50) */}
+       <div className={cn(
            "absolute inset-0 z-50 flex flex-col justify-between p-4 transition-all duration-300 pointer-events-none",
-           // VISIBILIDAD: Muteado O ShowControls (ahora dura 0.5s)
            (isMuted || showControls) ? "opacity-100" : "opacity-0"
-         )}
-       >
-          {/* HEADER UI */}
-          <div className="flex justify-between items-start w-full">
-              <button 
-                onClick={handleToggleMute} 
-                className={cn(
-                  "pointer-events-auto p-3 rounded-full backdrop-blur border transition-all hover:scale-105",
-                  isMuted 
-                    ? "bg-red-500/80 text-white border-red-400 animate-pulse shadow-lg"
-                    : "bg-black/60 text-white border-white/20 hover:bg-black/80"
-                )}
-              >
-                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-              </button>
-
+       )}>
+          
+          {/* HEADER (Solo Cast, Mute se movió al centro) */}
+          <div className="flex justify-end items-start w-full">
               <div className="pointer-events-auto w-10 h-10 opacity-80 hover:opacity-100 transition-opacity">
                  <google-cast-launcher style={{ width: '100%', height: '100%' }}></google-cast-launcher>
               </div>
           </div>
 
-          {/* CENTER UI */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {/* === CENTER UI: BOTONES LADO A LADO === */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none gap-8 md:gap-12">
+             
+             {/* 1. BOTÓN PLAY/PAUSE */}
              <button 
-               onClick={(e) => {
-                  e.stopPropagation();
-                  if (isMuted) {
-                    handleToggleMute(e);
-                  } else {
-                    togglePlay(e);
-                  }
-               }}
+               onClick={togglePlay}
                className={cn(
                  "pointer-events-auto group flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 shadow-2xl transition-all duration-300 ease-out",
                  "hover:bg-black/50 hover:scale-110 active:scale-95",
+                 // Visibilidad específica para Play: Oculto si no hay interacción y no está muteado
+                 (!showControls && !isMuted) ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100 pointer-events-auto"
+               )}
+             >
+                {isUserPlaying ? (
+                  <Pause size={42} fill="white" className="text-white drop-shadow-md" />
+                ) : (
+                  <Play size={42} fill="white" className="text-white ml-1 drop-shadow-md" />
+                )}
+             </button>
+
+             {/* 2. BOTÓN MUTE/UNMUTE */}
+             <button 
+               onClick={handleToggleMute}
+               className={cn(
+                 "pointer-events-auto group flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 shadow-2xl transition-all duration-300 ease-out",
+                 "hover:bg-black/50 hover:scale-110 active:scale-95",
+                 // Si está Muted, este botón destaca más (pulsando o rojo)
+                 isMuted && "bg-red-500/20 border-red-500/50 animate-pulse",
                  (!showControls && !isMuted) ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100 pointer-events-auto"
                )}
              >
                 {isMuted ? (
-                  <VolumeX size={48} fill="white" className="text-white drop-shadow-md" />
-                ) : isUserPlaying ? (
-                  <Pause size={48} fill="white" className="text-white drop-shadow-md" />
+                  <VolumeX size={42} fill="white" className="text-white drop-shadow-md" />
                 ) : (
-                  <Play size={48} fill="white" className="text-white ml-1 drop-shadow-md" />
+                  <Volume2 size={42} fill="white" className="text-white drop-shadow-md" />
                 )}
              </button>
+
           </div>
 
           <div className="w-full h-10" />
