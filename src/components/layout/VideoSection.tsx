@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
+import { useVolume } from '@/context/VolumeContext'; 
 import VideoPlayer from '@/components/player/VideoPlayer'; 
 import { cn } from '@/lib/utils';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
@@ -18,41 +19,35 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const { state, handleIntroEnded, handleContentEnded } = useMediaPlayer();
   const { currentContent, currentIntroUrl, isIntroVisible, shouldPlayContent } = state;
   
+  // Consumimos el contexto global de volumen
+  const { isMuted, toggleMute, unmute } = useVolume(); 
+  
   const introVideoRef = useRef<HTMLVideoElement>(null);
   
   // Estados de Interfaz
   const [showControls, setShowControls] = useState(false);
   const [isUserPlaying, setIsUserPlaying] = useState(true); 
-  const [isUserMuted, setIsUserMuted] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Estado para Barras de Cine (Inician visibles)
   const [showCinemaBars, setShowCinemaBars] = useState(true);
 
-  // --- LÓGICA DE BARRAS DE CINE (3 Segundos y Fuera) ---
+  // --- LÓGICA DE BARRAS DE CINE (3 Segundos) ---
   useEffect(() => {
-    // 1. Si estamos viendo la Intro o cargando, las barras se REINICIAN a visibles (preparando el terreno)
     if (isIntroVisible) {
         setShowCinemaBars(true);
         return;
     }
-
-    // 2. Si la Intro terminó Y es un Video (no un Slide)
+    // Si NO es Intro, hay contenido y NO es Slide
     if (!isIntroVisible && currentContent && !('url_slide' in currentContent)) {
-        // Esperar 3 segundos con las barras puestas
         const timer = setTimeout(() => {
-            // Retirar las barras
             setShowCinemaBars(false);
         }, 3000);
-
         return () => clearTimeout(timer);
     }
-    
-    // 3. Si es un Slide, forzamos retiro inmediato (aunque el render condicional abajo también lo evita)
+    // Si es Slide
     if (currentContent && 'url_slide' in currentContent) {
         setShowCinemaBars(false);
     }
-
   }, [isIntroVisible, currentContent]);
 
 
@@ -62,29 +57,34 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     if (isIntroVisible && currentIntroUrl && videoEl) {
         videoEl.src = currentIntroUrl;
         videoEl.load();
+        
+        // Sincronizar volumen del intro
+        videoEl.muted = isMuted;
+
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
             playPromise.catch(() => {
-                console.warn("Autoplay intro bloqueado, intentando mute...");
+                console.warn("Autoplay intro bloqueado, forzando mute...");
                 videoEl.muted = true;
                 videoEl.play();
             });
         }
         setIsUserPlaying(true); 
     }
-  }, [currentIntroUrl, isIntroVisible]);
+  }, [currentIntroUrl, isIntroVisible, isMuted]);
 
   const onIntroEnd = () => {
     handleIntroEnded(); 
   };
 
-  // --- GESTIÓN DE INTERACCIÓN (Controles) ---
+  // --- GESTIÓN DE INTERACCIÓN ---
   const handleInteraction = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     
-    // Ocultar controles automáticamente tras 3 segundos (salvo si está muteado)
-    if (isUserPlaying && !isIntroVisible && !isUserMuted) {
+    // Ocultar controles automáticamente tras 3 segundos
+    // EXCEPCIÓN: Si está muteado, NO ocultar (El botón gigante debe seguir invitando a desmutear)
+    if (isUserPlaying && !isIntroVisible && !isMuted) {
         controlsTimeoutRef.current = setTimeout(() => {
             setShowControls(false);
         }, 3000);
@@ -104,15 +104,13 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     }
   };
 
-  const toggleMute = (e: React.MouseEvent) => {
+  const handleToggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsUserMuted(!isUserMuted);
+    toggleMute(); 
     handleInteraction();
   };
 
   const isVideoActive = shouldPlayContent && isUserPlaying;
-  
-  // Helper para saber si es slide y no renderizar barras innecesarias en el DOM
   const isSlide = currentContent && 'url_slide' in currentContent;
 
   return (
@@ -143,7 +141,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
                 content={currentContent}
                 shouldPlay={isVideoActive} 
                 onEnded={handleContentEnded}
-                muted={isUserMuted} 
+                muted={isMuted} 
              />
           )}
        </div>
@@ -151,18 +149,15 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        {/* === CAPA Z-20: ESCUDO FANTASMA === */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* === CAPA Z-30: BARRAS DE CINE (AUTO-RETIRADA) === */}
+       {/* === CAPA Z-30: BARRAS DE CINE === */}
        {!isSlide && (
          <>
-            {/* Barra Superior: 20% altura. Se retira hacia arriba (-translate-y-full) */}
             <div 
               className={cn(
                 "absolute top-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
                 showCinemaBars ? "translate-y-0" : "-translate-y-full"
               )} 
             />
-            
-            {/* Barra Inferior: 20% altura. Se retira hacia abajo (translate-y-full) */}
             <div 
               className={cn(
                 "absolute bottom-0 h-[20%] w-full bg-black z-30 pointer-events-none transition-transform duration-500 ease-in-out",
@@ -185,7 +180,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
             playsInline
             onEnded={onIntroEnd}
             onError={onIntroEnd}
-            muted={false}
+            // Muted controlado por useEffect
          />
        </div>
 
@@ -193,21 +188,21 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
        <div 
          className={cn(
            "absolute inset-0 z-50 flex flex-col justify-between p-4 transition-all duration-500 pointer-events-none",
-           (isUserMuted || showControls) ? "opacity-100" : "opacity-0"
+           (isMuted || showControls) ? "opacity-100" : "opacity-0"
          )}
        >
-          {/* HEADER UI */}
+          {/* HEADER UI: Botón Mute Superior (Feedback extra) + Cast */}
           <div className="flex justify-between items-start w-full">
               <button 
-                onClick={toggleMute} 
+                onClick={handleToggleMute} 
                 className={cn(
                   "pointer-events-auto p-3 rounded-full backdrop-blur border transition-all hover:scale-105",
-                  isUserMuted 
+                  isMuted 
                     ? "bg-red-500/80 text-white border-red-400 animate-pulse shadow-lg"
                     : "bg-black/60 text-white border-white/20 hover:bg-black/80"
                 )}
               >
-                {isUserMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
               </button>
 
               <div className="pointer-events-auto w-10 h-10 opacity-80 hover:opacity-100 transition-opacity">
@@ -215,33 +210,47 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
               </div>
           </div>
 
-          {/* CENTER UI: BOTÓN HÍBRIDO */}
+          {/* === BOTÓN CENTRAL GIGANTE (UNMUTE / PLAY / PAUSE) === */}
+          {/* Ubicación: Centro Absoluto */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
              <button 
                onClick={(e) => {
                   e.stopPropagation();
-                  if (isUserMuted) {
-                    toggleMute(e);
+                  // LÓGICA DE ACCIÓN:
+                  // 1. Si está Muteado -> ACTIVAR SONIDO (Prioridad Máxima)
+                  // 2. Si tiene Sonido -> Alternar Play/Pause
+                  if (isMuted) {
+                    handleToggleMute(e);
                   } else {
                     togglePlay(e);
                   }
                }}
                className={cn(
-                 "pointer-events-auto group flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-6 transition-all duration-300 ease-out shadow-2xl",
-                 "hover:bg-black/50 hover:scale-105 active:scale-95",
-                 (!showControls && !isUserMuted) ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100 pointer-events-auto"
+                 // CLON VISUAL SOLICITADO:
+                 // p-4 (o p-6 para mejor touch), bg-black/40, rounded-full, backdrop-blur-md
+                 "pointer-events-auto group flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 shadow-2xl transition-all duration-300 ease-out",
+                 "hover:bg-black/50 hover:scale-110 active:scale-95",
+                 
+                 // LÓGICA DE VISIBILIDAD:
+                 // Si está Muteado -> SIEMPRE VISIBLE (opacity-100)
+                 // Si tiene Sonido y No hay Controles -> OCULTO (opacity-0)
+                 (!showControls && !isMuted) ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100 pointer-events-auto"
                )}
              >
-                {isUserMuted ? (
-                  <VolumeX size={48} className="text-white fill-white/10" strokeWidth={1.5} />
+                {isMuted ? (
+                  /* ESTADO MUTEADO: Volumen Tachado Grande */
+                  <VolumeX size={48} fill="white" className="text-white drop-shadow-md" />
                 ) : isUserPlaying ? (
-                  <Pause size={48} className="text-white fill-white" strokeWidth={0} />
+                  /* ESTADO PLAY: Pausa */
+                  <Pause size={48} fill="white" className="text-white drop-shadow-md" />
                 ) : (
-                  <Play size={48} className="text-white fill-white ml-1" strokeWidth={0} />
+                  /* ESTADO PAUSA: Play */
+                  <Play size={48} fill="white" className="text-white ml-1 drop-shadow-md" />
                 )}
              </button>
           </div>
 
+          {/* Footer Spacer */}
           <div className="w-full h-10" />
        </div>
     </div>
