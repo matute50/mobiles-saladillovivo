@@ -15,7 +15,19 @@ import type { Swiper as SwiperClass } from 'swiper';
 import 'swiper/css';
 
 const STOP_WORDS = new Set(["el","la","los","las","un","una","unos","unas","lo","al","del","a","ante","bajo","con","contra","de","desde","durante","en","entre","hacia","hasta","mediante","para","por","según","sin","sobre","tras","y","o","u","e","ni","pero","aunque","sino","porque","como","que","si","me","te","se","nos","os","les","mi","mis","tu","tus","su","sus","nuestro","nuestra","nuestros","nuestras","este","esta","estos","estas","ese","esa","esos","esas","aquel","aquella","aquellos","aquellas","ser","estar","haber","tener","hacer","ir","ver","dar","decir","puede","pueden","fue","es","son","era","eran","esta","estan","hay","mas","más","menos","muy","ya","aqui","ahí","asi","así","tambien","también","solo","sólo","todo","todos","todas","algo","nada"]);
-const MOCK_DATA = { articles: { featuredNews: null, secondaryNews: [], otherNews: [] }, videos: { allVideos: [], liveStream: null }, ads: [] };
+
+// CORRECCIÓN 1: Agregamos un video de respaldo en MOCK_DATA por si falla la carga de datos
+const MOCK_DATA = {
+  articles: { featuredNews: null, secondaryNews: [], otherNews: [] },
+  videos: { 
+    allVideos: [
+       // Video dummy para evitar pantalla negra eterna si no hay datos
+       { id: 'backup-1', nombre: 'Saladillo Vivo', url: 'https://www.youtube.com/watch?v=ysz5S6P_bsI', categoria: 'General', fecha: new Date().toISOString() }
+    ], 
+    liveStream: null 
+  },
+  ads: []
+};
 const CATEGORY_MAP: Record<string, string> = { 'export': 'Gente de Acá', 'SEMBRANDO FUTURO': 'Sembrando Futuro', 'ARCHIVO SALADILLO VIVO': 'De Otros Tiempos', 'historia': 'De Otros Tiempos', 'Noticias': 'Últimas Noticias', 'clips': 'Saladillo Canta', 'cortos': 'Hacelo Corto', 'TU BUSQUEDA': 'TU BUSQUEDA' };
 
 const getDisplayCategory = (dbCat: string) => {
@@ -125,7 +137,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
   const safeData = data || MOCK_DATA;
   const { articles, videos, ads } = safeData as PageData;
   const { isDark, toggleTheme } = useTheme(); 
-  const { playManual, setVideoPool } = useMediaPlayer(); 
+  const { playManual, setVideoPool, currentVideo } = useMediaPlayer(); // Agregamos currentVideo
   const { unmute } = useVolume(); 
   
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
@@ -147,6 +159,15 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
 
   useEffect(() => { if (videos?.allVideos?.length > 0) setVideoPool(videos.allVideos); }, [videos, setVideoPool]);
 
+  // CORRECCIÓN 2: AUTO-SELECCIONAR EL PRIMER VIDEO SI NO HAY NINGUNO SELECCIONADO
+  useEffect(() => {
+    // Si la lista de videos existe y tiene elementos, pero currentVideo es null
+    if (videos?.allVideos?.length > 0 && !currentVideo) {
+       // Seleccionamos el primero automáticamente
+       playManual(videos.allVideos[0]);
+    }
+  }, [videos, currentVideo, playManual]);
+
   useEffect(() => {
     const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
@@ -160,7 +181,6 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     if (outcome === 'accepted') setDeferredPrompt(null);
   };
 
-  // --- AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA ---
   const handleShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
@@ -173,11 +193,9 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
         console.log('Error sharing:', error);
       }
     } else {
-        // Fallback simple si no hay share nativo (opcional)
         console.log("Web Share API no soportada");
     }
   };
-  // ----------------------------------------
 
   useEffect(() => {
     if (!searchQuery.trim()) { setFilteredVideos([]); return; }
@@ -254,7 +272,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
             </div>
         </header>
 
-        {/* CONTENEDOR VIDEO (aspect-video crítico) */}
+        {/* CONTENEDOR VIDEO */}
         <div className={cn("shrink-0 sticky top-11 z-30 w-full aspect-video shadow-xl border-b transition-colors", themeClasses.playerWrapper)}>
           <VideoSection isMobile={true} />
         </div>
