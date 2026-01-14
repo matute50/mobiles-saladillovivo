@@ -51,10 +51,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
       setIsFadingOut(false);
       scheduleTimers(articleData?.animation_duration || 15);
     }
-    return () => {
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-      if (endTimerRef.current) clearTimeout(endTimerRef.current);
-    };
   }, [isArticle, shouldPlay, articleData, scheduleTimers]);
 
   useEffect(() => {

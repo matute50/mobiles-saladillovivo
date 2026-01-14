@@ -100,14 +100,12 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const { isDark, toggleTheme } = useTheme(); 
   const { playManual, setVideoPool } = useMediaPlayer(); 
   const { unmute } = useVolume();
-  
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const [adsSwiper, setAdsSwiper] = useState<SwiperClass | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([]);
   
-  // Modal de info con vistas: 'decreto' o 'creador'
   const [infoModal, setInfoModal] = useState<{ isOpen: boolean; view: 'decreto' | 'creador' }>({
     isOpen: false,
     view: 'decreto'
@@ -136,52 +134,34 @@ export default function MobileLayout({ data }: { data: PageData }) {
   return (
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden transition-colors", isDark ? "bg-black" : "bg-neutral-50")}>
       
-      {/* MODAL MULTI-TARJETA */}
       {infoModal.isOpen && (
         <div className="fixed inset-0 z-[500] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md" onClick={() => setInfoModal({ ...infoModal, isOpen: false })}>
-          <div className={cn("relative w-full max-w-md p-6 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col items-center animate-in zoom-in-95 duration-200", isDark ? "bg-neutral-900 text-white border border-white/10" : "bg-white text-neutral-900")} onClick={(e) => e.stopPropagation()}>
+          <div className={cn("relative w-full max-w-md p-6 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col items-center", isDark ? "bg-neutral-900 text-white border border-white/10" : "bg-white text-neutral-900")} onClick={(e) => e.stopPropagation()}>
              <button onClick={() => setInfoModal({ ...infoModal, isOpen: false })} className="absolute top-2 right-2 p-2 opacity-80 hover:opacity-100 bg-black/10 rounded-full transition-all z-[501]"><X size={32} /></button>
              
              {infoModal.view === 'decreto' ? (
                <div className="flex flex-col items-center w-full pt-4">
                   <p className="text-[13px] font-black text-center mb-6 uppercase tracking-widest leading-tight">Declarado de interés cultural<br/><span style={{ color: linkColor }} className="text-[11px] opacity-80">DECRETO H.C.D. Nro. 37/2022</span></p>
                   <div className="w-full relative bg-white rounded-lg shadow-inner overflow-hidden border border-neutral-200 mb-6">
-                    <img src="/DECRETO.png" alt="Decreto HCD" className="w-full h-auto block" />
+                    <img src="/DECRETO.png?v=2" alt="Decreto HCD" className="w-full h-auto block" />
                   </div>
-                  <button 
-                    onClick={() => setInfoModal({ isOpen: true, view: 'creador' })}
-                    className="text-xs font-bold underline uppercase tracking-widest hover:opacity-70 transition-opacity"
-                    style={{ color: linkColor }}
-                  >
-                    Conoce al creador
-                  </button>
+                  <button onClick={() => setInfoModal({ isOpen: true, view: 'creador' })} className="text-xs font-bold underline uppercase tracking-widest hover:opacity-70 transition-opacity" style={{ color: linkColor }}>Conoce al creador</button>
                </div>
              ) : (
-               <div className="flex flex-col items-center w-full pt-4">
-                  <div className="flex flex-col items-center mb-6">
-                    <h2 className="text-3xl font-black mb-1 text-center">Matías Vidal</h2>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded" style={{ backgroundColor: linkColor, color: 'white' }}>CREADOR DE SALADILLO VIVO</p>
-                  </div>
-                  
+               <div className="flex flex-col items-center w-full pt-4 text-center">
+                  <h2 className="text-3xl font-black mb-1">Matías Vidal</h2>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded mb-6" style={{ backgroundColor: linkColor, color: 'white' }}>CREADOR DE SALADILLO VIVO</p>
                   <div className="w-[180px] h-[180px] relative mb-6 rounded-full border-4 shadow-xl overflow-hidden" style={{ borderColor: linkColor }}>
                     <img src="/maraton.png" alt="Matías Vidal" className="w-full h-full object-cover" />
                   </div>
-
-                  <div className={cn("space-y-4 text-[14px] leading-relaxed text-center px-2", isDark ? "text-neutral-300" : "text-neutral-700")}>
-                    <p>Soy el creador de <strong style={{ color: linkColor }}>SALADILLO VIVO</strong>, un medio local hecho desde cero con tecnología propia y una visión muy clara: conectar mi comunidad con contenidos relevantes y cercanos.</p>
-                    <p>Desde las apps para TV, web y móviles hasta el sistema de noticias, todo lo programé yo. No contraté a nadie, no tercericé tareas: el código, el acopio de contenidos, la cámara, la edición y hasta el streaming, salen de mis propias ideas.</p>
-                    <p className="font-black italic py-2 border-y border-neutral-500/20 italic">"Nunca fue mi intención poner a funcionar una plataforma más, sino crear identidad."</p>
-                    <p>Quiero mostrar a Saladillo en su diversidad: sus historias, sus voces, su arte, porque además de técnico, también soy parte de una red viva llena de talentosos e incansables a los que acompaño desde mi lugar, ofreciendo mi medio como espacio para que sus expresiones lleguen más lejos.</p>
-                    <p>El motor detrás de todo esto no es una estrategia de negocio. Es el amor por mi ciudad y el deseo de ver crecer a los demás.</p>
-                    <p className="text-sm font-medium pt-2">Es la misma energía que me lleva, cada semana, a correr muchos kilómetros entrenando para una nueva maratón, donde cada paso es constancia, esfuerzo, y visión de llegada.</p>
+                  <div className={cn("space-y-4 text-[14px] leading-relaxed px-2", isDark ? "text-neutral-300" : "text-neutral-700")}>
+                    <p>Soy el creador de <strong style={{ color: linkColor }}>SALADILLO VIVO</strong>, un medio local hecho desde cero con tecnología propia...</p>
+                    <p>Desde las apps para TV, web y móviles hasta el sistema de noticias, todo lo programé yo...</p>
+                    <p className="font-black italic py-2 border-y border-neutral-500/20 italic text-pretty">"Nunca fue mi intención poner a funcionar una plataforma más, sino crear identidad."</p>
+                    <p>Quiero mostrar a Saladillo en su diversidad...</p>
+                    <p>Es la misma energía que me lleva, cada semana, a correr muchos kilómetros entrenando para una nueva maratón...</p>
                   </div>
-
-                  <button 
-                    onClick={() => setInfoModal({ isOpen: true, view: 'decreto' })}
-                    className="mt-8 text-xs font-bold underline uppercase tracking-widest hover:opacity-70 transition-opacity opacity-60"
-                  >
-                    Volver al Decreto
-                  </button>
+                  <button onClick={() => setInfoModal({ isOpen: true, view: 'decreto' })} className="mt-8 text-xs font-bold underline uppercase tracking-widest opacity-60">Volver al Decreto</button>
                </div>
              )}
           </div>
