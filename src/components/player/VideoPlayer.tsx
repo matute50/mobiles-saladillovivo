@@ -17,7 +17,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
   const [volume, setVolume] = useState(0); 
   const [isFadingOut, setIsFadingOut] = useState(false);
   
-  // Referencias para timers que permiten cancelación y reprogramación dinámica
   const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const endTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -25,54 +24,42 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
 
-  // --- LÓGICA DE CIERRE (onEnded con FadeOut previo) ---
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    // 500ms de gracia para el fade out antes de notificar al MediaPlayerContext
     setTimeout(() => onEnded(), 500);
   }, [onEnded]);
 
-  // --- PROGRAMACIÓN DINÁMICA DE DURACIÓN ---
   const scheduleTimers = useCallback((seconds: number) => {
-    // Limpiar timers previos si existen
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     if (endTimerRef.current) clearTimeout(endTimerRef.current);
 
     const ms = seconds * 1000;
     
-    // Timer para iniciar el Fade Out visual (0.5s antes del fin)
     fadeTimerRef.current = setTimeout(() => {
       setIsFadingOut(true);
     }, Math.max(0, ms - 500));
 
-    // Timer para disparar el evento de fin de contenido
     endTimerRef.current = setTimeout(() => {
       onEnded();
     }, ms);
   }, [onEnded]);
 
-  // --- LISTENER DE POSTMESSAGE ---
   useEffect(() => {
     if (!isArticle || !shouldPlay) return;
 
     const handleMessage = (event: MessageEvent) => {
-      // Validación básica de estructura de datos
       const { data } = event;
       if (!data || typeof data !== 'object') return;
 
       switch (data.type) {
         case 'SET_SLIDE_DURATION':
           if (typeof data.durationSeconds === 'number' && data.durationSeconds > 0) {
-            console.log(`[Slide] Nueva duración recibida: ${data.durationSeconds}s`);
             scheduleTimers(data.durationSeconds);
           }
           break;
-
         case 'SLIDE_ENDED':
-          console.log(`[Slide] Solicitud de finalización inmediata`);
           triggerEnd();
           break;
-        
         default:
           break;
       }
@@ -82,7 +69,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
     return () => window.removeEventListener('message', handleMessage);
   }, [isArticle, shouldPlay, scheduleTimers, triggerEnd]);
 
-  // --- EFECTO INICIAL (BD Fallback) ---
   useEffect(() => {
     if (isArticle && shouldPlay) {
       setIsFadingOut(false);
@@ -95,7 +81,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
     };
   }, [isArticle, shouldPlay, articleData, scheduleTimers]);
 
-  // --- LÓGICA DE VOLUMEN (Solo para Videos) ---
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (shouldPlay && !muted && !isArticle) {
@@ -103,7 +88,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
       let currentVol = 0;
       interval = setInterval(() => {
         currentVol += 0.05; 
-        if (currentVol >= 1) { currentVol = 1; clearInterval(interval!); }
+        if (currentVol >= 1) { currentVol = 1; if(interval) clearInterval(interval); }
         setVolume(currentVol);
       }, 50); 
     } else if (muted) {
@@ -112,7 +97,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
     return () => { if (interval) clearInterval(interval); };
   }, [shouldPlay, muted, isArticle]);
 
-  // === RENDER: SLIDE HTML ===
   if (isArticle && articleData?.url_slide) {
     return (
       <div className={cn("w-full h-full bg-black transition-opacity duration-500", isFadingOut ? "opacity-0" : "opacity-100")}>
@@ -121,7 +105,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
           className="w-full h-full border-0"
           scrolling="no"
           allow="autoplay; fullscreen"
-          // Mantenemos allow-scripts para que el postMessage funcione
           sandbox="allow-scripts allow-forms allow-presentation" 
           onLoad={() => { if(onStart) onStart(); }}
           title="Saladillo Vivo News Slide"
@@ -130,15 +113,35 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
     );
   }
 
-  // === RENDER: YOUTUBE PLAYER ===
   if (videoData) {
     return (
       <ReactPlayer
         url={videoData.url}
-        width="100%" height="100%"
+        width="100%"
+        height="100%"
         playing={shouldPlay} 
         muted={muted}
         volume={volume}
         onEnded={onEnded}
         onStart={onStart}
-        plays
+        playsinline={true} 
+        config={{
+          youtube: {
+            playerVars: {
+              autoplay: 1,
+              controls: 0,
+              modestbranding: 1,
+              rel: 0,
+              showinfo: 0,
+              iv_load_policy: 3,
+              fs: 0,
+              disablekb: 1,
+              origin: typeof window !== 'undefined' ? window.location.origin : undefined
+            }
+          }
+        }}
+      />
+    );
+  }
+  return null;
+}
