@@ -16,18 +16,22 @@ import 'swiper/css';
 
 const STOP_WORDS = new Set(["el","la","los","las","un","una","unos","unas","lo","al","del","a","ante","bajo","con","contra","de","desde","durante","en","entre","hacia","hasta","mediante","para","por","según","sin","sobre","tras","y","o","u","e","ni","pero","aunque","sino","porque","como","que","si","me","te","se","nos","os","les","mi","mis","tu","tus","su","sus","nuestro","nuestra","nuestros","nuestras","este","esta","estos","estas","ese","esa","esos","esas","aquel","aquella","aquellos","aquellas","ser","estar","haber","tener","hacer","ir","ver","dar","decir","puede","pueden","fue","es","son","era","eran","esta","estan","hay","mas","más","menos","muy","ya","aqui","ahí","asi","así","tambien","también","solo","sólo","todo","todos","todas","algo","nada"]);
 
-// CORRECCIÓN 1: Agregamos un video de respaldo en MOCK_DATA por si falla la carga de datos
+// VIDEO DE RESPALDO (Siempre disponible)
+const BACKUP_VIDEO: Video = { 
+  id: 'backup-default', 
+  nombre: 'Saladillo Vivo - Transmisión', 
+  url: 'https://www.youtube.com/watch?v=ysz5S6P_bsI', 
+  categoria: 'General', 
+  fecha: new Date().toISOString(),
+  imagen: 'https://img.youtube.com/vi/ysz5S6P_bsI/mqdefault.jpg'
+};
+
 const MOCK_DATA = {
   articles: { featuredNews: null, secondaryNews: [], otherNews: [] },
-  videos: { 
-    allVideos: [
-       // Video dummy para evitar pantalla negra eterna si no hay datos
-       { id: 'backup-1', nombre: 'Saladillo Vivo', url: 'https://www.youtube.com/watch?v=ysz5S6P_bsI', categoria: 'General', fecha: new Date().toISOString() }
-    ], 
-    liveStream: null 
-  },
+  videos: { allVideos: [BACKUP_VIDEO], liveStream: null },
   ads: []
 };
+
 const CATEGORY_MAP: Record<string, string> = { 'export': 'Gente de Acá', 'SEMBRANDO FUTURO': 'Sembrando Futuro', 'ARCHIVO SALADILLO VIVO': 'De Otros Tiempos', 'historia': 'De Otros Tiempos', 'Noticias': 'Últimas Noticias', 'clips': 'Saladillo Canta', 'cortos': 'Hacelo Corto', 'TU BUSQUEDA': 'TU BUSQUEDA' };
 
 const getDisplayCategory = (dbCat: string) => {
@@ -135,11 +139,17 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
 
 export default function MobileLayout({ data, isMobile }: { data: PageData; isMobile: boolean }) {
   const safeData = data || MOCK_DATA;
-  const { articles, videos, ads } = safeData as PageData;
+  const { articles, ads } = safeData as PageData;
   const { isDark, toggleTheme } = useTheme(); 
-  const { playManual, setVideoPool, currentVideo } = useMediaPlayer(); // Agregamos currentVideo
+  const { playManual, setVideoPool, currentVideo } = useMediaPlayer();
   const { unmute } = useVolume(); 
   
+  // LOGICA ROBUSTA DE VIDEOS
+  // 1. Extraemos los videos que vienen de la DB
+  const rawVideos = safeData.videos?.allVideos || [];
+  // 2. Si la lista está vacía, usamos el BACKUP VIDEO forzosamente
+  const activeVideos = rawVideos.length > 0 ? rawVideos : [BACKUP_VIDEO];
+
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const [adsSwiper, setAdsSwiper] = useState<SwiperClass | null>(null);
   const [infoModal, setInfoModal] = useState<{ open: boolean; view: 'DECRETO' | 'BIO' }>({ open: false, view: 'DECRETO' });
@@ -157,16 +167,21 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     playerWrapper: isDark ? "bg-black border-white/5" : "bg-white border-neutral-200",
   };
 
-  useEffect(() => { if (videos?.allVideos?.length > 0) setVideoPool(videos.allVideos); }, [videos, setVideoPool]);
-
-  // CORRECCIÓN 2: AUTO-SELECCIONAR EL PRIMER VIDEO SI NO HAY NINGUNO SELECCIONADO
-  useEffect(() => {
-    // Si la lista de videos existe y tiene elementos, pero currentVideo es null
-    if (videos?.allVideos?.length > 0 && !currentVideo) {
-       // Seleccionamos el primero automáticamente
-       playManual(videos.allVideos[0]);
+  // ESTABLECER EL POOL DE VIDEOS (Usando la lista segura activeVideos)
+  useEffect(() => { 
+    if (activeVideos.length > 0) {
+      setVideoPool(activeVideos); 
     }
-  }, [videos, currentVideo, playManual]);
+  }, [activeVideos, setVideoPool]);
+
+  // AUTO-PLAY INICIAL
+  useEffect(() => {
+    // Si no hay video actual y tenemos videos disponibles
+    if (!currentVideo && activeVideos.length > 0) {
+       console.log("Auto-seleccionando video:", activeVideos[0].nombre);
+       playManual(activeVideos[0]);
+    }
+  }, [activeVideos, currentVideo, playManual]);
 
   useEffect(() => {
     const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
@@ -201,9 +216,9 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     if (!searchQuery.trim()) { setFilteredVideos([]); return; }
     const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 0 && !STOP_WORDS.has(w)); 
     if (queryWords.length === 0) { setFilteredVideos([]); return; }
-    const results = (videos?.allVideos || []).filter(video => queryWords.some(qWord => (video.nombre || "").toLowerCase().includes(qWord)));
+    const results = activeVideos.filter(video => queryWords.some(qWord => (video.nombre || "").toLowerCase().includes(qWord)));
     setFilteredVideos(results.map(v => ({ ...v, categoria: 'TU BUSQUEDA' })));
-  }, [searchQuery, videos]);
+  }, [searchQuery, activeVideos]);
 
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) setTimeout(() => { searchInputRef.current?.focus(); }, 50);
@@ -289,7 +304,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
             </Swiper>
           </div>
           <div className="h-[160px] shrink-0 flex flex-col -mt-[5px]">
-              <div className={cn("flex-1 rounded-xl p-2 border transition-colors", themeClasses.containerVideo)}><VideoCarouselBlock videos={(isSearchOpen && searchQuery.length > 0) ? filteredVideos : (videos?.allVideos || [])} isDark={isDark} /></div>
+              <div className={cn("flex-1 rounded-xl p-2 border transition-colors", themeClasses.containerVideo)}><VideoCarouselBlock videos={(isSearchOpen && searchQuery.length > 0) ? filteredVideos : activeVideos} isDark={isDark} /></div>
           </div>
           <div className="w-full flex-1 min-h-0 mt-2">
               <Swiper modules={[Controller]} onSwiper={setAdsSwiper} controller={{ control: newsSwiper }} spaceBetween={10} slidesPerView={1} loop={adsSlides.length > 3} className="h-full w-full">
