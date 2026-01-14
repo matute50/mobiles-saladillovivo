@@ -21,12 +21,13 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
   useEffect(() => { setIsContentStarted(false); }, [currentContent]);
 
+  // MODIFICACIÓN: Barras de cine ahora permanecen 2 segundos (2000ms)
   useEffect(() => {
     if (isIntroVisible) { setShowCinemaBars(true); return; }
     if (currentContent && 'url_slide' in currentContent) { setShowCinemaBars(false); return; }
     if (!isUserPlaying) setShowCinemaBars(true);
     else {
-      const t = setTimeout(() => setShowCinemaBars(false), 3000);
+      const t = setTimeout(() => setShowCinemaBars(false), 2000); 
       return () => clearTimeout(t);
     }
   }, [isIntroVisible, currentContent, isUserPlaying]);
@@ -40,17 +41,23 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     }
   }, [currentIntroUrl, isIntroVisible, isMuted]);
 
+  // MODIFICACIÓN: Controles desaparecen tras 0.5 segundos (500ms)
   useEffect(() => {
-    if (showControls && isUserPlaying && !isIntroVisible && !isMuted) {
+    if (showControls && isUserPlaying && !isIntroVisible) {
       controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 500);
     }
     return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
-  }, [showControls, isUserPlaying, isIntroVisible, isMuted]);
+  }, [showControls, isUserPlaying, isIntroVisible]);
 
   const handleStart = () => { setIsContentStarted(true); setTimeout(handleIntroEnded, 200); };
-  const handleInteraction = () => { setShowControls(true); if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
+  
+  const handleInteraction = () => { 
+    setShowControls(true); 
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); 
+  };
 
   return (
+    /* MODIFICACIÓN: Eliminado shadow y border del contenedor principal */
     <div className="w-full h-full bg-black relative overflow-hidden select-none" onMouseMove={handleInteraction} onClick={handleInteraction}>
       <style jsx global>{`.analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }`}</style>
       
@@ -72,13 +79,14 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
         <video ref={introVideoRef} className="w-full h-full object-cover" playsInline />
       </div>
 
-      <div className={cn("absolute inset-0 z-50 flex flex-col justify-between p-4 transition-all duration-300 pointer-events-none", (isMuted || showControls) ? "opacity-100" : "opacity-0")}>
+      {/* CONTROLES: La transición de opacidad ahora es más rápida (duration-200) para acompañar los 0.5s */}
+      <div className={cn("absolute inset-0 z-50 flex flex-col justify-between p-4 transition-opacity duration-200 pointer-events-none", (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0")}>
         <div className="flex justify-end w-full"><div className="pointer-events-auto w-10 h-10"><google-cast-launcher style={{width:'40px', height:'40px'}} /></div></div>
         <div className="absolute inset-0 flex items-center justify-center gap-6 pointer-events-none">
-          <button onClick={(e) => { e.stopPropagation(); setIsUserPlaying(!isUserPlaying); handleInteraction(); }} className="pointer-events-auto flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 transition-all">
+          <button onClick={(e) => { e.stopPropagation(); setIsUserPlaying(!isUserPlaying); handleInteraction(); }} className="pointer-events-auto flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 transition-all active:scale-95">
             {isUserPlaying ? <Pause size={40} fill="white" className="text-white"/> : <Play size={40} fill="white" className="text-white ml-1"/>}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); toggleMute(); handleInteraction(); }} className={cn("pointer-events-auto flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 transition-all", isMuted && "bg-red-500/30 border-red-500")}>
+          <button onClick={(e) => { e.stopPropagation(); toggleMute(); handleInteraction(); }} className={cn("pointer-events-auto flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 transition-all active:scale-95", isMuted && "bg-red-500/30 border-red-500")}>
             {isMuted ? <VolumeX size={40} fill="white" className="text-white"/> : <Volume2 size={40} fill="white" className="text-white"/>}
           </button>
         </div>
