@@ -7,7 +7,6 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 
-// Usamos el player específico de YouTube para recuperar la estética
 const ReactPlayer = dynamic(() => import('react-player/youtube'), { ssr: false });
 
 const INTERNAL_BACKUP = {
@@ -22,7 +21,9 @@ interface VideoSectionProps {
 
 export default function VideoSection({ isMobile }: VideoSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
-  const [appOrigin, setAppOrigin] = useState(""); // Nuevo estado para el origen
+  
+  // Obtenemos el origen de forma segura y síncrona
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
 
   const { currentVideo, isPlaying, togglePlay } = useMediaPlayer();
   const { isMuted, toggleMute } = useVolume();
@@ -32,13 +33,8 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Inicialización segura
   useEffect(() => {
     setIsMounted(true);
-    // Capturamos el dominio actual para autorizar a YouTube
-    if (typeof window !== 'undefined') {
-      setAppOrigin(window.location.origin);
-    }
   }, []);
 
   const handleInteraction = useCallback(() => {
@@ -59,6 +55,20 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
 
   if (!isMounted) return <div className="w-full h-full bg-black" />;
 
+  // Función segura para Play/Pause
+  const safeTogglePlay = (e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) e.stopPropagation();
+    if (togglePlay) togglePlay(); // Verifica que la función exista
+    handleInteraction();
+  };
+
+  // Función segura para Mute
+  const safeToggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (toggleMute) toggleMute(); // Verifica que la función exista
+    handleInteraction();
+  };
+
   return (
     <div 
       className="relative w-full h-full bg-black overflow-hidden group select-none"
@@ -78,9 +88,8 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
           config={{
             youtube: {
               playerVars: { 
-                // CRÍTICO: Inyectamos el origen para evitar el error de postMessage
-                origin: appOrigin,
-                enablejsapi: 1, // Habilita la API para que funcionen los estilos
+                origin: appOrigin, // CRÍTICO: Se pasa directo, sin estado
+                enablejsapi: 1, 
                 showinfo: 0, 
                 modestbranding: 1, 
                 rel: 0, 
@@ -111,7 +120,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
         {/* Play Gigante */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
            <button 
-             onClick={(e) => { e.stopPropagation(); togglePlay(); handleInteraction(); }}
+             onClick={safeTogglePlay}
              className="pointer-events-auto bg-black/40 p-4 rounded-full backdrop-blur-sm border border-white/20 hover:scale-110 transition-transform shadow-xl active:scale-95"
            >
               {isPlaying ? <Pause fill="white" size={32} className="text-white"/> : <Play fill="white" size={32} className="text-white ml-1"/>}
@@ -121,11 +130,11 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
         {/* Pie */}
         <div className="flex justify-between items-center bg-black/60 p-2 rounded-lg backdrop-blur-md border border-white/10">
            <div className="flex items-center gap-4">
-              <button onClick={(e) => { e.stopPropagation(); togglePlay(); handleInteraction(); }}>
+              <button onClick={safeTogglePlay}>
                 {isPlaying ? <Pause size={20} className="text-white"/> : <Play size={20} className="text-white"/>}
               </button>
               
-              <button onClick={(e) => { e.stopPropagation(); toggleMute(); handleInteraction(); }}>
+              <button onClick={safeToggleMute}>
                 {isMuted ? <VolumeX size={20} className="text-red-500"/> : <Volume2 size={20} className="text-white"/>}
               </button>
               

@@ -16,7 +16,6 @@ import 'swiper/css';
 
 const STOP_WORDS = new Set(["el","la","los","las","un","una","unos","unas","lo","al","del","a","ante","bajo","con","contra","de","desde","durante","en","entre","hacia","hasta","mediante","para","por","según","sin","sobre","tras","y","o","u","e","ni","pero","aunque","sino","porque","como","que","si","me","te","se","nos","os","les","mi","mis","tu","tus","su","sus","nuestro","nuestra","nuestros","nuestras","este","esta","estos","estas","ese","esa","esos","esas","aquel","aquella","aquellos","aquellas","ser","estar","haber","tener","hacer","ir","ver","dar","decir","puede","pueden","fue","es","son","era","eran","esta","estan","hay","mas","más","menos","muy","ya","aqui","ahí","asi","así","tambien","también","solo","sólo","todo","todos","todas","algo","nada"]);
 
-// VIDEO DE RESPALDO (Siempre disponible)
 const BACKUP_VIDEO: Video = { 
   id: 'backup-default', 
   nombre: 'Saladillo Vivo - Transmisión', 
@@ -68,6 +67,7 @@ function useTheme() {
   return { isDark: mounted ? isDark : true, toggleTheme };
 }
 
+// MobileNewsCard con clic protegido
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFeatured: boolean; onClick: () => void; isDark: boolean }) {
   if (!news) return null;
   return (
@@ -91,10 +91,17 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFe
   );
 }
 
+// VideoCarouselBlock con clic protegido
 function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean }) {
   const { playManual } = useMediaPlayer(); 
   const { unmute } = useVolume(); 
   const [activeCatIndex, setActiveCatIndex] = useState(0);
+
+  // Wrapper seguro para reproducir
+  const handlePlay = (video: any) => {
+    if (unmute) unmute();
+    if (playManual) playManual(video);
+  };
 
   const categories = useMemo(() => {
     if (!videos || videos.length === 0) return [];
@@ -121,7 +128,7 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
       <Swiper slidesPerView={2.2} spaceBetween={10} className="w-full flex-1 min-h-0 px-1">
         {filteredVideos.map((video) => (
             <SwiperSlide key={video.id} className="h-full">
-               <div onClick={() => { unmute(); playManual(video); }} className={cn("relative h-full w-full rounded-lg overflow-hidden border active:scale-95 transition-transform group", isDark ? "bg-neutral-800 border-neutral-700/50" : "bg-white border-neutral-200 shadow-sm")}>
+               <div onClick={() => handlePlay(video)} className={cn("relative h-full w-full rounded-lg overflow-hidden border active:scale-95 transition-transform group", isDark ? "bg-neutral-800 border-neutral-700/50" : "bg-white border-neutral-200 shadow-sm")}>
                   <Image src={video.imagen || getYouTubeThumbnail(video.url)} alt={video.nombre} fill className="object-cover opacity-90 group-hover:opacity-100 transition-opacity" sizes="150px" />
                    <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                       <div className={cn("p-1.5 rounded-full backdrop-blur-sm border border-white/10", "-mt-[50px]", "bg-[#003399]/50")}> <Play size={21} fill="white" className="text-white" /> </div>
@@ -144,10 +151,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
   const { playManual, setVideoPool, currentVideo } = useMediaPlayer();
   const { unmute } = useVolume(); 
   
-  // LOGICA ROBUSTA DE VIDEOS
-  // 1. Extraemos los videos que vienen de la DB
   const rawVideos = safeData.videos?.allVideos || [];
-  // 2. Si la lista está vacía, usamos el BACKUP VIDEO forzosamente
   const activeVideos = rawVideos.length > 0 ? rawVideos : [BACKUP_VIDEO];
 
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
@@ -167,19 +171,15 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     playerWrapper: isDark ? "bg-black border-white/5" : "bg-white border-neutral-200",
   };
 
-  // ESTABLECER EL POOL DE VIDEOS (Usando la lista segura activeVideos)
   useEffect(() => { 
     if (activeVideos.length > 0) {
       setVideoPool(activeVideos); 
     }
   }, [activeVideos, setVideoPool]);
 
-  // AUTO-PLAY INICIAL
   useEffect(() => {
-    // Si no hay video actual y tenemos videos disponibles
     if (!currentVideo && activeVideos.length > 0) {
-       console.log("Auto-seleccionando video:", activeVideos[0].nombre);
-       playManual(activeVideos[0]);
+       if (playManual) playManual(activeVideos[0]);
     }
   }, [activeVideos, currentVideo, playManual]);
 
@@ -210,6 +210,12 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
     } else {
         console.log("Web Share API no soportada");
     }
+  };
+
+  // Wrapper seguro para clics en noticias
+  const handleNewsClick = (item: any) => {
+    if (unmute) unmute();
+    if (playManual) playManual(item);
   };
 
   useEffect(() => {
@@ -298,7 +304,7 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
             <Swiper modules={[Controller]} onSwiper={setNewsSwiper} controller={{ control: adsSwiper }} spaceBetween={10} slidesPerView={1} className="h-full w-full rounded-xl">
               {newsSlides.map((slide, index) => (
                 <SwiperSlide key={`news-${index}`}>
-                   <div className="w-full h-full flex justify-between">{slide.items.map((item) => (<MobileNewsCard key={item?.id} news={item} isFeatured={slide.type === 'featured'} onClick={() => { unmute(); playManual(item); }} isDark={isDark} />))}</div>
+                   <div className="w-full h-full flex justify-between">{slide.items.map((item) => (<MobileNewsCard key={item?.id} news={item} isFeatured={slide.type === 'featured'} onClick={() => handleNewsClick(item)} isDark={isDark} />))}</div>
                 </SwiperSlide>
               ))}
             </Swiper>
