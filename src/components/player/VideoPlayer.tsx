@@ -9,11 +9,11 @@ interface VideoPlayerProps {
   content: Video | Article;
   shouldPlay: boolean; 
   onEnded: () => void;
-  onReady?: () => void; // Nuevo prop para handshake
+  onStart?: () => void; // Cambiamos onReady por onStart
   muted: boolean;
 }
 
-export default function VideoPlayer({ content, shouldPlay, onEnded, onReady, muted }: VideoPlayerProps) {
+export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, muted }: VideoPlayerProps) {
   const [volume, setVolume] = useState(0); 
   const [isFadingOut, setIsFadingOut] = useState(false);
   
@@ -42,18 +42,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onReady, mut
     return () => { if (interval) clearInterval(interval); };
   }, [shouldPlay, muted, isArticle]);
 
-  useEffect(() => {
-    let fadeTimer: NodeJS.Timeout | null = null;
-    let endTimer: NodeJS.Timeout | null = null;
-
-    if (isArticle && shouldPlay) {
-      const exactDurationMs = (articleData?.animation_duration || 15) * 1000;
-      fadeTimer = setTimeout(() => setIsFadingOut(true), Math.max(0, exactDurationMs - 500));
-      endTimer = setTimeout(() => onEnded(), exactDurationMs);
-    }
-    return () => { if (fadeTimer) clearTimeout(fadeTimer); if (endTimer) clearTimeout(endTimer); };
-  }, [isArticle, shouldPlay, articleData, onEnded]);
-
   if (isArticle && articleData?.url_slide) {
     return (
       <div className={cn("w-full h-full bg-black transition-opacity duration-500", isFadingOut ? "opacity-0" : "opacity-100")}>
@@ -63,7 +51,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onReady, mut
           scrolling="no"
           allow="autoplay; fullscreen"
           sandbox="allow-scripts allow-forms allow-presentation" 
-          onLoad={() => { if(onReady) onReady(); }} // Los slides están listos al cargar iframe
+          onLoad={() => { if(onStart) onStart(); }}
         />
       </div>
     );
@@ -79,7 +67,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onReady, mut
         muted={muted}
         volume={volume}
         onEnded={onEnded}
-        onReady={onReady} // Handshake de YouTube
+        onStart={onStart} // CRÍTICO: Dispara cuando el video REALMENTE arranca
         playsinline={true} 
         config={{
           youtube: {

@@ -18,21 +18,14 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [showControls, setShowControls] = useState(false);
   const [isUserPlaying, setIsUserPlaying] = useState(true); 
   const [showCinemaBars, setShowCinemaBars] = useState(true);
-  const [isContentReady, setIsContentReady] = useState(false);
+  const [isContentStarted, setIsContentStarted] = useState(false);
 
-  // --- EFECTO RUIDO ANALÓGICO (Static) ---
-  const StaticEffect = () => (
-    <div className="absolute inset-0 z-[15] pointer-events-none overflow-hidden opacity-20 mix-blend-screen">
-      <div className="absolute inset-0 static-noise" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent animate-scanline" />
-    </div>
-  );
-
-  // Reiniciar Ready cuando cambia el contenido
+  // Reiniciar estado al cambiar de contenido
   useEffect(() => {
-    setIsContentReady(false);
+    setIsContentStarted(false);
   }, [currentContent]);
 
+  // Lógica de Barras de Cine
   useEffect(() => {
     if (isIntroVisible) { setShowCinemaBars(true); return; }
     if (currentContent && 'url_slide' in currentContent) { setShowCinemaBars(false); return; }
@@ -43,6 +36,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     }
   }, [isIntroVisible, currentContent, isUserPlaying]);
 
+  // Lógica Intro
   useEffect(() => {
     const videoEl = introVideoRef.current;
     if (isIntroVisible && currentIntroUrl && videoEl) {
@@ -54,11 +48,11 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     }
   }, [currentIntroUrl, isIntroVisible, isMuted]);
 
-  // Handshake: Se oculta intro solo cuando YouTube dice READY
-  const handleContentReady = () => {
-    setIsContentReady(true);
-    // Pequeño delay de seguridad para que el primer frame renderice
-    setTimeout(() => handleIntroEnded(), 300);
+  // Handshake de Seguridad: Solo soltamos el Intro cuando el video inició de verdad
+  const handleStartPlaying = () => {
+    setIsContentStarted(true);
+    // Damos un margen de 200ms para que el render de YouTube sea estable
+    setTimeout(() => handleIntroEnded(), 200);
   };
 
   const handleInteraction = () => {
@@ -83,38 +77,40 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   return (
     <div className="w-full h-full bg-black relative overflow-hidden select-none" onMouseMove={handleInteraction} onClick={handleInteraction}>
        <style jsx global>{`
-            .static-noise {
-                background-image: url("https://media.giphy.com/media/oEI9uWUicLpSc/giphy.gif");
-                background-size: cover;
-                opacity: 0.15;
+            .analog-noise {
+                background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px,
+                            repeating-conic-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 50%/2500px 2500px;
+                background-blend-mode: difference;
+                animation: shift .2s infinite alternate;
+                opacity: 0.12;
             }
-            @keyframes scanline {
-                0% { transform: translateY(-100%); }
-                100% { transform: translateY(100%); }
+            @keyframes shift {
+                100% { background-position: 50% 0, 51% 50%; }
             }
-            .animate-scanline { animation: scanline 4s linear infinite; }
        `}</style>
 
-       {/* CAPA Z-10: CONTENIDO (Solo Play si el intro está por terminar) */}
+       {/* CAPA Z-10: REPRODUCTOR */}
        <div className="absolute inset-0 z-10 pointer-events-none"> 
           {currentContent && (
              <VideoPlayer 
                 content={currentContent}
                 shouldPlay={shouldPlayContent && isUserPlaying} 
                 onEnded={handleContentEnded}
-                onReady={handleContentReady}
+                onStart={handleStartPlaying}
                 muted={isMuted} 
              />
           )}
        </div>
 
-       {/* CAPA Z-15: RUIDO ANALÓGICO (Cubre fallas de YouTube) */}
-       {(!isContentReady || !isUserPlaying) && <StaticEffect />}
+       {/* CAPA Z-15: RUIDO ANALÓGICO (Visible si no ha arrancado o si está pausado) */}
+       {(!isContentStarted || !isUserPlaying) && (
+         <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />
+       )}
 
-       {/* CAPA Z-20: ESCUDO */}
+       {/* CAPA Z-20: ESCUDO TÁCTIL */}
        <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-       {/* CAPA Z-30: BARRAS */}
+       {/* CAPA Z-30: BARRAS DE CINE */}
        {!(currentContent && 'url_slide' in currentContent) && (
          <>
             <div className={cn("absolute top-0 h-[20%] w-full bg-black z-30 transition-transform duration-500", showCinemaBars ? "translate-y-0" : "-translate-y-full")} />
@@ -122,9 +118,12 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
          </>
        )}
 
-       {/* CAPA Z-40: INTRO (Fade Out al estar Ready) */}
-       <div className={cn("absolute inset-0 z-40 bg-black transition-opacity duration-700", isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
-         <video ref={introVideoRef} className="w-full h-full object-cover" playsInline onEnded={() => {}} />
+       {/* CAPA Z-35: CORTINA NEGRA DE TRANSICIÓN (Evita ver a YouTube "desnudo") */}
+       <div className={cn("absolute inset-0 z-[35] bg-black transition-opacity duration-300", isContentStarted ? "opacity-0 pointer-events-none" : "opacity-100")} />
+
+       {/* CAPA Z-40: VIDEO INTRO */}
+       <div className={cn("absolute inset-0 z-40 bg-black transition-opacity duration-500", isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
+         <video ref={introVideoRef} className="w-full h-full object-cover" playsInline />
        </div>
 
        {/* CAPA Z-50: CONTROLES */}
