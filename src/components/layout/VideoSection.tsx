@@ -7,13 +7,13 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 
-// Importación segura del reproductor
-const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
+// VOLVEMOS AL MOTOR ESPECÍFICO DE YOUTUBE (Mejor estética)
+const ReactPlayer = dynamic(() => import('react-player/youtube'), { ssr: false });
 
-// --- VIDEO DE RESPALDO INTERNO (SALVAVIDAS) ---
+// VIDEO DE RESPALDO (Por seguridad)
 const INTERNAL_BACKUP = {
   nombre: 'Saladillo Vivo',
-  url: 'https://www.youtube.com/watch?v=ysz5S6P_bsI', // Tu transmisión o video default
+  url: 'https://www.youtube.com/watch?v=ysz5S6P_bsI',
   es_vivo: true
 };
 
@@ -23,17 +23,12 @@ interface VideoSectionProps {
 
 export default function VideoSection({ isMobile }: VideoSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
-
-  // Hooks de contexto
   const { currentVideo, isPlaying, togglePlay } = useMediaPlayer();
   const { isMuted, toggleMute } = useVolume();
   
-  // ESTRATEGIA DE BYPASS:
-  // Si currentVideo es null (está cargando), usamos el INTERNAL_BACKUP inmediatamente.
-  // No mostramos pantalla de carga.
+  // Usamos el video actual o el respaldo si está cargando
   const activeVideo = currentVideo || INTERNAL_BACKUP;
   
-  // Estados visuales
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -45,7 +40,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     
-    // Solo ocultamos controles si está reproduciendo
+    // Solo ocultamos si está reproduciendo
     if (isPlaying) {
       controlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
@@ -58,13 +53,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
     return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
   }, [isMounted, activeVideo, handleInteraction]);
 
-  // Si no está montado (servidor), devolvemos div negro para evitar errores
-  if (!isMounted) {
-    return <div className="w-full h-full bg-black" />;
-  }
-
-  // YA NO HAY "IF LOADING RETURN CARGANDO".
-  // Siempre renderizamos el reproductor con 'activeVideo'.
+  if (!isMounted) return <div className="w-full h-full bg-black" />;
 
   return (
     <div 
@@ -72,39 +61,46 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
       onClick={handleInteraction}
       onTouchStart={handleInteraction}
     >
-      {/* 1. REPRODUCTOR */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
+      {/* 1. CAPA DE VIDEO (Fondo) */}
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-black pointer-events-none">
         <ReactPlayer
           url={activeVideo.url}
           playing={isPlaying}
           muted={isMuted}
           width="100%"
           height="100%"
-          controls={false}
+          controls={false} // IMPORTANTE: Apagar controles nativos
           playsinline={true}
-          style={{ pointerEvents: 'none' }}
           config={{
             youtube: {
-              playerVars: { showinfo: 0, modestbranding: 1, rel: 0, disablekb: 1, fs: 0 }
+              playerVars: { 
+                showinfo: 0, 
+                modestbranding: 1, 
+                rel: 0, 
+                disablekb: 1, 
+                fs: 0, 
+                controls: 0, // Doble seguridad para ocultar controles nativos
+                iv_load_policy: 3 
+              }
             }
           }}
         />
       </div>
 
-      {/* 2. BARRAS DE CINE */}
+      {/* 2. BARRAS DE CINE (Anti-Branding) - Z-30 */}
       <div className={cn("absolute top-0 left-0 right-0 bg-black z-30 h-[20%] transition-transform duration-500 ease-in-out pointer-events-none", showControls ? "-translate-y-full" : "translate-y-0")} />
       <div className={cn("absolute bottom-0 left-0 right-0 bg-black z-30 h-[20%] transition-transform duration-500 ease-in-out pointer-events-none", showControls ? "translate-y-full" : "translate-y-0")} />
 
-      {/* 3. CONTROLES */}
+      {/* 3. TUS CONTROLES PERSONALIZADOS - Z-40 */}
       <div className={cn("absolute inset-0 z-40 flex flex-col justify-between p-4 transition-opacity duration-300", showControls ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none")}>
-        {/* Cabecera */}
+        {/* Cabecera: Título */}
         <div className="flex justify-between items-start">
            <h2 className="text-white text-sm font-bold drop-shadow-md line-clamp-1 bg-black/40 px-2 py-1 rounded backdrop-blur-sm border border-white/10">
              {activeVideo.nombre}
            </h2>
         </div>
 
-        {/* Play Gigante */}
+        {/* Centro: Play Gigante */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
            <button 
              onClick={(e) => { e.stopPropagation(); togglePlay(); handleInteraction(); }}
@@ -114,7 +110,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
            </button>
         </div>
 
-        {/* Pie */}
+        {/* Pie: Botonera inferior */}
         <div className="flex justify-between items-center bg-black/60 p-2 rounded-lg backdrop-blur-md border border-white/10">
            <div className="flex items-center gap-4">
               <button onClick={(e) => { e.stopPropagation(); togglePlay(); handleInteraction(); }}>
@@ -125,7 +121,7 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
                 {isMuted ? <VolumeX size={20} className="text-red-500"/> : <Volume2 size={20} className="text-white"/>}
               </button>
               
-              {/* Detectamos si es vivo chequeando la propiedad o si es el video por defecto */}
+              {/* Indicador EN VIVO */}
               {((activeVideo as any).es_vivo || activeVideo.url === INTERNAL_BACKUP.url) && (
                  <span className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
                     <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"/>
@@ -133,7 +129,10 @@ export default function VideoSection({ isMobile }: VideoSectionProps) {
                  </span>
               )}
            </div>
-           <div className="text-white/80 text-[10px] font-mono tracking-wider">SALADILLO VIVO</div>
+           
+           <div className="text-white/80 text-[10px] font-mono tracking-wider">
+              SALADILLO VIVO
+           </div>
         </div>
       </div>
     </div>
