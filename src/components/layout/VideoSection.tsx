@@ -84,31 +84,49 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     handleIntroEnded(); 
   };
 
-  // --- GESTIÓN DE INTERACCIÓN (Controles Fugaces) ---
+  // --- GESTIÓN DE INTERACCIÓN (Controles Fugaces - 0.5s) ---
+  
+  // 1. Función simple: Solo registra que hubo actividad y muestra controles
   const handleInteraction = () => {
     setShowControls(true);
+    // Limpiamos el timer anterior para reiniciar la cuenta de 0.5s
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    
-    // Ocultar controles automáticamente tras 0.5 SEGUNDOS (500ms)
-    // Excepción: Si está muteado, mantenemos los controles para invitar a desmutear
-    if (isUserPlaying && !isIntroVisible && !isMuted) {
+  };
+
+  // 2. Efecto para gestionar el auto-ocultamiento (Reactivo al estado)
+  useEffect(() => {
+    // Solo intentamos ocultar si los controles están visibles Y las condiciones se cumplen:
+    // - El usuario quiere reproducir (no está en pausa manual)
+    // - No es una intro
+    // - No está muteado (si está muteado, queremos que los controles sigan visibles)
+    if (showControls && isUserPlaying && !isIntroVisible && !isMuted) {
+        
+        // Aseguramos limpiar cualquier timer pendiente antes de poner uno nuevo
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+
+        // Iniciamos el timer de 0.5 segundos
         controlsTimeoutRef.current = setTimeout(() => {
             setShowControls(false);
-        }, 500); // <--- TIEMPO REDUCIDO A 0.5s
+        }, 500);
     }
-  };
+
+    // Cleanup al desmontar o si cambian las condiciones
+    return () => {
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    };
+  }, [showControls, isUserPlaying, isIntroVisible, isMuted]); // Dependencias críticas
+
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     const newState = !isUserPlaying;
     setIsUserPlaying(newState);
     
-    // Al cambiar estado, gestionamos la visibilidad de controles
     if (newState) {
-        // Si dio Play -> Iniciar timer de ocultamiento rápido
+        // Si dio Play, registramos interacción. El useEffect se encargará del timer.
         handleInteraction();
     } else {
-        // Si dio Pause -> Mantener controles fijos
+        // Si dio Pause, aseguramos que se muestren y limpiamos timers para que queden fijos.
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         setShowControls(true); 
     }
@@ -117,6 +135,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const handleToggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleMute(); 
+    // Al mutear/desmutear, registramos interacción. El useEffect evaluará si deben ocultarse.
     handleInteraction();
   };
 
