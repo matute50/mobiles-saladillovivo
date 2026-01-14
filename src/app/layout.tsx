@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Saladillo Vivo",
-  description: "Televisión en vivo desde Saladillo, Buenos Aires",
+  description: "Televisión en vivo desde Saladillo",
   manifest: "/manifest.json",
 };
 
@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // Vital para sensación de App nativa
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -27,16 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-      </head>
       <body className={inter.className}>
-        {/* ORDEN DE JERARQUÍA DE CONTEXTOS */}
         <MediaPlayerProvider>
           <VolumeProvider>
-             {/* Aquí va el contenido de tu app (MobileLayout, etc) */}
-             {children}
+            {children}
           </VolumeProvider>
         </MediaPlayerProvider>
       </body>
