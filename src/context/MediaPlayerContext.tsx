@@ -10,7 +10,7 @@ const INTRO_VIDEOS = [
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_KEYWORD = 'HCD'; 
 
-const START_HISTORY_KEY = 'sv_start_history_4d';
+const START_HISTORY_KEY = 'sv_start_history_4d_v2'; // Cambiamos versión de clave por seguridad
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
@@ -48,7 +48,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // 1. Lectura síncrona del historial
+  // 1. Obtener historial directamente del disco (Síncrono y blindado)
   const getHistoryFromDisk = useCallback((): string[] => {
     if (typeof window === 'undefined') return [];
     try {
@@ -60,9 +60,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) { return []; }
   }, []);
 
-  // 2. Guardado en disco
+  // 2. Guardar en disco el video elegido para el inicio
   const saveToDisk = useCallback((id: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !id) return;
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
       let history: HistoryItem[] = saved ? JSON.parse(saved) : [];
@@ -73,13 +73,23 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) {}
   }, []);
 
-  // 3. Selección con Barajado (Shuffle)
+  // 3. Función de barajado puro (Fisher-Yates)
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // 4. Selección de video con doble aleatoriedad
   const getNextVideo = useCallback((isFirstVideo: boolean = false) => {
     if (videoPool.length === 0) return null;
 
     const startIds = isFirstVideo ? getHistoryFromDisk() : [];
 
-    // Filtramos candidatos
+    // Filtro inicial: Quitar HCD y, si es el primero, quitar los vistos en 4 días
     let candidates = videoPool.filter(v => {
       const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
       if (isFirstVideo) {
@@ -88,19 +98,15 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       return !isHCD && v.categoria !== lastCategoryRef.current;
     });
 
-    // Fallback si la lista negra es muy grande
+    // Fallback: Si no hay candidatos (viste todo en 4 días), barajamos TODO el pool sin HCD
     if (candidates.length === 0) {
       candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
     }
 
-    // --- ALGORITMO DE BARAJADO (Fisher-Yates) para asegurar aleatoriedad ---
-    const shuffled = [...candidates];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
+    // APLICAR BARAJADO OBLIGATORIO A LOS CANDIDATOS
+    const shuffledCandidates = shuffleArray(candidates);
 
-    const selected = shuffled[0]; // Tomamos el primero de la lista mezclada
+    const selected = shuffledCandidates[0]; // Tomamos el primero de la mezcla aleatoria
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
   }, [videoPool, getHistoryFromDisk]);
@@ -130,9 +136,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     startTransition(item);
   }, [startTransition]);
 
-  // Efecto de arranque blindado
+  // Efecto de arranque blindado con referencia de seguridad
   useEffect(() => {
-    // Solo actuamos si hay videos y NO hemos elegido el inicial todavía
     if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo(true); 
       if (first) {
