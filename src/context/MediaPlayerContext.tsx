@@ -10,8 +10,7 @@ const INTRO_VIDEOS = [
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_KEYWORD = 'HCD'; 
 
-// Nueva clave para forzar limpieza de historial previo
-const START_HISTORY_KEY = 'sv_final_start_v3';
+const START_HISTORY_KEY = 'sv_start_history_4d_final';
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
@@ -21,10 +20,7 @@ interface MediaPlayerState {
   shouldPlayContent: boolean;
 }
 
-interface HistoryItem {
-  id: string;
-  timestamp: number;
-}
+interface HistoryItem { id: string; timestamp: number; }
 
 interface MediaPlayerContextType {
   state: MediaPlayerState;
@@ -49,8 +45,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // 1. Obtener historial síncrono
-  const getHistoryFromDisk = useCallback((): string[] => {
+  // 1. Obtener historial limpio del disco
+  const getHistory = useCallback((): string[] => {
     if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
@@ -61,9 +57,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) { return []; }
   }, []);
 
-  // 2. Guardar en disco
-  const saveToDisk = useCallback((id: string) => {
-    if (typeof window === 'undefined' || !id) return;
+  // 2. Guardar elección
+  const saveHistory = useCallback((id: string) => {
+    if (typeof window === 'undefined') return;
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
       let history: HistoryItem[] = saved ? JSON.parse(saved) : [];
@@ -74,42 +70,34 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) {}
   }, []);
 
-  // 3. Función Shuffle Robusta
-  const shuffle = <T,>(arr: T[]): T[] => {
-    const res = [...arr];
-    for (let i = res.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [res[i], res[j]] = [res[j], res[i]];
-    }
-    return res;
-  };
-
-  // 4. Selección con filtro y barajado
+  // 3. Selección con barajado forzado
   const getNextVideo = useCallback((isFirstVideo: boolean = false) => {
     if (videoPool.length === 0) return null;
 
-    const startIds = isFirstVideo ? getHistoryFromDisk() : [];
+    const startIds = isFirstVideo ? getHistory() : [];
+    
+    // Filtramos videos prohibidos (HCD)
+    const cleanPool = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
 
-    // Mezclamos TODO el pool antes de empezar para romper cualquier orden de la DB
-    const randomizedPool = shuffle(videoPool);
+    // Si es el primero, filtramos los usados hace poco
+    let candidates = isFirstVideo 
+      ? cleanPool.filter(v => !startIds.includes(v.id)) 
+      : cleanPool.filter(v => v.categoria !== lastCategoryRef.current);
 
-    let candidates = randomizedPool.filter(v => {
-      const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
-      if (isFirstVideo) {
-        return !isHCD && !startIds.includes(v.id);
-      }
-      return !isHCD && v.categoria !== lastCategoryRef.current;
-    });
+    // Fallback si no hay candidatos nuevos
+    if (candidates.length === 0) candidates = cleanPool;
 
-    // Fallback: Si no hay candidatos, usamos el pool mezclado pero quitamos HCD
-    if (candidates.length === 0) {
-      candidates = randomizedPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
-    }
-
-    const selected = candidates[0];
+    // --- EL GRAN CAMBIO: SHUFFLE BASADO EN TIEMPO ---
+    // Mezclamos la lista 3 veces para asegurar que el orden de la DB se pierda
+    let shuffled = [...candidates].sort(() => Math.random() - 0.5);
+    shuffled = shuffled.sort(() => Math.random() - 0.5);
+    
+    // Tomamos uno al azar del total barajado
+    const selected = shuffled[Math.floor(Math.random() * shuffled.length)];
+    
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
-  }, [videoPool, getHistoryFromDisk]);
+  }, [videoPool, getHistory]);
 
   const startTransition = useCallback((nextContent: Video | Article) => {
     const isNews = 'url_slide' in nextContent || !('url' in nextContent);
@@ -136,20 +124,17 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     startTransition(item);
   }, [startTransition]);
 
-  // EFECTO DE ARRANQUE CON "CHECK DE ESTABILIDAD"
+  // Efecto de inicio: Solo cuando el pool tiene datos suficientes
   useEffect(() => {
-    // IMPORTANTE: Solo elegimos el primer video si el pool tiene MÁS DE 5 elementos.
-    // Esto garantiza que no elija el primero que llegue si la carga es asíncrona.
     if (videoPool.length > 5 && !state.currentContent && !isInitialVideoPicked.current) {
-      console.log("Pool estabilizado con:", videoPool.length, "videos. Eligiendo inicio...");
       const first = getNextVideo(true); 
       if (first) {
         isInitialVideoPicked.current = true;
-        saveToDisk(first.id);
+        saveHistory(first.id);
         startTransition(first);
       }
     }
-  }, [videoPool, state.currentContent, getNextVideo, startTransition, saveToDisk]);
+  }, [videoPool, state.currentContent, getNextVideo, startTransition, saveHistory]);
 
   return (
     <MediaPlayerContext.Provider value={{ state, videoPool, setVideoPool, playManual, handleIntroEnded, handleContentEnded }}>
