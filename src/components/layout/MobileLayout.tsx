@@ -76,7 +76,8 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFe
         <div className={cn("absolute inset-0 bg-gradient-to-t z-10", isDark ? "from-black via-black/60 to-transparent" : "from-black/90 via-black/50 to-transparent")} />
         <div className="absolute inset-0 z-20 flex flex-col">
             <div className={cn("flex-1 flex items-center justify-center min-h-0", isFeatured && "pt-16")}>
-                <div className={cn("flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 shadow-2xl transition-transform duration-300 group-active:scale-90", "bg-[#003399]/50", isFeatured ? "p-4" : "p-3", isFeatured && "-translate-y-[20px]")}>
+                {/* CAMBIO: Color del fondo del botón Play dinámico */}
+                <div className={cn("flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 shadow-2xl transition-transform duration-300 group-active:scale-90", isDark ? "bg-[#6699ff]/50" : "bg-[#003399]/50", isFeatured ? "p-4" : "p-3", isFeatured && "-translate-y-[20px]")}>
                     <Play size={isFeatured ? 38 : 28} fill="currentColor" className="text-white ml-1 opacity-90" strokeWidth={0}/>
                 </div>
             </div>
@@ -117,10 +118,13 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
   return (
     <div className="flex flex-col gap-0 h-full w-full">
       <div className="flex items-center justify-between px-2 py-0.5 shrink-0 rounded-lg mx-1 transition-colors bg-transparent">
-        <button onClick={() => setActiveCatIndex(prev => (prev === 0 ? categories.length - 1 : prev - 1))} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-red-500" : "text-neutral-500 hover:text-red-600")}><ChevronLeft size={28} strokeWidth={3} /></button>
-        {/* CAMBIO DE COLOR AQUI: TITULOS DE CATEGORIAS */}
+        {/* CAMBIO: Flecha Izquierda con colores de marca */}
+        <button onClick={() => setActiveCatIndex(prev => (prev === 0 ? categories.length - 1 : prev - 1))} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-[#6699ff]" : "text-[#003399]")}><ChevronLeft size={28} strokeWidth={3} /></button>
+        
         <h2 className={cn("font-sans font-extrabold text-xl text-center uppercase tracking-wider truncate px-2 flex-1 drop-shadow-sm -mt-[15px]", isDark ? "text-[#6699ff]" : "text-[#003399]")}>{currentCat}</h2>
-        <button onClick={() => setActiveCatIndex(prev => (prev === categories.length - 1 ? 0 : prev + 1))} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-red-500" : "text-neutral-500 hover:text-red-600")}><ChevronRight size={28} strokeWidth={3} /></button>
+        
+        {/* CAMBIO: Flecha Derecha con colores de marca */}
+        <button onClick={() => setActiveCatIndex(prev => (prev === categories.length - 1 ? 0 : prev + 1))} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-[#6699ff]" : "text-[#003399]")}><ChevronRight size={28} strokeWidth={3} /></button>
       </div>
 
       <Swiper slidesPerView={2.2} spaceBetween={10} className="w-full flex-1 min-h-0 px-1">
@@ -290,16 +294,13 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
             </div>
         </header>
 
-        {/* CONTENEDOR VIDEO (aspect-video crítico) */}
+        {/* CONTENEDOR VIDEO */}
         <div className={cn("shrink-0 sticky top-11 z-30 w-full aspect-video shadow-xl border-b transition-colors", themeClasses.playerWrapper)}>
           <VideoSection isMobile={true} />
         </div>
 
         <div className="flex-1 flex flex-col gap-2 px-3 pt-[2px] pb-1 min-h-0">
-          <div className="w-full px-1 mt-1 text-center shrink-0">
-             {/* CAMBIO DE COLOR AQUI: TITULO ULTIMAS NOTICIAS */}
-             <h3 className={cn("font-sans font-extrabold text-xl uppercase tracking-wider", isDark ? "text-[#6699ff]" : "text-[#003399]")}>Últimas Noticias</h3>
-          </div>
+          <div className="w-full px-1 mt-1 text-center shrink-0"><h3 className={cn("font-sans font-extrabold text-xl uppercase tracking-wider", isDark ? "text-[#6699ff]" : "text-[#003399]")}>Últimas Noticias</h3></div>
           <div className="w-full aspect-[16/8] shrink-0">
             <Swiper modules={[Controller]} onSwiper={setNewsSwiper} controller={{ control: adsSwiper }} spaceBetween={10} slidesPerView={1} className="h-full w-full rounded-xl">
               {newsSlides.map((slide, index) => (
