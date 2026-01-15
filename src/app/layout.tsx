@@ -1,39 +1,28 @@
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { MediaPlayerProvider } from "@/context/MediaPlayerContext";
-import { VolumeProvider } from "@/context/VolumeContext";
-
-const inter = Inter({ subsets: ["latin"] });
+// src/app/layout.tsx
+import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Saladillo Vivo",
-  description: "Televisión en vivo desde Saladillo",
-  manifest: "/manifest.json",
-};
-
-export const viewport: Viewport = {
-  themeColor: "#000000",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="es">
-      <body className={inter.className}>
-        <MediaPlayerProvider>
-          <VolumeProvider>
-            {children}
-          </VolumeProvider>
-        </MediaPlayerProvider>
-      </body>
-    </html>
-  );
+  title: 'Saladillo Vivo',
+  description: 'Portal de noticias y videos de Saladillo, Argentina.',
+  metadataBase: new URL('https://tu-dominio.vercel.app'), // Reemplaza con tu URL real
+  openGraph: {
+    title: 'Saladillo Vivo',
+    description: 'Portal de noticias de Saladillo',
+    url: 'https://tu-dominio.vercel.app',
+    siteName: 'Saladillo Vivo',
+    images: [
+      {
+        url: '/opengraph-image.png', // Next.js buscará este archivo en src/app
+        width: 1200,
+        height: 630,
+        alt: 'Saladillo Vivo Logo',
+      },
+    ],
+    locale: 'es_AR',
+    type: 'website',
+  },
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
 }
