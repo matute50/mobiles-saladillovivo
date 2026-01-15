@@ -10,10 +10,11 @@ const INTRO_VIDEOS = [
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_KEYWORD = 'HCD'; 
 
-// BLOQUEO ESPECÍFICO DE INICIO
-const BLOCKED_START_VIDEO_ID = '471'; // "LA ÚNICA FÁBRICA DE HELICÓPTEROS..."
+// --- BLOQUEO TOTAL PARA EL INICIO ---
+const BLOCKED_ID = '471';
+const BLOCKED_KEYWORDS = ['HELICÓPTERO', 'CICARÉ', 'HELICOPTERO', 'CICARE'];
 
-const START_HISTORY_KEY = 'sv_hard_block_v7';
+const START_HISTORY_KEY = 'sv_ultra_final_v8'; // Nueva clave para resetear todo
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
@@ -48,7 +49,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // Shuffle síncrono al recibir los datos
+  // Mezclado de pool apenas llega
   const setVideoPool = useCallback((videos: Video[]) => {
     if (!videos || videos.length === 0) return;
     const shuffled = [...videos].sort(() => Math.random() - 0.5);
@@ -67,7 +68,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const saveHistory = useCallback((id: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !id) return;
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
       let history: HistoryItem[] = saved ? JSON.parse(saved) : [];
@@ -83,26 +84,32 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
     const startIds = isFirstVideo ? getHistory() : [];
     
-    // FILTRADO CON BLOQUEO DIRECTO
+    // Función para detectar si un video es el de Cicaré
+    const isCicareVideo = (v: Video) => {
+      const name = (v.nombre || '').toUpperCase();
+      const hasKeyword = BLOCKED_KEYWORDS.some(key => name.includes(key));
+      const hasID = String(v.id) === BLOCKED_ID;
+      return hasKeyword || hasID;
+    };
+
     let candidates = videoPool.filter(v => {
       const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
       
       if (isFirstVideo) {
-        // Bloqueo manual del ID 471 SOLO para el inicio
-        const isBlockedID = v.id === BLOCKED_START_VIDEO_ID || String(v.id) === BLOCKED_START_VIDEO_ID;
-        return !isHCD && !startIds.includes(v.id) && !isBlockedID;
+        // BLOQUEO ABSOLUTO: No HCD, no usado en 4 días, y NO ES CICARÉ
+        return !isHCD && !startIds.includes(v.id) && !isCicareVideo(v);
       }
-      
       return !isHCD && v.categoria !== lastCategoryRef.current;
     });
 
-    // Fallback: Si todos están bloqueados por historial, liberamos historial pero NO el 471 ni HCD
-    if (candidates.length === 0 && isFirstVideo) {
-      candidates = videoPool.filter(v => {
-        const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
-        const isBlockedID = v.id === BLOCKED_START_VIDEO_ID || String(v.id) === BLOCKED_START_VIDEO_ID;
-        return !isHCD && !isBlockedID;
-      });
+    // Fallback de emergencia (si todos los videos están bloqueados)
+    if (candidates.length === 0) {
+      candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD) && !isCicareVideo(v));
+    }
+
+    // Si aún así no hay nada, usamos cualquier cosa que no sea HCD
+    if (candidates.length === 0) {
+      candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
     }
 
     const selected = candidates[Math.floor(Math.random() * candidates.length)];
@@ -122,7 +129,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const handleIntroEnded = useCallback(() => setState(prev => ({ ...prev, isIntroVisible: false })), []);
-
   const handleContentEnded = useCallback(() => {
     const next = getNextVideo(false); 
     if (next) startTransition(next);
@@ -131,8 +137,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
 
   useEffect(() => {
-    // Esperamos a tener una cantidad razonable para asegurar que el ID 471 no sea el único
-    if (videoPool.length > 50 && !state.currentContent && !isInitialVideoPicked.current) {
+    // Aumentamos el requerimiento a 200 videos para asegurar que el pool esté poblado
+    if (videoPool.length > 200 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo(true); 
       if (first) {
         isInitialVideoPicked.current = true;
