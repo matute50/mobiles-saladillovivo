@@ -8,13 +8,10 @@ const INTRO_VIDEOS = [
   '/videos_intro/intro3.mp4', '/videos_intro/intro4.mp4', '/videos_intro/intro5.mp4',
 ];
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
-const FORBIDDEN_KEYWORD = 'HCD'; 
+const FORBIDDEN_CATEGORY = 'HCD DE SALADILLO - Período 2025';
+const BLOCKED_START_ID = '471'; // ID de Helicópteros Cicaré
 
-// --- BLOQUEO TOTAL PARA EL INICIO ---
-const BLOCKED_ID = '471';
-const BLOCKED_KEYWORDS = ['HELICÓPTERO', 'CICARÉ', 'HELICOPTERO', 'CICARE'];
-
-const START_HISTORY_KEY = 'sv_ultra_final_v8'; // Nueva clave para resetear todo
+const START_HISTORY_KEY = 'sv_start_history_4d_final';
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
@@ -38,7 +35,7 @@ interface MediaPlayerContextType {
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
 
 export function MediaPlayerProvider({ children }: { children: React.ReactNode }) {
-  const [videoPool, _setVideoPool] = useState<Video[]>([]);
+  const [videoPool, setVideoPool] = useState<Video[]>([]);
   const isInitialVideoPicked = useRef(false);
   const lastCategoryRef = useRef<string>('');
   
@@ -49,14 +46,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // Mezclado de pool apenas llega
-  const setVideoPool = useCallback((videos: Video[]) => {
-    if (!videos || videos.length === 0) return;
-    const shuffled = [...videos].sort(() => Math.random() - 0.5);
-    _setVideoPool(shuffled);
-  }, []);
-
-  const getHistory = useCallback((): string[] => {
+  const getStartHistory = useCallback((): string[] => {
     if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
@@ -67,7 +57,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) { return []; }
   }, []);
 
-  const saveHistory = useCallback((id: string) => {
+  const saveStartHistory = useCallback((id: string) => {
     if (typeof window === 'undefined' || !id) return;
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
@@ -79,43 +69,28 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) {}
   }, []);
 
-  const getNextVideo = useCallback((isFirstVideo: boolean = false) => {
+  const getNextVideo = useCallback((isFirstBoot = false) => {
     if (videoPool.length === 0) return null;
 
-    const startIds = isFirstVideo ? getHistory() : [];
+    const historyIds = isFirstBoot ? getStartHistory() : [];
     
-    // Función para detectar si un video es el de Cicaré
-    const isCicareVideo = (v: Video) => {
-      const name = (v.nombre || '').toUpperCase();
-      const hasKeyword = BLOCKED_KEYWORDS.some(key => name.includes(key));
-      const hasID = String(v.id) === BLOCKED_ID;
-      return hasKeyword || hasID;
-    };
-
     let candidates = videoPool.filter(v => {
-      const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
-      
-      if (isFirstVideo) {
-        // BLOQUEO ABSOLUTO: No HCD, no usado en 4 días, y NO ES CICARÉ
-        return !isHCD && !startIds.includes(v.id) && !isCicareVideo(v);
+      const isHCD = v.categoria === FORBIDDEN_CATEGORY;
+      if (isFirstBoot) {
+        // Al inicio: No HCD, No ID 471, No repetido en 4 días
+        return !isHCD && String(v.id) !== BLOCKED_START_ID && !historyIds.includes(v.id);
       }
       return !isHCD && v.categoria !== lastCategoryRef.current;
     });
 
-    // Fallback de emergencia (si todos los videos están bloqueados)
     if (candidates.length === 0) {
-      candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD) && !isCicareVideo(v));
-    }
-
-    // Si aún así no hay nada, usamos cualquier cosa que no sea HCD
-    if (candidates.length === 0) {
-      candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
+      candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY && String(v.id) !== BLOCKED_START_ID);
     }
 
     const selected = candidates[Math.floor(Math.random() * candidates.length)];
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
-  }, [videoPool, getHistory]);
+  }, [videoPool, getStartHistory]);
 
   const startTransition = useCallback((nextContent: Video | Article) => {
     const isNews = 'url_slide' in nextContent || !('url' in nextContent);
@@ -129,6 +104,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const handleIntroEnded = useCallback(() => setState(prev => ({ ...prev, isIntroVisible: false })), []);
+
   const handleContentEnded = useCallback(() => {
     const next = getNextVideo(false); 
     if (next) startTransition(next);
@@ -137,16 +113,16 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
 
   useEffect(() => {
-    // Aumentamos el requerimiento a 200 videos para asegurar que el pool esté poblado
-    if (videoPool.length > 200 && !state.currentContent && !isInitialVideoPicked.current) {
+    // Esperamos a tener el pool para elegir el primero aleatorio
+    if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo(true); 
       if (first) {
         isInitialVideoPicked.current = true;
-        saveHistory(first.id);
+        saveStartHistory(first.id);
         startTransition(first);
       }
     }
-  }, [videoPool, state.currentContent, getNextVideo, startTransition, saveHistory]);
+  }, [videoPool, state.currentContent, getNextVideo, startTransition, saveStartHistory]);
 
   return (
     <MediaPlayerContext.Provider value={{ state, videoPool, setVideoPool, playManual, handleIntroEnded, handleContentEnded }}>
