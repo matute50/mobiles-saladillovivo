@@ -9,9 +9,9 @@ const INTRO_VIDEOS = [
 ];
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_CATEGORY = 'HCD DE SALADILLO - Período 2025';
-const BLOCKED_START_ID = '471'; // ID de Helicópteros Cicaré
+const BLOCKED_START_ID = '471';
 
-const START_HISTORY_KEY = 'sv_start_history_4d_final';
+const START_HISTORY_KEY = 'sv_start_history_4d_v9';
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
@@ -77,7 +77,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     let candidates = videoPool.filter(v => {
       const isHCD = v.categoria === FORBIDDEN_CATEGORY;
       if (isFirstBoot) {
-        // Al inicio: No HCD, No ID 471, No repetido en 4 días
         return !isHCD && String(v.id) !== BLOCKED_START_ID && !historyIds.includes(v.id);
       }
       return !isHCD && v.categoria !== lastCategoryRef.current;
@@ -113,7 +112,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
 
   useEffect(() => {
-    // Esperamos a tener el pool para elegir el primero aleatorio
     if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo(true); 
       if (first) {
