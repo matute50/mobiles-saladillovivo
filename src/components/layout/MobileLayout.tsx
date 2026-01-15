@@ -67,7 +67,6 @@ function useTheme() {
   return { isDark: mounted ? isDark : true, toggleTheme };
 }
 
-// MobileNewsCard con leading ajustado a 0.8
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFeatured: boolean; onClick: () => void; isDark: boolean }) {
   if (!news) return null;
   return (
@@ -82,7 +81,6 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: { news: any; isFe
                 </div>
             </div>
             <div className={cn("shrink-0 w-full flex flex-col justify-end", isFeatured ? "p-4 pb-2" : "p-2 pb-3")}>
-                {/* AQUI EL CAMBIO: leading-[0.8] para reducir espacio entre lineas */}
                 <h3 className={cn("text-white font-black uppercase tracking-tight leading-[0.8] text-balance drop-shadow-xl text-center", isFeatured ? "line-clamp-3 mb-1" : "line-clamp-4 mb-0")} style={{ fontSize: isFeatured ? 'clamp(1.3rem, 6vw, 2.2rem)' : 'clamp(0.95rem, 4.5vw, 1.6rem)', textShadow: '0 2px 10px rgba(0,0,0,0.9)' }}>{news.titulo}</h3>
                 {isFeatured && news.bajada && (<p className="text-xs text-gray-300 line-clamp-2 font-medium text-center opacity-80 leading-tight mx-auto max-w-[90%]">{news.bajada}</p>)}
             </div>
@@ -120,7 +118,8 @@ function VideoCarouselBlock({ videos, isDark }: { videos: any[]; isDark: boolean
     <div className="flex flex-col gap-0 h-full w-full">
       <div className="flex items-center justify-between px-2 py-0.5 shrink-0 rounded-lg mx-1 transition-colors bg-transparent">
         <button onClick={() => setActiveCatIndex(prev => (prev === 0 ? categories.length - 1 : prev - 1))} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-red-500" : "text-neutral-500 hover:text-red-600")}><ChevronLeft size={28} strokeWidth={3} /></button>
-        <h2 className={cn("font-sans font-extrabold text-xl text-center uppercase tracking-wider truncate px-2 flex-1 drop-shadow-sm -mt-[15px]", isDark ? "text-white" : "text-black")}>{currentCat}</h2>
+        {/* CAMBIO DE COLOR AQUI: TITULOS DE CATEGORIAS */}
+        <h2 className={cn("font-sans font-extrabold text-xl text-center uppercase tracking-wider truncate px-2 flex-1 drop-shadow-sm -mt-[15px]", isDark ? "text-[#6699ff]" : "text-[#003399]")}>{currentCat}</h2>
         <button onClick={() => setActiveCatIndex(prev => (prev === categories.length - 1 ? 0 : prev + 1))} className={cn("p-2 transition-colors active:scale-90 -mt-[15px]", isDark ? "text-neutral-400 hover:text-red-500" : "text-neutral-500 hover:text-red-600")}><ChevronRight size={28} strokeWidth={3} /></button>
       </div>
 
@@ -297,7 +296,10 @@ export default function MobileLayout({ data, isMobile }: { data: PageData; isMob
         </div>
 
         <div className="flex-1 flex flex-col gap-2 px-3 pt-[2px] pb-1 min-h-0">
-          <div className="w-full px-1 mt-1 text-center shrink-0"><h3 className={cn("font-sans font-extrabold text-xl uppercase tracking-wider", isDark ? "text-white" : "text-black")}>Últimas Noticias</h3></div>
+          <div className="w-full px-1 mt-1 text-center shrink-0">
+             {/* CAMBIO DE COLOR AQUI: TITULO ULTIMAS NOTICIAS */}
+             <h3 className={cn("font-sans font-extrabold text-xl uppercase tracking-wider", isDark ? "text-[#6699ff]" : "text-[#003399]")}>Últimas Noticias</h3>
+          </div>
           <div className="w-full aspect-[16/8] shrink-0">
             <Swiper modules={[Controller]} onSwiper={setNewsSwiper} controller={{ control: adsSwiper }} spaceBetween={10} slidesPerView={1} className="h-full w-full rounded-xl">
               {newsSlides.map((slide, index) => (
