@@ -155,11 +155,9 @@ export default function MobileLayout({ data }: { data: PageData }) {
                     <img src="/maraton.png" alt="Matías Vidal" className="w-full h-full object-cover" />
                   </div>
                   <div className={cn("space-y-4 text-[14px] leading-relaxed px-2", isDark ? "text-neutral-300" : "text-neutral-700")}>
-                    <p>Soy el creador de <strong style={{ color: linkColor }}>SALADILLO VIVO</strong>, un medio local hecho desde cero con tecnología propia...</p>
+                    <p>Soy el creador de <strong style={{ color: linkColor }}>SALADILLO VIVO</strong>, un medio local hecho desde cero...</p>
                     <p>Desde las apps para TV, web y móviles hasta el sistema de noticias, todo lo programé yo...</p>
                     <p className="font-black italic py-2 border-y border-neutral-500/20 italic text-pretty">"Nunca fue mi intención poner a funcionar una plataforma más, sino crear identidad."</p>
-                    <p>Quiero mostrar a Saladillo en su diversidad...</p>
-                    <p>Es la misma energía que me lleva, cada semana, a correr muchos kilómetros entrenando para una nueva maratón...</p>
                   </div>
                   <button onClick={() => setInfoModal({ isOpen: true, view: 'decreto' })} className="mt-8 text-xs font-bold underline uppercase tracking-widest opacity-60">Volver al Decreto</button>
                </div>
@@ -186,7 +184,8 @@ export default function MobileLayout({ data }: { data: PageData }) {
         </header>
       )}
 
-      <div className={cn("transition-all duration-500", isLandscape ? "fixed inset-0 z-[500] w-[100vw] h-[100dvh]" : "relative z-40 w-full aspect-video shadow-xl border-b")}>
+      {/* AJUSTE: Eliminado 'border-b' y 'shadow-xl' para quitar la línea blanca */}
+      <div className={cn("transition-all duration-500", isLandscape ? "fixed inset-0 z-[500] w-[100vw] h-[100dvh]" : "relative z-40 w-full aspect-video bg-black")}>
         <VideoSection isMobile={true} />
       </div>
 
