@@ -10,7 +10,8 @@ const INTRO_VIDEOS = [
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_KEYWORD = 'HCD'; 
 
-const START_HISTORY_KEY = 'sv_start_history_4d_v2'; // Cambiamos versión de clave por seguridad
+// Nueva clave para forzar limpieza de historial previo
+const START_HISTORY_KEY = 'sv_final_start_v3';
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
@@ -48,7 +49,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // 1. Obtener historial directamente del disco (Síncrono y blindado)
+  // 1. Obtener historial síncrono
   const getHistoryFromDisk = useCallback((): string[] => {
     if (typeof window === 'undefined') return [];
     try {
@@ -60,7 +61,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) { return []; }
   }, []);
 
-  // 2. Guardar en disco el video elegido para el inicio
+  // 2. Guardar en disco
   const saveToDisk = useCallback((id: string) => {
     if (typeof window === 'undefined' || !id) return;
     try {
@@ -73,24 +74,26 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) {}
   }, []);
 
-  // 3. Función de barajado puro (Fisher-Yates)
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
+  // 3. Función Shuffle Robusta
+  const shuffle = <T,>(arr: T[]): T[] => {
+    const res = [...arr];
+    for (let i = res.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      [res[i], res[j]] = [res[j], res[i]];
     }
-    return shuffled;
+    return res;
   };
 
-  // 4. Selección de video con doble aleatoriedad
+  // 4. Selección con filtro y barajado
   const getNextVideo = useCallback((isFirstVideo: boolean = false) => {
     if (videoPool.length === 0) return null;
 
     const startIds = isFirstVideo ? getHistoryFromDisk() : [];
 
-    // Filtro inicial: Quitar HCD y, si es el primero, quitar los vistos en 4 días
-    let candidates = videoPool.filter(v => {
+    // Mezclamos TODO el pool antes de empezar para romper cualquier orden de la DB
+    const randomizedPool = shuffle(videoPool);
+
+    let candidates = randomizedPool.filter(v => {
       const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
       if (isFirstVideo) {
         return !isHCD && !startIds.includes(v.id);
@@ -98,15 +101,12 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       return !isHCD && v.categoria !== lastCategoryRef.current;
     });
 
-    // Fallback: Si no hay candidatos (viste todo en 4 días), barajamos TODO el pool sin HCD
+    // Fallback: Si no hay candidatos, usamos el pool mezclado pero quitamos HCD
     if (candidates.length === 0) {
-      candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
+      candidates = randomizedPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
     }
 
-    // APLICAR BARAJADO OBLIGATORIO A LOS CANDIDATOS
-    const shuffledCandidates = shuffleArray(candidates);
-
-    const selected = shuffledCandidates[0]; // Tomamos el primero de la mezcla aleatoria
+    const selected = candidates[0];
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
   }, [videoPool, getHistoryFromDisk]);
@@ -136,9 +136,12 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     startTransition(item);
   }, [startTransition]);
 
-  // Efecto de arranque blindado con referencia de seguridad
+  // EFECTO DE ARRANQUE CON "CHECK DE ESTABILIDAD"
   useEffect(() => {
-    if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
+    // IMPORTANTE: Solo elegimos el primer video si el pool tiene MÁS DE 5 elementos.
+    // Esto garantiza que no elija el primero que llegue si la carga es asíncrona.
+    if (videoPool.length > 5 && !state.currentContent && !isInitialVideoPicked.current) {
+      console.log("Pool estabilizado con:", videoPool.length, "videos. Eligiendo inicio...");
       const first = getNextVideo(true); 
       if (first) {
         isInitialVideoPicked.current = true;
