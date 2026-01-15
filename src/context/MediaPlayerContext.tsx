@@ -9,12 +9,19 @@ const INTRO_VIDEOS = [
 ];
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_CATEGORY = 'HCD DE SALADILLO - Período 2025';
+const VIEWED_HISTORY_KEY = 'sv_viewed_history_7d';
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
   currentContent: Video | Article | null;
   currentIntroUrl: string | null;
   isIntroVisible: boolean;
   shouldPlayContent: boolean;
+}
+
+interface HistoryItem {
+  id: string;
+  timestamp: number;
 }
 
 interface MediaPlayerContextType {
@@ -30,7 +37,9 @@ const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(und
 
 export function MediaPlayerProvider({ children }: { children: React.ReactNode }) {
   const [videoPool, setVideoPool] = useState<Video[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const lastCategoryRef = useRef<string>('');
+  
   const [state, setState] = useState<MediaPlayerState>({
     currentContent: null,
     currentIntroUrl: null,
@@ -38,23 +47,84 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
+  // 1. Cargar y limpiar historial del dispositivo (Memoria de 7 días)
+  useEffect(() => {
+    const saved = localStorage.getItem(VIEWED_HISTORY_KEY);
+    if (saved) {
+      try {
+        const parsed: HistoryItem[] = JSON.parse(saved);
+        const now = Date.now();
+        // Solo conservamos los videos vistos en la última semana
+        const freshHistory = parsed.filter(item => (now - item.timestamp) < SEVEN_DAYS_MS);
+        setHistory(freshHistory);
+        localStorage.setItem(VIEWED_HISTORY_KEY, JSON.stringify(freshHistory));
+      } catch (e) {
+        console.error("Error al cargar el historial de reproducción");
+      }
+    }
+  }, []);
+
+  // 2. Función para registrar videos en el historial
+  const markAsViewed = useCallback((id: string) => {
+    setHistory(prev => {
+      const now = Date.now();
+      // Filtramos para evitar duplicados y añadimos el nuevo con el tiempo actual
+      const filtered = prev.filter(item => item.id !== id);
+      const updated = [...filtered, { id, timestamp: now }];
+      localStorage.setItem(VIEWED_HISTORY_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  // 3. Motor de selección inteligente de videos
   const getNextRandomVideo = useCallback(() => {
     if (videoPool.length === 0) return null;
-    let valid = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY && v.categoria !== lastCategoryRef.current);
-    if (valid.length === 0) valid = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY);
-    const selected = valid[Math.floor(Math.random() * valid.length)];
+
+    const viewedIds = history.map(h => h.id);
+
+    // FILTRO 1: No vistos en 7 días + Diferente categoría + No prohibidos
+    let candidates = videoPool.filter(v => 
+      !viewedIds.includes(v.id) && 
+      v.categoria !== FORBIDDEN_CATEGORY && 
+      v.categoria !== lastCategoryRef.current
+    );
+
+    // FILTRO 2 (FALLBACK): Si no hay videos nuevos de otra categoría, buscamos cualquier video nuevo (no visto en 7 días)
+    if (candidates.length === 0) {
+      candidates = videoPool.filter(v => 
+        !viewedIds.includes(v.id) && 
+        v.categoria !== FORBIDDEN_CATEGORY
+      );
+    }
+
+    // FILTRO 3 (REINICIO): Si el usuario ya vio TODO en la última semana, permitimos repetir pero priorizamos otra categoría
+    if (candidates.length === 0) {
+      candidates = videoPool.filter(v => 
+        v.categoria !== FORBIDDEN_CATEGORY && 
+        v.categoria !== lastCategoryRef.current
+      );
+    }
+
+    // Si todo falla, seleccionamos cualquier video permitido
+    if (candidates.length === 0) {
+      candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY);
+    }
+
+    const selected = candidates[Math.floor(Math.random() * candidates.length)];
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
-  }, [videoPool]);
+  }, [videoPool, history]);
 
+  // Lógica de transición (Intro -> Contenido)
   const startTransition = useCallback((nextContent: Video | Article) => {
     const isNews = 'url_slide' in nextContent || !('url' in nextContent);
     const nextIntro = isNews ? NEWS_INTRO_VIDEO : INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
+    
     setState({
       currentContent: nextContent,
       currentIntroUrl: nextIntro,
       isIntroVisible: true,
-      shouldPlayContent: true, // Inicia buffer inmediato
+      shouldPlayContent: true,
     });
   }, []);
 
@@ -63,12 +133,20 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const handleContentEnded = useCallback(() => {
+    // Marcamos el video que termina como visto
+    if (state.currentContent?.id) {
+      markAsViewed(state.currentContent.id);
+    }
     const next = getNextRandomVideo();
     if (next) startTransition(next);
-  }, [getNextRandomVideo, startTransition]);
+  }, [getNextRandomVideo, startTransition, state.currentContent, markAsViewed]);
 
-  const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
+  const playManual = useCallback((item: Video | Article) => {
+    if (item.id) markAsViewed(item.id);
+    startTransition(item);
+  }, [startTransition, markAsViewed]);
 
+  // Inicio automático de la App
   useEffect(() => {
     if (videoPool.length > 0 && !state.currentContent) {
       const first = getNextRandomVideo();
@@ -85,6 +163,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
 export const useMediaPlayer = () => {
   const context = useContext(MediaPlayerContext);
-  if (!context) throw new Error('useMediaPlayer error');
+  if (!context) throw new Error('useMediaPlayer debe ser usado dentro de MediaPlayerProvider');
   return context;
 };
