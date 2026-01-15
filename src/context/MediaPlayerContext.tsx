@@ -10,8 +10,10 @@ const INTRO_VIDEOS = [
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_KEYWORD = 'HCD'; 
 
-// Nueva clave para resetear memoria
-const START_HISTORY_KEY = 'sv_logic_v6_final';
+// BLOQUEO ESPECÍFICO DE INICIO
+const BLOCKED_START_VIDEO_ID = '471'; // "LA ÚNICA FÁBRICA DE HELICÓPTEROS..."
+
+const START_HISTORY_KEY = 'sv_hard_block_v7';
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
@@ -46,22 +48,11 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // Función Shuffle Interna
-  const fastShuffle = <T,>(arr: T[]): T[] => {
-    const res = [...arr];
-    for (let i = res.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [res[i], res[j]] = [res[j], res[i]];
-    }
-    return res;
-  };
-
-  // SOBRESCRIBIMOS setVideoPool para que baraje ANTES de guardar
+  // Shuffle síncrono al recibir los datos
   const setVideoPool = useCallback((videos: Video[]) => {
     if (!videos || videos.length === 0) return;
-    // Barajamos toda la base de datos apenas llega
-    const shuffledPool = fastShuffle(videos);
-    _setVideoPool(shuffledPool);
+    const shuffled = [...videos].sort(() => Math.random() - 0.5);
+    _setVideoPool(shuffled);
   }, []);
 
   const getHistory = useCallback((): string[] => {
@@ -92,19 +83,29 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
     const startIds = isFirstVideo ? getHistory() : [];
     
-    // El pool ya viene barajado por setVideoPool, pero filtramos categoría
-    let candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
+    // FILTRADO CON BLOQUEO DIRECTO
+    let candidates = videoPool.filter(v => {
+      const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
+      
+      if (isFirstVideo) {
+        // Bloqueo manual del ID 471 SOLO para el inicio
+        const isBlockedID = v.id === BLOCKED_START_VIDEO_ID || String(v.id) === BLOCKED_START_VIDEO_ID;
+        return !isHCD && !startIds.includes(v.id) && !isBlockedID;
+      }
+      
+      return !isHCD && v.categoria !== lastCategoryRef.current;
+    });
 
-    if (isFirstVideo) {
-      const freshCandidates = candidates.filter(v => !startIds.includes(v.id));
-      // Si hay videos que no fueron inicio en 4 días, los usamos. Si no, usamos cualquiera.
-      candidates = freshCandidates.length > 0 ? freshCandidates : candidates;
-    } else {
-      candidates = candidates.filter(v => v.categoria !== lastCategoryRef.current);
+    // Fallback: Si todos están bloqueados por historial, liberamos historial pero NO el 471 ni HCD
+    if (candidates.length === 0 && isFirstVideo) {
+      candidates = videoPool.filter(v => {
+        const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
+        const isBlockedID = v.id === BLOCKED_START_VIDEO_ID || String(v.id) === BLOCKED_START_VIDEO_ID;
+        return !isHCD && !isBlockedID;
+      });
     }
 
-    // Como el pool ya está mezclado, el primero ([0]) siempre será aleatorio
-    const selected = candidates[0];
+    const selected = candidates[Math.floor(Math.random() * candidates.length)];
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
   }, [videoPool, getHistory]);
@@ -129,9 +130,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
 
-  // EFECTO DE ARRANQUE: Solo cuando el pool tiene la base de datos completa (> 300 videos)
   useEffect(() => {
-    if (videoPool.length > 300 && !state.currentContent && !isInitialVideoPicked.current) {
+    // Esperamos a tener una cantidad razonable para asegurar que el ID 471 no sea el único
+    if (videoPool.length > 50 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo(true); 
       if (first) {
         isInitialVideoPicked.current = true;
