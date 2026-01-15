@@ -9,8 +9,10 @@ const INTRO_VIDEOS = [
 ];
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
 const FORBIDDEN_CATEGORY = 'HCD DE SALADILLO - Período 2025';
-const VIEWED_HISTORY_KEY = 'sv_viewed_history_7d';
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Nueva configuración: Memoria de Inicio de 4 días
+const START_HISTORY_KEY = 'sv_start_history_4d';
+const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
 interface MediaPlayerState {
   currentContent: Video | Article | null;
@@ -37,7 +39,8 @@ const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(und
 
 export function MediaPlayerProvider({ children }: { children: React.ReactNode }) {
   const [videoPool, setVideoPool] = useState<Video[]>([]);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [startHistory, setStartHistory] = useState<HistoryItem[]>([]);
+  const isInitialVideoPicked = useRef(false);
   const lastCategoryRef = useRef<string>('');
   
   const [state, setState] = useState<MediaPlayerState>({
@@ -47,75 +50,65 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // 1. Cargar y limpiar historial del dispositivo (Memoria de 7 días)
+  // 1. Cargar y limpiar el historial de "Inicios" al arrancar
   useEffect(() => {
-    const saved = localStorage.getItem(VIEWED_HISTORY_KEY);
+    const saved = localStorage.getItem(START_HISTORY_KEY);
     if (saved) {
       try {
         const parsed: HistoryItem[] = JSON.parse(saved);
         const now = Date.now();
-        // Solo conservamos los videos vistos en la última semana
-        const freshHistory = parsed.filter(item => (now - item.timestamp) < SEVEN_DAYS_MS);
-        setHistory(freshHistory);
-        localStorage.setItem(VIEWED_HISTORY_KEY, JSON.stringify(freshHistory));
+        // Filtramos solo los que ocurrieron en los últimos 4 días
+        const freshHistory = parsed.filter(item => (now - item.timestamp) < FOUR_DAYS_MS);
+        setStartHistory(freshHistory);
+        localStorage.setItem(START_HISTORY_KEY, JSON.stringify(freshHistory));
       } catch (e) {
-        console.error("Error al cargar el historial de reproducción");
+        console.error("Error al procesar historial de inicio");
       }
     }
   }, []);
 
-  // 2. Función para registrar videos en el historial
-  const markAsViewed = useCallback((id: string) => {
-    setHistory(prev => {
-      const now = Date.now();
-      // Filtramos para evitar duplicados y añadimos el nuevo con el tiempo actual
-      const filtered = prev.filter(item => item.id !== id);
-      const updated = [...filtered, { id, timestamp: now }];
-      localStorage.setItem(VIEWED_HISTORY_KEY, JSON.stringify(updated));
-      return updated;
-    });
+  // 2. Registrar el video que sirvió de inicio
+  const markAsStartVideo = useCallback((id: string) => {
+    const now = Date.now();
+    const saved = localStorage.getItem(START_HISTORY_KEY);
+    let history: HistoryItem[] = saved ? JSON.parse(saved) : [];
+    
+    // Evitamos duplicados y actualizamos
+    history = history.filter(item => item.id !== id);
+    history.push({ id, timestamp: now });
+    
+    localStorage.setItem(START_HISTORY_KEY, JSON.stringify(history));
+    setStartHistory(history);
   }, []);
 
-  // 3. Motor de selección inteligente de videos
-  const getNextRandomVideo = useCallback(() => {
+  // 3. Selección de video
+  const getNextVideo = useCallback((isFirstVideo: boolean = false) => {
     if (videoPool.length === 0) return null;
 
-    const viewedIds = history.map(h => h.id);
+    const startIds = startHistory.map(h => h.id);
 
-    // FILTRO 1: No vistos en 7 días + Diferente categoría + No prohibidos
-    let candidates = videoPool.filter(v => 
-      !viewedIds.includes(v.id) && 
-      v.categoria !== FORBIDDEN_CATEGORY && 
-      v.categoria !== lastCategoryRef.current
-    );
+    let candidates = videoPool.filter(v => {
+      const isForbidden = v.categoria.includes('HCD'); // Filtro categoría HCD
+      
+      // Si es el primer video de la sesión, aplicamos el filtro de los 4 días
+      if (isFirstVideo) {
+        return !isForbidden && !startIds.includes(v.id);
+      }
+      
+      // Para el resto, solo evitamos la categoría HCD y la categoría que acaba de sonar
+      return !isForbidden && v.categoria !== lastCategoryRef.current;
+    });
 
-    // FILTRO 2 (FALLBACK): Si no hay videos nuevos de otra categoría, buscamos cualquier video nuevo (no visto en 7 días)
+    // Fallback: Si no hay candidatos (ej. ya se usaron todos como inicio), ignoramos el filtro de 4 días
     if (candidates.length === 0) {
-      candidates = videoPool.filter(v => 
-        !viewedIds.includes(v.id) && 
-        v.categoria !== FORBIDDEN_CATEGORY
-      );
-    }
-
-    // FILTRO 3 (REINICIO): Si el usuario ya vio TODO en la última semana, permitimos repetir pero priorizamos otra categoría
-    if (candidates.length === 0) {
-      candidates = videoPool.filter(v => 
-        v.categoria !== FORBIDDEN_CATEGORY && 
-        v.categoria !== lastCategoryRef.current
-      );
-    }
-
-    // Si todo falla, seleccionamos cualquier video permitido
-    if (candidates.length === 0) {
-      candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY);
+      candidates = videoPool.filter(v => !v.categoria.includes('HCD'));
     }
 
     const selected = candidates[Math.floor(Math.random() * candidates.length)];
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
-  }, [videoPool, history]);
+  }, [videoPool, startHistory]);
 
-  // Lógica de transición (Intro -> Contenido)
   const startTransition = useCallback((nextContent: Video | Article) => {
     const isNews = 'url_slide' in nextContent || !('url' in nextContent);
     const nextIntro = isNews ? NEWS_INTRO_VIDEO : INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
@@ -133,26 +126,25 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const handleContentEnded = useCallback(() => {
-    // Marcamos el video que termina como visto
-    if (state.currentContent?.id) {
-      markAsViewed(state.currentContent.id);
-    }
-    const next = getNextRandomVideo();
+    const next = getNextVideo(false); // Siguiente video normal
     if (next) startTransition(next);
-  }, [getNextRandomVideo, startTransition, state.currentContent, markAsViewed]);
+  }, [getNextVideo, startTransition]);
 
   const playManual = useCallback((item: Video | Article) => {
-    if (item.id) markAsViewed(item.id);
     startTransition(item);
-  }, [startTransition, markAsViewed]);
+  }, [startTransition]);
 
-  // Inicio automático de la App
+  // Efecto de Inicio de App
   useEffect(() => {
-    if (videoPool.length > 0 && !state.currentContent) {
-      const first = getNextRandomVideo();
-      if (first) startTransition(first);
+    if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
+      const first = getNextVideo(true); // Selección con filtro de 4 días
+      if (first) {
+        isInitialVideoPicked.current = true;
+        markAsStartVideo(first.id);
+        startTransition(first);
+      }
     }
-  }, [videoPool, state.currentContent, getNextRandomVideo, startTransition]);
+  }, [videoPool, state.currentContent, getNextVideo, startTransition, markAsStartVideo]);
 
   return (
     <MediaPlayerContext.Provider value={{ state, videoPool, setVideoPool, playManual, handleIntroEnded, handleContentEnded }}>
@@ -163,6 +155,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
 export const useMediaPlayer = () => {
   const context = useContext(MediaPlayerContext);
-  if (!context) throw new Error('useMediaPlayer debe ser usado dentro de MediaPlayerProvider');
+  if (!context) throw new Error('useMediaPlayer must be used within MediaPlayerProvider');
   return context;
 };
