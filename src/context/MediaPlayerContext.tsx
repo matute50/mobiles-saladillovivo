@@ -8,8 +8,8 @@ const INTRO_VIDEOS = [
   '/videos_intro/intro3.mp4', '/videos_intro/intro4.mp4', '/videos_intro/intro5.mp4',
 ];
 const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
+const FORBIDDEN_KEYWORD = 'HCD'; 
 
-// Configuración de Memoria de Inicio
 const START_HISTORY_KEY = 'sv_start_history_4d';
 const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
 
@@ -48,67 +48,62 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // 1. Obtener IDs del historial de inicio directamente del localStorage (Síncrono)
-  const getViewedStartIds = useCallback((): string[] => {
+  // 1. Lectura síncrona del historial
+  const getHistoryFromDisk = useCallback((): string[] => {
     if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
       if (!saved) return [];
       const parsed: HistoryItem[] = JSON.parse(saved);
       const now = Date.now();
-      // Solo devolvemos IDs que tengan menos de 4 días
       return parsed.filter(item => (now - item.timestamp) < FOUR_DAYS_MS).map(h => h.id);
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   }, []);
 
-  // 2. Guardar el video elegido como "inicio" en el localStorage
-  const saveStartVideo = useCallback((id: string) => {
+  // 2. Guardado en disco
+  const saveToDisk = useCallback((id: string) => {
     if (typeof window === 'undefined') return;
     try {
       const saved = localStorage.getItem(START_HISTORY_KEY);
       let history: HistoryItem[] = saved ? JSON.parse(saved) : [];
       const now = Date.now();
-      
-      // Limpiamos viejos y agregamos el nuevo
       history = history.filter(item => item.id !== id && (now - item.timestamp) < FOUR_DAYS_MS);
       history.push({ id, timestamp: now });
-      
       localStorage.setItem(START_HISTORY_KEY, JSON.stringify(history));
     } catch (e) {}
   }, []);
 
-  // 3. Selección de video
+  // 3. Selección con Barajado (Shuffle)
   const getNextVideo = useCallback((isFirstVideo: boolean = false) => {
     if (videoPool.length === 0) return null;
 
-    // Si es el primero de la sesión, leemos el historial directamente del disco
-    const startIds = isFirstVideo ? getViewedStartIds() : [];
+    const startIds = isFirstVideo ? getHistoryFromDisk() : [];
 
+    // Filtramos candidatos
     let candidates = videoPool.filter(v => {
-      const cat = v.categoria.toUpperCase();
-      const isHCD = cat.includes('HCD'); // Filtro estricto para HCD
-      
+      const isHCD = v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD);
       if (isFirstVideo) {
-        // Al inicio: No HCD y no haber sido "inicio" en los últimos 4 días
         return !isHCD && !startIds.includes(v.id);
       }
-      // En reproducción normal: No HCD y no repetir la misma categoría seguida
       return !isHCD && v.categoria !== lastCategoryRef.current;
     });
 
-    // Fallback: Si todos los videos ya fueron inicio en los últimos 4 días,
-    // elegimos cualquier video (que no sea HCD) para no romper la app.
+    // Fallback si la lista negra es muy grande
     if (candidates.length === 0) {
-      candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes('HCD'));
+      candidates = videoPool.filter(v => !v.categoria.toUpperCase().includes(FORBIDDEN_KEYWORD));
     }
 
-    // Selección aleatoria real sobre los candidatos
-    const selected = candidates[Math.floor(Math.random() * candidates.length)];
+    // --- ALGORITMO DE BARAJADO (Fisher-Yates) para asegurar aleatoriedad ---
+    const shuffled = [...candidates];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    const selected = shuffled[0]; // Tomamos el primero de la lista mezclada
     if (selected) lastCategoryRef.current = selected.categoria;
     return selected;
-  }, [videoPool, getViewedStartIds]);
+  }, [videoPool, getHistoryFromDisk]);
 
   const startTransition = useCallback((nextContent: Video | Article) => {
     const isNews = 'url_slide' in nextContent || !('url' in nextContent);
@@ -135,17 +130,18 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     startTransition(item);
   }, [startTransition]);
 
-  // EL DISPARADOR: Solo se ejecuta una vez cuando el pool de videos está listo
+  // Efecto de arranque blindado
   useEffect(() => {
+    // Solo actuamos si hay videos y NO hemos elegido el inicial todavía
     if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo(true); 
       if (first) {
         isInitialVideoPicked.current = true;
-        saveStartVideo(first.id); // Guardamos en el acto
+        saveToDisk(first.id);
         startTransition(first);
       }
     }
-  }, [videoPool, state.currentContent, getNextVideo, startTransition, saveStartVideo]);
+  }, [videoPool, state.currentContent, getNextVideo, startTransition, saveToDisk]);
 
   return (
     <MediaPlayerContext.Provider value={{ state, videoPool, setVideoPool, playManual, handleIntroEnded, handleContentEnded }}>
