@@ -5,11 +5,13 @@ import Image from 'next/image';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
 import VideoSection from './VideoSection';
-import { PageData, Video } from '@/lib/types'; 
+import { PageData, Video, Article } from '@/lib/types'; 
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Controller } from 'swiper/modules';
 import { Play, ChevronLeft, ChevronRight, X, Sun, Moon, Share2, Search, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+// Importación necesaria para detectar los parámetros de la URL (Deep Linking)
+import { useSearchParams } from 'next/navigation';
 import type { Swiper as SwiperClass } from 'swiper';
 import 'swiper/css';
 
@@ -35,7 +37,7 @@ function useTheme() {
   return { isDark: mounted ? isDark : true, toggleTheme: () => setIsDark(!isDark) };
 }
 
-// NUEVO MAPEO DE CATEGORÍAS
+// MAPEO DE CATEGORÍAS (Mantenido según tu solicitud)
 const CATEGORY_MAP: Record<string, string> = {
   'EXPORT': 'Gente de Acá',
   'SEMBRANDO FUTURO': 'Sembrando Futuro',
@@ -52,11 +54,9 @@ const getDisplayCategory = (dbCat: string) => {
   if (!dbCat) return 'VARIOS';
   const upper = dbCat.trim().toUpperCase();
   
-  // Lógica de detección específica
   if (upper.includes('HCD') && upper.includes('SALADILLO')) return 'HCD SALADILLO';
   if (upper.includes('ITEC') && upper.includes('CICAR')) return 'ITEC ¨A. Cicaré¨'; 
 
-  // Aplicar mapeo o devolver el original si no existe en la lista
   return CATEGORY_MAP[upper] || upper; 
 };
 
@@ -137,12 +137,36 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const [adsSwiper, setAdsSwiper] = useState<SwiperClass | null>(null);
 
+  // Hook para leer parámetros de la URL
+  const searchParams = useSearchParams();
+
   useEffect(() => {
-    if (data?.videos?.allVideos) {
-      setVideoPool(data.videos.allVideos);
+    if (data && mounted) {
+      const newsId = searchParams.get('id');
+      const videoId = searchParams.get('v');
+      const allVideos = data.videos?.allVideos || [];
+      
+      let target: Video | Article | undefined;
+
+      // Lógica de detección: si el link tiene un ?id=... (Noticia)
+      if (newsId) {
+        const allArticles = [
+          ...(data.articles?.featuredNews ? [data.articles.featuredNews] : []),
+          ...(data.articles?.secondaryNews || []),
+          ...(data.articles?.otherNews || [])
+        ];
+        target = allArticles.find(n => String(n.id) === newsId);
+      } 
+      // Si el link tiene un ?v=... (Video del Carrusel)
+      else if (videoId) {
+        target = allVideos.find(v => String(v.id) === videoId);
+      }
+
+      // Entregamos los videos y el objetivo inicial (si existe) al contexto
+      setVideoPool(allVideos, target);
     }
     setMounted(true);
-  }, [data, setVideoPool]);
+  }, [data, mounted, searchParams, setVideoPool]);
 
   const newsSlides = useMemo(() => {
     const slides = [];

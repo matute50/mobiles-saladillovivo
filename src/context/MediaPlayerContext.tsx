@@ -26,7 +26,8 @@ interface HistoryItem { id: string; timestamp: number; }
 interface MediaPlayerContextType {
   state: MediaPlayerState;
   videoPool: Video[];
-  setVideoPool: (videos: Video[]) => void;
+  // setVideoPool ahora acepta opcionalmente un contenido inicial para Deep Links
+  setVideoPool: (videos: Video[], initialTarget?: Video | Article) => void;
   playManual: (item: Video | Article) => void;
   handleIntroEnded: () => void;
   handleContentEnded: () => void;
@@ -35,7 +36,7 @@ interface MediaPlayerContextType {
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
 
 export function MediaPlayerProvider({ children }: { children: React.ReactNode }) {
-  const [videoPool, setVideoPool] = useState<Video[]>([]);
+  const [videoPool, setVideoPoolState] = useState<Video[]>([]);
   const isInitialVideoPicked = useRef(false);
   const lastCategoryRef = useRef<string>('');
   
@@ -69,6 +70,17 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } catch (e) {}
   }, []);
 
+  const startTransition = useCallback((nextContent: Video | Article) => {
+    const isNews = 'url_slide' in nextContent || !('url' in nextContent);
+    const nextIntro = isNews ? NEWS_INTRO_VIDEO : INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
+    setState({
+      currentContent: nextContent,
+      currentIntroUrl: nextIntro,
+      isIntroVisible: true,
+      shouldPlayContent: true,
+    });
+  }, []);
+
   const getNextVideo = useCallback((isFirstBoot = false) => {
     if (videoPool.length === 0) return null;
 
@@ -91,16 +103,16 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     return selected;
   }, [videoPool, getStartHistory]);
 
-  const startTransition = useCallback((nextContent: Video | Article) => {
-    const isNews = 'url_slide' in nextContent || !('url' in nextContent);
-    const nextIntro = isNews ? NEWS_INTRO_VIDEO : INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
-    setState({
-      currentContent: nextContent,
-      currentIntroUrl: nextIntro,
-      isIntroVisible: true,
-      shouldPlayContent: true,
-    });
-  }, []);
+  // Nueva implementación de setVideoPool sincronizada con Deep Linking
+  const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
+    setVideoPoolState(videos);
+    
+    // Si la App entra por un link compartido (?id= o ?v=), initialTarget tendrá valor
+    if (initialTarget && !isInitialVideoPicked.current) {
+      isInitialVideoPicked.current = true;
+      startTransition(initialTarget);
+    }
+  }, [startTransition]);
 
   const handleIntroEnded = useCallback(() => setState(prev => ({ ...prev, isIntroVisible: false })), []);
 
@@ -112,6 +124,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
 
   useEffect(() => {
+    // Si no hubo Deep Link (initialTarget), ejecutamos la rotación aleatoria normal
     if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo(true); 
       if (first) {
