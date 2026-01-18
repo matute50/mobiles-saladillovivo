@@ -168,7 +168,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const isLandscape = useOrientation(); 
   const { isDark, toggleTheme } = useTheme(); 
   const { setVideoPool, playManual } = useMediaPlayer(); 
-  const { unmute } = useVolume(); 
+  const { unmute } = useVolume();
   const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -198,9 +198,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
         target = allVideos.find(v => String(v.id) === videoId);
       }
 
-      // 🔊 AJUSTE DE SONIDO PARA DEEP LINKS:
-      // Si el sistema detecta que el usuario viene de un link compartido (target existe)
-      // forzamos el unmute() para que no inicie silenciado.
       if (target) {
         unmute();
       }
@@ -226,3 +223,55 @@ export default function MobileLayout({ data }: { data: PageData }) {
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden transition-colors", isDark ? "bg-black" : "bg-neutral-50")}>
       {!isLandscape && (
         <header className={cn("shrink-0 h-11 flex items-center justify-between px-3 z-50", isDark ? "bg-gradient-to-b from-neutral-600 to-black" : "bg-gradient-to-b from-neutral-400 to-white")}>
+          {!isSearchOpen ? (
+            <div className="relative w-36 h-full py-1">
+              <Image src={isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png'} alt="Logo" fill sizes="150px" priority className="object-contain" />
+            </div>
+          ) : (
+            <div className="flex-1 h-full flex items-center pr-2">
+              <input type="text" autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar..." className={cn("w-full bg-transparent border-b-2 outline-none py-1 text-sm", isDark ? "border-white/20 text-white" : "border-black/10 text-black")} />
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+             <button onClick={() => { setIsSearchOpen(!isSearchOpen); setSearchQuery(""); }} className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+               {isSearchOpen ? <X size={24}/> : <Search size={20}/>}
+             </button>
+             {!isSearchOpen && (
+               <>
+                 <button onClick={toggleTheme}>{isDark ? <Sun size={20} className="text-white"/> : <Moon size={20}/>}</button>
+                 <button onClick={() => navigator.share && navigator.share({url: window.location.href})} className={isDark ? "text-white" : "text-black"}><Share2 size={20}/></button>
+                 <button onClick={() => {}} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
+               </>
+             )}
+          </div>
+        </header>
+      )}
+
+      <div className={cn("transition-all duration-500", isLandscape ? "fixed inset-0 z-[500] w-[100vw] h-[100dvh]" : "relative z-40 w-full aspect-video bg-black")}>
+        <VideoSection isMobile={true} />
+      </div>
+
+      {!isLandscape && (
+        <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-1 min-h-0 overflow-y-auto">
+          <h3 className={cn("font-extrabold text-xl uppercase text-center mt-1", themeColorClass)}>Últimas Noticias</h3>
+          <div className="w-full aspect-[16/8] shrink-0">
+            <Swiper modules={[Controller]} onSwiper={setNewsSwiper} controller={{ control: adsSwiper }} slidesPerView={1} className="h-full">
+              {newsSlides.map((slide, idx) => (
+                <SwiperSlide key={idx}>
+                  <div className="w-full h-full flex justify-between">
+                    {slide.items.map((item: any) => (
+                      <MobileNewsCard key={item.id} news={item} isFeatured={slide.type === 'featured'} isDark={isDark} onClick={() => { unmute(); playManual(item); }} />
+                    ))}
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+          <div className="h-[160px] shrink-0 -mt-1">
+            <VideoCarouselBlock videos={data?.videos?.allVideos || []} isDark={isDark} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
