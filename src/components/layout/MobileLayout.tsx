@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
@@ -8,12 +8,10 @@ import VideoSection from './VideoSection';
 import { PageData, Video } from '@/lib/types'; 
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Controller } from 'swiper/modules';
-import { Play, ChevronLeft, ChevronRight, X, Sun, Moon, Share2, Search, HelpCircle, Download } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, X, Sun, Moon, Share2, Search, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Swiper as SwiperClass } from 'swiper';
 import 'swiper/css';
-
-const STOP_WORDS = new Set(["el","la","los","las","un","una","unos","unas","lo","al","del","a","ante","bajo","con","contra","de","desde","durante","en","entre","hacia","hasta","mediante","para","por","según","sin","sobre","tras","y","o","u","e","ni","pero","aunque","sino","porque","como","que","si","me","te","se","nos","os","les","mi","mis","tu","tus","su","sus","nuestro","nuestra","nuestros","nuestras","este","esta","estos","estas","ese","esa","esos","esas","aquel","aquella","aquellos","aquellas","ser","estar","haber","tener","hacer","ir","ver","dar","decir","puede"]);
 
 function useOrientation() {
   const [isLandscape, setIsLandscape] = useState(false);
@@ -46,29 +44,23 @@ const getDisplayCategory = (dbCat: string) => {
 };
 
 const getYouTubeThumbnail = (url: string) => {
+  if (!url) return '/placeholder.png';
   const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
   return (match && match[2].length === 11) ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : '/placeholder.png';
 };
 
-// --- COMPONENTES AUXILIARES CON NUEVA POLÍTICA DE COLOR ---
-
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
   if (!news) return null;
-  // Política de color para el fondo del botón play
-  const playButtonBgClass = isDark ? "bg-[#6699ff]/50" : "bg-[#003399]/50";
-
   return (
     <div onClick={onClick} className={cn("relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform", isDark ? "bg-neutral-900 border border-neutral-800" : "bg-white border border-neutral-200", isFeatured ? "w-full h-full" : "w-[49%] h-full")}>
       <div className="relative w-full h-full">
-        <Image src={news.imagen || '/placeholder.png'} alt={news.titulo} fill className="object-cover opacity-90" />
+        <Image src={news.imagen || '/placeholder.png'} alt={news.titulo} fill sizes={isFeatured ? "100vw" : "50vw"} priority={isFeatured} className="object-cover opacity-90" />
         <div className={cn("absolute inset-0 bg-gradient-to-t z-10", isDark ? "from-black via-black/60 to-transparent" : "from-black/90 via-black/50 to-transparent")} />
-        <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center">
-            {/* APLICADO COLOR DINÁMICO AL FONDO DEL BOTÓN PLAY */}
-            <div className={cn("flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 mb-2", playButtonBgClass, isFeatured ? "p-4" : "p-3")}>
+        <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center text-white">
+            <div className={cn("flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 mb-2 p-3", isDark ? "bg-[#6699ff]/50" : "bg-[#003399]/50")}>
                 <Play size={isFeatured ? 32 : 24} fill="white" className="text-white ml-1"/>
             </div>
-            {/* Espaciado entre líneas (leading-[1.1]) NO MODIFICADO */}
-            <h3 className={cn("text-white font-black uppercase tracking-tight leading-[1.1] text-balance", isFeatured ? "text-xl line-clamp-3" : "text-[13px] line-clamp-4")}>{news.titulo}</h3>
+            <h3 className={cn("font-black uppercase tracking-tight leading-[1.1] text-balance", isFeatured ? "text-xl line-clamp-3" : "text-[13px] line-clamp-4")}>{news.titulo}</h3>
         </div>
       </div>
     </div>
@@ -86,18 +78,14 @@ function VideoCarouselBlock({ videos, isDark }: any) {
 
   const currentCat = categories[activeCatIndex] || 'VARIOS';
   const filtered = videos.filter((v: Video) => getDisplayCategory(v.categoria) === currentCat);
+  const themeColorClass = isDark ? "text-[#6699ff]" : "text-[#003399]";
 
   if (categories.length === 0) return null;
-
-  // Política de color para texto y botones del carrusel
-  const themeColorClass = isDark ? "text-[#6699ff]" : "text-[#003399]";
 
   return (
     <div className="flex flex-col h-full w-full pt-[5px]">
       <div className="flex items-center justify-between px-2 py-0.5 shrink-0">
-        {/* APLICADO COLOR DINÁMICO A LOS BOTONES DE NAVEGACIÓN */}
         <button onClick={() => setActiveCatIndex(p => p === 0 ? categories.length - 1 : p - 1)} className={themeColorClass}><ChevronLeft size={28} /></button>
-        {/* APLICADO COLOR DINÁMICO AL TÍTULO DE CATEGORÍA */}
         <h2 className={cn("font-extrabold text-xl uppercase tracking-wider text-center flex-1 truncate px-2", themeColorClass)}>{currentCat}</h2>
         <button onClick={() => setActiveCatIndex(p => p === categories.length - 1 ? 0 : p + 1)} className={themeColorClass}><ChevronRight size={28} /></button>
       </div>
@@ -105,7 +93,7 @@ function VideoCarouselBlock({ videos, isDark }: any) {
         {filtered.map((v: Video) => (
           <SwiperSlide key={v.id}>
             <div onClick={() => { unmute(); playManual(v); }} className={cn("relative h-full rounded-lg overflow-hidden border", isDark ? "bg-neutral-800 border-neutral-700/50" : "bg-white border-neutral-200")}>
-              <Image src={v.imagen || getYouTubeThumbnail(v.url)} alt={v.nombre} fill className="object-cover opacity-90" />
+              <Image src={v.imagen || getYouTubeThumbnail(v.url)} alt={v.nombre} fill sizes="(max-width: 768px) 33vw, 20vw" className="object-cover opacity-90" />
               <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                 <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white/10 -mt-10"><Play size={21} fill="white" /></div>
               </div>
@@ -120,35 +108,26 @@ function VideoCarouselBlock({ videos, isDark }: any) {
   );
 }
 
-// --- COMPONENTE PRINCIPAL ---
 export default function MobileLayout({ data }: { data: PageData }) {
   const isLandscape = useOrientation(); 
   const { isDark, toggleTheme } = useTheme(); 
-  const { setVideoPool, playManual, state } = useMediaPlayer(); 
+  const { setVideoPool, playManual } = useMediaPlayer(); 
   const { unmute } = useVolume();
-  
   const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [infoModal, setInfoModal] = useState<{ isOpen: boolean; view: 'decreto' | 'creador' }>({ isOpen: false, view: 'decreto' });
 
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const [adsSwiper, setAdsSwiper] = useState<SwiperClass | null>(null);
 
   useEffect(() => {
+    // Solo entregamos los videos al contexto. 
+    // El contexto ya tiene la lógica para elegir el primero y manejar la rotación de 4 días.
     if (data?.videos?.allVideos) {
       setVideoPool(data.videos.allVideos);
     }
     setMounted(true);
   }, [data, setVideoPool]);
-
-  const filteredVideos = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return (data?.videos?.allVideos || []).filter(v => 
-      v.nombre.toLowerCase().includes(q) || v.categoria.toLowerCase().includes(q)
-    );
-  }, [searchQuery, data]);
 
   const newsSlides = useMemo(() => {
     const slides = [];
@@ -159,33 +138,20 @@ export default function MobileLayout({ data }: { data: PageData }) {
     return slides;
   }, [data]);
 
-  const adsSlides = useMemo(() => data?.ads || [], [data]);
-  const activeVideos = data?.videos?.allVideos || [];
-
-  // Política de color para el layout principal
   const themeColorClass = isDark ? "text-[#6699ff]" : "text-[#003399]";
-
   if (!mounted) return null;
 
   return (
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden transition-colors", isDark ? "bg-black" : "bg-neutral-50")}>
-      
       {!isLandscape && (
         <header className={cn("shrink-0 h-11 flex items-center justify-between px-3 z-50", isDark ? "bg-gradient-to-b from-neutral-600 to-black" : "bg-gradient-to-b from-neutral-400 to-white")}>
           {!isSearchOpen ? (
             <div className="relative w-36 h-full py-1">
-              <Image src={isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png'} alt="Logo" fill className="object-contain" priority />
+              <Image src={isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png'} alt="Logo" fill sizes="150px" priority className="object-contain" />
             </div>
           ) : (
             <div className="flex-1 h-full flex items-center pr-2">
-              <input 
-                type="text" 
-                autoFocus
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)} 
-                placeholder="Buscar video..." 
-                className={cn("w-full bg-transparent border-b-2 outline-none py-1 text-sm", isDark ? "border-white/20 text-white" : "border-black/10 text-black")} 
-              />
+              <input type="text" autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar..." className={cn("w-full bg-transparent border-b-2 outline-none py-1 text-sm", isDark ? "border-white/20 text-white" : "border-black/10 text-black")} />
             </div>
           )}
           <div className="flex items-center gap-3">
@@ -196,7 +162,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
                <>
                  <button onClick={toggleTheme}>{isDark ? <Sun size={20} className="text-white"/> : <Moon size={20}/>}</button>
                  <button onClick={() => navigator.share && navigator.share({url: window.location.href})} className={isDark ? "text-white" : "text-black"}><Share2 size={20}/></button>
-                 <button onClick={() => setInfoModal({ isOpen: true, view: 'decreto' })} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
+                 <button onClick={() => {}} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
                </>
              )}
           </div>
@@ -209,9 +175,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
       {!isLandscape && (
         <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-1 min-h-0 overflow-y-auto">
-          {/* APLICADO COLOR DINÁMICO AL TÍTULO PRINCIPAL */}
           <h3 className={cn("font-extrabold text-xl uppercase text-center mt-1", themeColorClass)}>Últimas Noticias</h3>
-          
           <div className="w-full aspect-[16/8] shrink-0">
             <Swiper modules={[Controller]} onSwiper={setNewsSwiper} controller={{ control: adsSwiper }} slidesPerView={1} className="h-full">
               {newsSlides.map((slide, idx) => (
@@ -225,23 +189,8 @@ export default function MobileLayout({ data }: { data: PageData }) {
               ))}
             </Swiper>
           </div>
-
           <div className="h-[160px] shrink-0 -mt-1">
-            <VideoCarouselBlock videos={(isSearchOpen && searchQuery) ? filteredVideos : activeVideos} isDark={isDark} />
-          </div>
-
-          <div className="w-full flex-1 min-h-[100px] mt-2 pb-2">
-            {adsSlides.length > 0 && (
-              <Swiper modules={[Controller]} onSwiper={setAdsSwiper} controller={{ control: newsSwiper }} slidesPerView={1} loop className="h-full w-full">
-                {adsSlides.map((ad: any, idx) => (
-                  <SwiperSlide key={idx}>
-                    <div className={cn("relative w-full h-full rounded-lg overflow-hidden border", isDark ? "border-white/10 bg-black" : "border-neutral-200 bg-white")}>
-                      <Image src={ad.imagen_url || '/placeholder_ad.png'} alt="Publicidad" fill className="object-cover" />
-                    </div>
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            )}
+            <VideoCarouselBlock videos={data?.videos?.allVideos || []} isDark={isDark} />
           </div>
         </div>
       )}
