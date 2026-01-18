@@ -10,7 +10,6 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Controller } from 'swiper/modules';
 import { Play, ChevronLeft, ChevronRight, X, Sun, Moon, Share2, Search, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-// Importación necesaria para detectar los parámetros de la URL (Deep Linking)
 import { useSearchParams } from 'next/navigation';
 import type { Swiper as SwiperClass } from 'swiper';
 import 'swiper/css';
@@ -37,7 +36,6 @@ function useTheme() {
   return { isDark: mounted ? isDark : true, toggleTheme: () => setIsDark(!isDark) };
 }
 
-// MAPEO DE CATEGORÍAS (Mantenido según tu solicitud)
 const CATEGORY_MAP: Record<string, string> = {
   'EXPORT': 'Gente de Acá',
   'SEMBRANDO FUTURO': 'Sembrando Futuro',
@@ -53,10 +51,8 @@ const CATEGORY_MAP: Record<string, string> = {
 const getDisplayCategory = (dbCat: string) => {
   if (!dbCat) return 'VARIOS';
   const upper = dbCat.trim().toUpperCase();
-  
   if (upper.includes('HCD') && upper.includes('SALADILLO')) return 'HCD SALADILLO';
   if (upper.includes('ITEC') && upper.includes('CICAR')) return 'ITEC ¨A. Cicaré¨'; 
-
   return CATEGORY_MAP[upper] || upper; 
 };
 
@@ -68,9 +64,31 @@ const getYouTubeThumbnail = (url: string) => {
 
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
   if (!news) return null;
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/?id=${news.id}`;
+    if (navigator.share) {
+      navigator.share({
+        title: news.titulo,
+        text: news.resumen || 'Mirá esta noticia en Saladillo ViVo',
+        url: shareUrl,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Enlace copiado al portapapeles');
+    }
+  };
+
   return (
     <div onClick={onClick} className={cn("relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform", isDark ? "bg-neutral-900 border border-neutral-800" : "bg-white border border-neutral-200", isFeatured ? "w-full h-full" : "w-[49%] h-full")}>
       <div className="relative w-full h-full">
+        <button 
+          onClick={handleShare}
+          className="absolute top-2 right-2 z-30 p-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full text-white active:scale-90 transition-transform"
+        >
+          <Share2 size={isFeatured ? 20 : 16} />
+        </button>
         <Image src={news.imagen || '/placeholder.png'} alt={news.titulo} fill sizes={isFeatured ? "100vw" : "50vw"} priority={isFeatured} className="object-cover opacity-90" />
         <div className={cn("absolute inset-0 bg-gradient-to-t z-10", isDark ? "from-black via-black/60 to-transparent" : "from-black/90 via-black/50 to-transparent")} />
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center text-white">
@@ -97,6 +115,22 @@ function VideoCarouselBlock({ videos, isDark }: any) {
   const filtered = videos.filter((v: Video) => getDisplayCategory(v.categoria) === currentCat);
   const themeColorClass = isDark ? "text-[#6699ff]" : "text-[#003399]";
 
+  // Lógica para compartir un video específico del carrusel (?v=)
+  const handleShareVideo = (e: React.MouseEvent, v: Video) => {
+    e.stopPropagation();
+    const shareUrl = `${window.location.origin}/?v=${v.id}`;
+    if (navigator.share) {
+      navigator.share({
+        title: v.nombre,
+        text: 'Mirá este video en Saladillo ViVo',
+        url: shareUrl,
+      }).catch(console.error);
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Enlace copiado al portapapeles');
+    }
+  };
+
   if (categories.length === 0) return null;
 
   return (
@@ -110,6 +144,15 @@ function VideoCarouselBlock({ videos, isDark }: any) {
         {filtered.map((v: Video) => (
           <SwiperSlide key={v.id}>
             <div onClick={() => { unmute(); playManual(v); }} className={cn("relative h-full rounded-lg overflow-hidden border", isDark ? "bg-neutral-800 border-neutral-700/50" : "bg-white border-neutral-200")}>
+              
+              {/* Botón Compartir para Video */}
+              <button 
+                onClick={(e) => handleShareVideo(e, v)}
+                className="absolute top-1 right-1 z-30 p-1.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white active:scale-90 transition-transform"
+              >
+                <Share2 size={14} />
+              </button>
+
               <Image src={v.imagen || getYouTubeThumbnail(v.url)} alt={v.nombre} fill sizes="(max-width: 768px) 33vw, 20vw" className="object-cover opacity-90" />
               <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                 <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white/10 -mt-10"><Play size={21} fill="white" /></div>
@@ -137,7 +180,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const [adsSwiper, setAdsSwiper] = useState<SwiperClass | null>(null);
 
-  // Hook para leer parámetros de la URL
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -148,7 +190,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
       
       let target: Video | Article | undefined;
 
-      // Lógica de detección: si el link tiene un ?id=... (Noticia)
       if (newsId) {
         const allArticles = [
           ...(data.articles?.featuredNews ? [data.articles.featuredNews] : []),
@@ -157,13 +198,11 @@ export default function MobileLayout({ data }: { data: PageData }) {
         ];
         target = allArticles.find(n => String(n.id) === newsId);
       } 
-      // Si el link tiene un ?v=... (Video del Carrusel)
       else if (videoId) {
         target = allVideos.find(v => String(v.id) === videoId);
       }
 
-      // Entregamos los videos y el objetivo inicial (si existe) al contexto
-      setVideoPool(allVideos, target);
+      (setVideoPool as any)(allVideos, target);
     }
     setMounted(true);
   }, [data, mounted, searchParams, setVideoPool]);
