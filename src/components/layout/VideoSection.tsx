@@ -10,103 +10,108 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const { state, handleIntroEnded, handleContentEnded } = useMediaPlayer();
   const { currentContent, currentIntroUrl, isIntroVisible, shouldPlayContent } = state;
-  const { isMuted, toggleMute } = useVolume(); 
+  const { isMuted, toggleMute, unmute } = useVolume(); 
   
   const introVideoRef = useRef<HTMLVideoElement>(null);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [showControls, setShowControls] = useState(false);
   const [isUserPlaying, setIsUserPlaying] = useState(true); 
-  const [showCinemaBars, setShowCinemaBars] = useState(true);
   const [isContentStarted, setIsContentStarted] = useState(false);
+  const [showControls, setShowControls] = useState(false);
 
-  useEffect(() => { setIsContentStarted(false); }, [currentContent]);
+  // Reiniciar estado cuando cambia el contenido
+  useEffect(() => { 
+    setIsContentStarted(false); 
+    setIsUserPlaying(true);
+  }, [currentContent]);
 
-  useEffect(() => {
-    if (isIntroVisible) { setShowCinemaBars(true); return; }
-    if (currentContent && 'url_slide' in currentContent) { setShowCinemaBars(false); return; }
-    if (!isUserPlaying) setShowCinemaBars(true);
-    else {
-      const t = setTimeout(() => setShowCinemaBars(false), 2000); 
-      return () => clearTimeout(t);
-    }
-  }, [isIntroVisible, currentContent, isUserPlaying]);
-
+  // Manejo de la Intro Video
   useEffect(() => {
     const v = introVideoRef.current;
     if (isIntroVisible && currentIntroUrl && v) {
-      v.src = currentIntroUrl; v.load(); v.muted = isMuted;
-      v.play().catch(() => { v.muted = true; v.play(); });
-      setIsUserPlaying(true);
+      v.src = currentIntroUrl;
+      v.muted = isMuted;
+      v.play().catch(() => {
+        // Fallback: si el navegador bloquea el autoplay, silenciamos para que juegue sí o sí
+        v.muted = true;
+        v.play();
+      });
     }
   }, [currentIntroUrl, isIntroVisible, isMuted]);
 
-  useEffect(() => {
-    if (showControls && isUserPlaying && !isIntroVisible && !isMuted) {
-      controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 500);
-    }
-    return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
-  }, [showControls, isUserPlaying, isIntroVisible, isMuted]);
-
-  const handleStart = () => { setIsContentStarted(true); setTimeout(handleIntroEnded, 200); };
+  // Cuando el Video Real empieza, quitamos la intro definitivamente
+  const handleStart = () => { 
+    setIsContentStarted(true); 
+    handleIntroEnded(); 
+  };
   
   const handleInteraction = () => { 
-    setShowControls(true); 
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); 
+    setShowControls(true);
+    setTimeout(() => setShowControls(false), 3000);
   };
 
   return (
-    <div className="w-full h-full bg-black relative overflow-hidden select-none" onMouseMove={handleInteraction} onClick={handleInteraction}>
+    <div className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
       <style jsx global>{`.analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }`}</style>
       
-      <div className="absolute inset-0 z-10 pointer-events-none">
-        {currentContent && <VideoPlayer content={currentContent} shouldPlay={shouldPlayContent && isUserPlaying} onEnded={handleContentEnded} onStart={handleStart} muted={isMuted} />}
+      {/* CAPA DE VIDEO REAL */}
+      <div className="absolute inset-0 z-10">
+        {currentContent && (
+          <VideoPlayer 
+            content={currentContent} 
+            shouldPlay={shouldPlayContent && isUserPlaying} 
+            onEnded={handleContentEnded} 
+            onStart={handleStart} 
+            muted={isMuted} 
+          />
+        )}
       </div>
 
+      {/* RUIDO ANALÓGICO (Solo si no empezó o está pausado) */}
       {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
-      <div className="absolute inset-0 z-20 bg-transparent" onClick={handleInteraction} />
 
-      {!(currentContent && 'url_slide' in currentContent) && (
-        <>
-          <div className={cn("absolute top-0 h-[20%] w-full bg-black z-30 transition-transform duration-500", showCinemaBars ? "translate-y-0" : "-translate-y-full")} />
-          <div className={cn("absolute bottom-0 h-[20%] w-full bg-black z-30 transition-transform duration-500", showCinemaBars ? "translate-y-0" : "translate-y-full")} />
-        </>
+      {/* CAPA DE INTRO (VIDEO) */}
+      <div className={cn(
+        "absolute inset-0 z-40 bg-black transition-opacity duration-700", 
+        isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}>
+        <video 
+          ref={introVideoRef} 
+          className="w-full h-full object-cover" 
+          onEnded={handleIntroEnded} // Por seguridad, si termina la intro y no hubo señal de VideoPlayer, cerramos intro
+          playsInline 
+        />
+      </div>
+
+      {/* BOTÓN FLOTANTE: "ACTIVAR SONIDO" (Solo aparece si el usuario entra por link y está muteado) */}
+      {isMuted && !isIntroVisible && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); unmute(); }}
+          className="absolute top-4 left-4 z-[60] flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full font-bold animate-pulse shadow-lg"
+        >
+          <VolumeX size={20} /> TOCAR PARA ACTIVAR SONIDO
+        </button>
       )}
 
-      <div className={cn("absolute inset-0 z-40 bg-black transition-opacity duration-500", isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
-        <video ref={introVideoRef} className="w-full h-full object-cover" playsInline />
-      </div>
-
+      {/* CONTROLES DE REPRODUCCIÓN */}
       <div className={cn(
-        "absolute inset-0 z-50 flex flex-col justify-between p-4 transition-opacity duration-200 pointer-events-none", 
-        (showControls || !isUserPlaying || isMuted) ? "opacity-100" : "opacity-0"
+        "absolute inset-0 z-50 flex items-center justify-center gap-6 transition-opacity duration-300", 
+        (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
-        <div className="flex justify-end w-full">
-          <div className="pointer-events-auto w-10 h-10">
-            <google-cast-launcher style={{width:'40px', height:'40px'}} />
-          </div>
-        </div>
+        <button 
+          onClick={(e) => { e.stopPropagation(); setIsUserPlaying(!isUserPlaying); }} 
+          className="flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 active:scale-95"
+        >
+          {isUserPlaying ? <Pause size={40} fill="white" className="text-white"/> : <Play size={40} fill="white" className="text-white ml-1"/>}
+        </button>
         
-        <div className="absolute inset-0 flex items-center justify-center gap-6 pointer-events-none">
-          <button 
-            onClick={(e) => { e.stopPropagation(); setIsUserPlaying(!isUserPlaying); handleInteraction(); }} 
-            className="pointer-events-auto flex items-center justify-center rounded-full border border-white/20 bg-black/40 backdrop-blur-md p-5 transition-all active:scale-95"
-          >
-            {isUserPlaying ? <Pause size={40} fill="white" className="text-white"/> : <Play size={40} fill="white" className="text-white ml-1"/>}
-          </button>
-          
-          <button 
-            onClick={(e) => { e.stopPropagation(); toggleMute(); handleInteraction(); }} 
-            className={cn(
-              "pointer-events-auto flex items-center justify-center rounded-full border transition-all duration-300 p-5 active:scale-95", 
-              isMuted 
-                ? "bg-red-600 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.5)]" 
-                : "bg-black/40 border-white/20 backdrop-blur-md"
-            )}
-          >
-            {isMuted ? <VolumeX size={40} fill="white" className="text-white"/> : <Volume2 size={40} fill="white" className="text-white"/>}
-          </button>
-        </div>
-        <div className="h-10 w-full" />
+        <button 
+          onClick={(e) => { e.stopPropagation(); toggleMute(); }} 
+          className={cn(
+            "flex items-center justify-center rounded-full border p-5 active:scale-95", 
+            isMuted ? "bg-red-600 border-red-500" : "bg-black/40 border-white/20 backdrop-blur-md"
+          )}
+        >
+          {isMuted ? <VolumeX size={40} fill="white" /> : <Volume2 size={40} fill="white" />}
+        </button>
       </div>
     </div>
   );

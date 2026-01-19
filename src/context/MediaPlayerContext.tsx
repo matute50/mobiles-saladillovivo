@@ -23,7 +23,6 @@ interface MediaPlayerState {
 
 interface HistoryItem { id: string; timestamp: number; }
 
-// INTERFAZ CORREGIDA: Ahora acepta el initialTarget opcional
 interface MediaPlayerContextType {
   state: MediaPlayerState;
   videoPool: Video[];
@@ -71,9 +70,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const startTransition = useCallback((nextContent: Video | Article) => {
-    // Detectamos si es noticia o video para elegir la intro correcta
-    const isNews = 'url_slide' in nextContent || !('url' in nextContent) || !nextContent.url;
-    const nextIntro = isNews ? NEWS_INTRO_VIDEO : INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)];
+    // CORRECCIÓN: Si tiene 'url', es un Video. Si no, es una Noticia.
+    const isVideo = 'url' in nextContent && nextContent.url;
+    const nextIntro = isVideo ? INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)] : NEWS_INTRO_VIDEO;
     
     setState({
       currentContent: nextContent,
