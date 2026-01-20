@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
-import { useVolume } from '@/context/VolumeContext'; // Corrección de importación
+import { useVolume } from '@/context/VolumeContext'; 
 import VideoSection from './VideoSection';
 import { PageData, Video, Article } from '@/lib/types'; 
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -79,10 +79,10 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/?id=${news.id}`;
     if (navigator.share) {
+      // CORRECCIÓN: Eliminamos el título y la propiedad url para evitar duplicados.
+      // El link se incluye al final del texto para disparar la miniatura.
       navigator.share({
-        title: news.titulo,
-        text: news.bajada || 'Mirá esta noticia en Saladillo ViVo',
-        url: shareUrl,
+        text: `Informate con Saladillo Vivo.\n\n${shareUrl}`,
       }).catch(console.error);
     } else {
       navigator.clipboard.writeText(shareUrl);
@@ -126,10 +126,9 @@ function VideoCarouselBlock({ videos, isDark }: any) {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/?v=${v.id}`;
     if (navigator.share) {
+      // CORRECCIÓN: Solo pasamos 'text' con el link incluido para evitar la duplicación.
       navigator.share({
-        title: v.nombre,
-        text: 'Mirá este video en Saladillo ViVo',
-        url: shareUrl,
+        text: `Lo podes ver en Saladillo Vivo\n\n${shareUrl}`,
       }).catch(console.error);
     } else {
       navigator.clipboard.writeText(shareUrl);
@@ -174,7 +173,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const isLandscape = useOrientation(); 
   const { isDark, toggleTheme, mounted } = useTheme(); 
   const { state, setVideoPool, playManual } = useMediaPlayer(); 
-  const { isMuted, unmute, toggleMute } = useVolume(); // Corrección aquí
+  const { isMuted, unmute, toggleMute } = useVolume(); 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -204,7 +203,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
       }
 
       if (target) {
-        // Obligatorio: Muted = true para que el navegador permita el Autoplay silenciado
         if (!isMuted) toggleMute(); 
         
         const forceAudio = () => { 
