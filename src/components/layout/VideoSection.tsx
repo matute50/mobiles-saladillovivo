@@ -1,4 +1,3 @@
-// src/components/layout/VideoSection.tsx completo
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -11,7 +10,7 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const { state, handleIntroEnded, handleContentEnded } = useMediaPlayer();
   const { currentContent, currentIntroUrl, isIntroVisible, shouldPlayContent } = state;
-  const { isMuted, toggleMute, unmute } = useVolume(); 
+  const { isMuted, toggleMute, unmute } = useVolume();
   
   const introVideoRef = useRef<HTMLVideoElement>(null);
   const [isUserPlaying, setIsUserPlaying] = useState(true); 
@@ -27,9 +26,8 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     const v = introVideoRef.current;
     if (isIntroVisible && currentIntroUrl && v) {
       v.src = currentIntroUrl;
-      v.muted = true; // Forzamos mudo para asegurar que la intro siempre haga autoplay
+      v.muted = true;
       v.play().catch(() => {
-        // Fallback total
         handleIntroEnded();
       });
     }
@@ -56,13 +54,14 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
             shouldPlay={shouldPlayContent && isUserPlaying} 
             onEnded={handleContentEnded} 
             onStart={handleStart} 
-            muted={isMuted} 
+            muted={isMuted}
           />
         )}
       </div>
 
       {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
 
+      {/* INTRO VIDEO LAYER */}
       <div className={cn(
         "absolute inset-0 z-40 bg-black transition-opacity duration-700", 
         isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -76,16 +75,24 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
         />
       </div>
 
-      {/* BOTÓN FLOTANTE: "ACTIVAR SONIDO" */}
-      {isMuted && !isIntroVisible && (
+      {/* BOTÓN CIRCULAR ROJO CON ANIMACIÓN DE SALIDA */}
+      <div className={cn(
+        "absolute inset-0 z-[60] flex items-center justify-center pointer-events-none transition-all duration-500 ease-in-out",
+        (isMuted && !isIntroVisible) ? "opacity-100 scale-100" : "opacity-0 scale-75"
+      )}>
         <button 
           onClick={(e) => { e.stopPropagation(); unmute(); }}
-          className="absolute top-4 left-4 z-[60] flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full font-bold animate-pulse shadow-lg"
+          className={cn(
+            "w-24 h-24 bg-red-600 text-white rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(220,38,38,0.5)]",
+            "pointer-events-auto active:scale-90 transition-transform duration-200",
+            "animate-pulse border-4 border-white/20"
+          )}
         >
-          <VolumeX size={20} /> TOCAR PARA ACTIVAR SONIDO
+          <VolumeX size={48} strokeWidth={2.5} />
         </button>
-      )}
+      </div>
 
+      {/* CONTROLES ESTÁNDAR */}
       <div className={cn(
         "absolute inset-0 z-50 flex items-center justify-center gap-6 transition-opacity duration-300", 
         (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0 pointer-events-none"
