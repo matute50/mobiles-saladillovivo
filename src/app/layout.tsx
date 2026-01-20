@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { MediaPlayerProvider } from "@/context/MediaPlayerContext";
-import { VolumeProvider } from "@/context/VolumeContext";
+// import { MediaPlayerProvider } from "@/context/MediaPlayerContext"; // Eliminar esta importación
+// import { VolumeProvider } from "@/context/VolumeContext"; // Eliminar esta importación
+import { Providers } from "@/app/providers"; // Importar el componente Providers
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,11 +29,9 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <MediaPlayerProvider>
-          <VolumeProvider>
-            {children}
-          </VolumeProvider>
-        </MediaPlayerProvider>
+        <Providers> {/* Usar el componente Providers */}
+          {children}
+        </Providers>
       </body>
     </html>
   );

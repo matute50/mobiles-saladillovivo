@@ -7,7 +7,7 @@ interface VolumeContextType {
   setVolume: (volume: number) => void;
   isMuted: boolean;
   toggleMute: () => void;
-  unmute: () => void; // <--- AGREGADO
+  unmute: () => void;
 }
 
 const VolumeContext = createContext<VolumeContextType | undefined>(undefined);
@@ -35,7 +35,6 @@ export const VolumeProvider = ({ children }: { children: ReactNode }) => {
     setIsMuted(prev => !prev);
   }, []);
 
-  // ESTA ES LA FUNCIÓN QUE FALTABA Y CAUSABA EL ERROR:
   const unmute = useCallback(() => {
     setIsMuted(false);
   }, []);

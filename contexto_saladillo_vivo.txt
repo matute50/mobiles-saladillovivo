@@ -1,0 +1,88 @@
+# Resumen Técnico: Saladillo ViVo Mobile
+
+## 1. Stack de Tecnología
+
+-   **Next.js:** `^15.5.9`
+-   **React:** `19.0.0`
+-   **TypeScript:** `^5`
+-   **UI:** Tailwind CSS con `lucide-react` para iconos y `swiper` para carruseles.
+-   **Linting:** ESLint con la configuración de Next.js.
+
+## 2. Estructura del Repositorio y Base de Datos
+
+### Estructura de Carpetas
+
+El proyecto sigue una organización estándar para aplicaciones Next.js dentro del directorio `src`:
+
+-   `src/app`: Contiene la configuración principal de la aplicación, incluyendo `layout.tsx`, `page.tsx` (página de inicio) y estilos globales.
+-   `src/components`: Componentes de React, subdivididos en:
+    -   `layout`: Componentes de alto nivel como `MobileLayout` y `VideoSection`.
+    -   `player`: Componentes relacionados con el reproductor de video.
+    -   `ui`: Componentes genéricos de UI (Button, Dialog, etc.).
+-   `src/context`: Lógica de manejo de estado global a través de React Context (`MediaPlayerContext`, `NewsContext`, `VolumeContext`, etc.).
+-   `src/hooks`: Hooks personalizados que encapsulan lógica reutilizable (`useOrientation`, `useCast`, `useDebounce`, etc.).
+-   `src/lib`: Contiene la lógica de negocio principal, definiciones de tipos (`types.ts`) y el cliente de Supabase (`supabaseClient.ts`).
+-   `src/utils`: Utilidades generales y una configuración adicional del cliente de Supabase.
+
+### Esquema de Base de Datos (Supabase)
+
+El esquema de la base de datos no está definido explícitamente en el código, pero se puede inferir a partir de las interfaces en `src/lib/types.ts`:
+
+-   **`Article` (Noticias):**
+    -   `id`: string
+    -   `titulo`: string
+    -   `bajada`: string
+    -   `imagen`: string | null
+    -   `categoria`: string
+    -   `autor`: string
+    -   `fecha`: string
+    -   `contenido`: string
+    -   `etiquetas`: string[]
+-   **`Video`:**
+    -   `id`: string
+    -   `nombre`: string
+    -   `url`: string (probablemente URL de YouTube)
+    -   `imagen`: string | null
+    -   `categoria`: string
+    -   `fecha`: string
+-   **`Ad` (Publicidades):**
+    -   `id`: string
+    -   `cliente`: string
+    -   `imagen_url`: string
+    -   `url`: string
+    -   `tipo`: string
+    -   `activo`: boolean
+
+La conexión con Supabase se inicializa en `src/lib/supabaseClient.ts` y `src/utils/supabase/client.ts`.
+
+## 3. Integraciones
+
+-   **Editor de Noticias:** No se ha encontrado ninguna implementación o componente relacionado con un editor de noticias. La aplicación parece estar enfocada exclusivamente en la visualización de contenido.
+-   **Cloudflare R2:** No existe ninguna configuración o mención de Cloudflare R2 en el código, por lo que no hay una integración activa.
+-   **Motor de Voces (Google TTS):** No se ha encontrado ninguna implementación relacionada con Text-to-Speech (TTS), ni para acentos regionales ni de forma genérica.
+
+## 4. UI/UX
+
+-   **`MobileLayout`:** Es el componente principal (`src/components/layout/MobileLayout.tsx`) que estructura toda la vista móvil. Es altamente dinámico y gestiona:
+    -   El cambio entre modo oscuro y claro.
+    -   La adaptación de la UI a la orientación del dispositivo (vertical/horizontal).
+    -   La sección del reproductor de video principal (`VideoSection`).
+    -   Un carrusel de noticias (`Swiper`) que utiliza el componente `MobileNewsCard`.
+    -   Una barra de búsqueda.
+    -   Lógica para manejar deep links a través de parámetros en la URL (`?id=` para noticias, `?v=` para videos).
+-   **`MobileNewsCard`:** Componente definido dentro de `MobileLayout.tsx`, diseñado para mostrar noticias en el carrusel. Presenta una imagen de fondo, título y un botón para compartir. El evento `onClick` activa la reproducción del contenido multimedia asociado.
+
+## 5. Lógica de la Aplicación
+
+-   **Manejo de Estado:** El estado global se gestiona principalmente con **React Context**. Existen múltiples `Contexts` en `src/context/` para desacoplar responsabilidades, como `MediaPlayerContext` para el estado del reproductor y `VolumeContext` para el volumen.
+-   **Hooks Personalizados:** Se utilizan varios hooks para abstraer lógica compleja:
+    -   `useOrientation`: Detecta si la pantalla está en modo horizontal o vertical.
+    -   `useTheme`: Gestiona el tema (oscuro/claro).
+    -   `useMediaPlayer`: Provee una interfaz para controlar la reproducción de medios.
+    -   `useCast`: Lógica para transmitir contenido (aunque parece incompleta).
+-   **Acceso a Datos (Supabase):** No existe un hook `useSupabaseStorage` específico. El acceso a datos se realiza directamente a través del cliente de Supabase, como se ve en `src/lib/data.ts`, para obtener noticias, videos y otros datos.
+
+## 6. Tareas Pendientes y Errores
+
+-   **Errores Detectados:** No se han identificado errores críticos o `console.error` explícitos durante el análisis estático. El código incluye un "gating de montaje" (`if (!mounted) return null;`) en `MobileLayout` para prevenir errores de hidratación en Next.js.
+-   **TODOs:** La búsqueda de `TODO` o `FIXME` solo arrojó un comentario menor en `src/hooks/useCast.ts`: `// Comprueba que todo exista antes de intentar transmitir`. No hay una lista de tareas pendientes evidentes en el código.

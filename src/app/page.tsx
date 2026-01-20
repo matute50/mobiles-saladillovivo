@@ -1,31 +1,25 @@
+// src/app/page.tsx
 import { Metadata } from 'next';
 import MobileLayout from '@/components/layout/MobileLayout';
 import { getPageData } from '@/lib/data';
 
-// Forzamos la carga dinámica para tener siempre datos frescos
 export const dynamic = 'force-dynamic';
 
-// 1. Tipos para los parámetros de búsqueda de Next.js 15
 type Props = {
   searchParams: Promise<{ id?: string; v?: string }>;
 };
 
-// 2. FUNCIÓN DE METADATA DINÁMICA
-// Esta función la leen los bots de WhatsApp, Facebook y Google antes de cargar la página
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const sParams = await searchParams;
   const newsId = sParams.id;
   const videoId = sParams.v;
-  
-  // Buscamos los datos en Supabase
   const data = await getPageData();
   
-  // Valores por defecto para la Home
   let title = "Saladillo ViVo - El medio local de Saladillo";
   let description = "Noticias, videos y toda la actualidad de Saladillo en tiempo real.";
-  let imageUrl = "https://saladillovivo.vercel.app/logo_social.png"; // Ajusta con tu dominio real
+  // URL absoluta obligatoria para redes sociales
+  let imageUrl = "https://saladillovivo.vercel.app/logo_social.png"; 
 
-  // LÓGICA DE DETECCIÓN: Si el link tiene un ?id=... (Noticia)
   if (newsId) {
     const allArticles = [
       ...(data?.articles?.featuredNews ? [data.articles.featuredNews] : []),
@@ -33,19 +27,18 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       ...(data?.articles?.otherNews || [])
     ];
     const article = allArticles.find(n => String(n.id) === newsId);
-    
     if (article) {
-      title = article.titulo; // Usamos el título real
-      description = article.resumen || description;
+      title = article.titulo;
+      description = article.bajada || description;
       imageUrl = article.imagen || imageUrl;
     }
   } 
-  // LÓGICA DE DETECCIÓN: Si el link tiene un ?v=... (Video del Carrusel)
   else if (videoId) {
     const video = data?.videos?.allVideos?.find((v: any) => String(v.id) === videoId);
     if (video) {
-      title = video.nombre; // Usamos el nombre del video
-      imageUrl = video.imagen || imageUrl;
+      title = video.nombre;
+      const ytMatch = video.url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+      imageUrl = video.imagen || (ytMatch ? `https://img.youtube.com/vi/${ytMatch[2]}/maxresdefault.jpg` : imageUrl);
     }
   }
 
@@ -55,8 +48,13 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     openGraph: {
       title,
       description,
-      images: [{ url: imageUrl }],
-      type: 'article',
+      images: [{ 
+        url: imageUrl, 
+        width: 1200, 
+        height: 630,
+        alt: title 
+      }],
+      type: 'video.other',
       siteName: 'Saladillo ViVo',
     },
     twitter: {
@@ -68,20 +66,17 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-// 3. COMPONENTE PRINCIPAL
 export default async function Home() {
   let data = null;
-
   try {
     data = await getPageData();
-    console.log("✅ Datos obtenidos de Supabase");
   } catch (error) {
     console.error("❌ Error buscando datos:", error);
   }
 
   return (
     <main className="min-h-screen bg-black">
-      <MobileLayout data={data as any} isMobile={true} />
+      <MobileLayout data={data as any} />
     </main>
   );
 }

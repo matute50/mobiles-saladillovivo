@@ -1,11 +1,11 @@
-// src/components/player/VideoPlayer.tsx
+// src/components/player/VideoPlayer.tsx completo
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import ReactPlayer from 'react-player';
 import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useAudioPlayer } from '@/hooks/useAudioPlayer'; // Importación necesaria
+import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 
 interface VideoPlayerProps {
   content: Video | Article;
@@ -25,7 +25,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
 
-  // CONTROL DE AUDIO PARA SLIDES (Google TTS)
   const { play: playAudio, pause: pauseAudio, stop: stopAudio } = useAudioPlayer(articleData?.audio_url || null);
 
   const triggerEnd = useCallback(() => {
@@ -41,14 +40,10 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
     endTimerRef.current = setTimeout(() => onEnded(), ms);
   }, [onEnded]);
 
-  // Sincronización de Audio con la Reproducción y Mute
   useEffect(() => {
     if (isArticle && shouldPlay) {
-      if (!muted) {
-        playAudio();
-      } else {
-        pauseAudio();
-      }
+      if (!muted) playAudio();
+      else pauseAudio();
     } else {
       stopAudio();
     }
@@ -103,8 +98,15 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
   if (videoData) {
     return (
       <ReactPlayer
-        url={videoData.url} width="100%" height="100%" playing={shouldPlay} muted={muted} volume={volume}
-        onEnded={onEnded} onStart={onStart} playsinline
+        url={videoData.url} 
+        width="100%" 
+        height="100%" 
+        playing={shouldPlay} 
+        muted={muted} 
+        volume={volume}
+        onEnded={onEnded} 
+        onStart={onStart} 
+        playsinline
         config={{ youtube: { playerVars: { autoplay: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1 } } }}
       />
     );
