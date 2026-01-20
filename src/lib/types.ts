@@ -1,3 +1,4 @@
+// src/lib/types.ts
 export interface Article {
   id: string;
   titulo: string;
@@ -9,6 +10,7 @@ export interface Article {
   contenido: string;
   etiquetas: string[];
   url_slide?: string | null;
+  audio_url?: string | null; // <-- Propiedad añadida para el audio de Google TTS
   animation_duration?: number; 
 }
 

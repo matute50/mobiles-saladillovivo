@@ -1,11 +1,10 @@
+// src/lib/data.ts
 import { createClient } from '@/utils/supabase/client'; 
 import { PageData, Video, Article, Ad } from '@/lib/types';
 
 const supabase = createClient();
 
 export async function getPageData(): Promise<PageData> {
-  console.log('Server 🔄 Iniciando carga de datos...');
-
   try {
     // 1. NOTICIAS
     const { data: rawArticles, error: articlesError } = await supabase
@@ -26,8 +25,9 @@ export async function getPageData(): Promise<PageData> {
       fecha: item.created_at || item.createdAt || item.fecha || new Date().toISOString(),
       contenido: item.content || item.body || item.contenido || '',
       etiquetas: item.tags || item.etiquetas || [],
-      // Prioridad a url_slide
       url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
+      // Mapeo del audio generado por Google TTS
+      audio_url: item.audio_url || item.url_audio || item.audioUrl || null, 
       animation_duration: item.animationDuration || item.animation_duration || item.duration || 45
     }));
 
@@ -70,8 +70,6 @@ export async function getPageData(): Promise<PageData> {
     const featuredNews = mappedArticles.length > 0 ? mappedArticles[0] : null;
     const secondaryNews = mappedArticles.slice(1, 5);
     const otherNews = mappedArticles.slice(5);
-
-    console.log(`Server ✅ Datos cargados: ${mappedArticles.length} noticias, ${mappedVideos.length} videos, ${mappedAds.length} anuncios.`);
 
     return {
       articles: { featuredNews, secondaryNews, otherNews },

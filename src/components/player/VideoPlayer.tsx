@@ -1,9 +1,11 @@
+// src/components/player/VideoPlayer.tsx
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import ReactPlayer from 'react-player';
 import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useAudioPlayer } from '@/hooks/useAudioPlayer'; // Importación necesaria
 
 interface VideoPlayerProps {
   content: Video | Article;
@@ -23,6 +25,9 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
 
+  // CONTROL DE AUDIO PARA SLIDES (Google TTS)
+  const { play: playAudio, pause: pauseAudio, stop: stopAudio } = useAudioPlayer(articleData?.audio_url || null);
+
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
     setTimeout(() => onEnded(), 500);
@@ -35,6 +40,19 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
     fadeTimerRef.current = setTimeout(() => setIsFadingOut(true), Math.max(0, ms - 500));
     endTimerRef.current = setTimeout(() => onEnded(), ms);
   }, [onEnded]);
+
+  // Sincronización de Audio con la Reproducción y Mute
+  useEffect(() => {
+    if (isArticle && shouldPlay) {
+      if (!muted) {
+        playAudio();
+      } else {
+        pauseAudio();
+      }
+    } else {
+      stopAudio();
+    }
+  }, [shouldPlay, muted, isArticle, playAudio, pauseAudio, stopAudio]);
 
   useEffect(() => {
     if (!isArticle || !shouldPlay) return;
@@ -70,7 +88,14 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
   if (isArticle && articleData?.url_slide) {
     return (
       <div className={cn("w-full h-full bg-black transition-opacity duration-500", isFadingOut ? "opacity-0" : "opacity-100")}>
-        <iframe src={articleData.url_slide} className="w-full h-full border-0" scrolling="no" allow="autoplay; fullscreen" sandbox="allow-scripts allow-forms allow-presentation" onLoad={onStart} />
+        <iframe 
+          src={articleData.url_slide} 
+          className="w-full h-full border-0" 
+          scrolling="no" 
+          allow="autoplay; fullscreen" 
+          sandbox="allow-scripts allow-forms allow-presentation" 
+          onLoad={onStart} 
+        />
       </div>
     );
   }
