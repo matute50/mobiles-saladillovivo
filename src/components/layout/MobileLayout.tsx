@@ -79,10 +79,9 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/?id=${news.id}`;
     if (navigator.share) {
-      // CORRECCIÓN DEFINITIVA: 
-      // Compartimos SOLO la url. Al no enviar 'text' ni 'title', evitamos que el link 
-      // se escriba dos veces. WhatsApp usará los metadatos de la página para 
-      // mostrar el título de la noticia y "Informate con Saladillo Vivo."
+      // CORRECCIÓN: Compartimos únicamente la URL. 
+      // WhatsApp leerá los metadatos de page.tsx para mostrar la "ficha" 
+      // con la miniatura, el título y la frase "Informate con Saladillo Vivo."
       navigator.share({
         url: shareUrl,
       }).catch(console.error);
@@ -128,9 +127,8 @@ function VideoCarouselBlock({ videos, isDark }: any) {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/?v=${v.id}`;
     if (navigator.share) {
-      // CORRECCIÓN DEFINITIVA: 
-      // Al compartir solo la URL, WhatsApp generará el cuadro con el título del video 
-      // y la descripción "Lo podes ver en Saladillo Vivo" sin duplicar el link en el texto.
+      // CORRECCIÓN: Enviamos solo la URL para una ficha de WhatsApp limpia.
+      // Los metadatos de page.tsx mostrarán el título y "Lo podes ver en Saladillo Vivo".
       navigator.share({
         url: shareUrl,
       }).catch(console.error);
@@ -186,6 +184,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
   const searchParams = useSearchParams();
 
+  // EFECTO: Detección de compartido para Autoplay Silenciado
   useEffect(() => {
     if (data && mounted) {
       const newsId = searchParams.get('id');
@@ -207,8 +206,10 @@ export default function MobileLayout({ data }: { data: PageData }) {
       }
 
       if (target) {
+        // Obligatorio: Muteado para que el navegador permita el Autoplay
         if (!isMuted) toggleMute(); 
         
+        // Listener para activar audio al primer toque
         const forceAudio = () => { 
           unmute(); 
           window.removeEventListener('touchstart', forceAudio); 
