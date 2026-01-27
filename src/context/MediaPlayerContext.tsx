@@ -38,7 +38,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     shouldPlayContent: false,
   });
 
-  // Wake Lock Logic
   const requestWakeLock = useCallback(async () => {
     if ('wakeLock' in navigator && !wakeLockRef.current) {
       try { wakeLockRef.current = await (navigator as any).wakeLock.request('screen'); } catch (err) {}
@@ -84,7 +83,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const handleContentEnded = useCallback(() => { const next = getNextVideo(); if (next) startTransition(next); }, [getNextVideo, startTransition]);
   const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
 
-  // Autoplay inicial
   useEffect(() => {
     if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo();

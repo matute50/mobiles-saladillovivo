@@ -22,8 +22,23 @@ const getYouTubeThumbnail = (url: string) => {
 };
 
 const getDisplayCategory = (dbCat: string) => {
-  const MAP: Record<string, string> = { 'EXPORT': 'Gente de Acá', 'SEMBRANDO FUTURO': 'Sembrando Futuro', 'NOTICIAS': 'Últimas Noticias' };
-  return MAP[dbCat?.toUpperCase().trim()] || dbCat || 'VARIOS';
+  if (!dbCat) return 'VARIOS';
+  const upper = dbCat.trim().toUpperCase();
+  if (upper.includes('HCD') && upper.includes('SALADILLO')) return 'HCD SALADILLO';
+  if (upper.includes('ITEC') && upper.includes('CICAR')) return 'ITEC ¨A. Cicaré¨'; 
+
+  const CATEGORY_MAP: Record<string, string> = {
+    'EXPORT': 'Gente de Acá',
+    'SEMBRANDO FUTURO': 'Sembrando Futuro',
+    'ARCHIVO SALADILLO VIVO': 'De Otros Tiempos',
+    'HISTORIA': 'De Otros Tiempos',
+    'NOTICIAS': 'Últimas Noticias',
+    'CLIPS': 'Saladillo Canta',
+    'CORTOS': 'Hacelo Corto',
+    'FIERROS': 'Fierros Saladillo',
+    'TU BUSQUEDA': 'Tu Busqueda'
+  };
+  return CATEGORY_MAP[upper] || upper; 
 };
 
 // --- COMPONENTES INTERNOS ---
@@ -36,16 +51,14 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
     <div onClick={onClick} className={cn("relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform", isDark ? "bg-neutral-900 border border-neutral-800" : "bg-white border border-neutral-200", isFeatured ? "w-full h-full" : "w-[49%] h-full")}>
       <div className="relative w-full h-full">
         <button onClick={handleShare} className="absolute top-2 right-2 z-30 p-2 bg-black/40 backdrop-blur-md border border-white/20 rounded-full text-white"><Share2 size={isFeatured ? 20 : 16} /></button>
-        {/* CORRECCIÓN: Renderizado de imagen restaurado usando news.imagen */}
         <Image src={news.imagen || '/placeholder.png'} alt={news.titulo} fill sizes={isFeatured ? "100vw" : "50vw"} priority={isFeatured} className="object-cover opacity-90" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-10" />
         <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center text-white">
             <div className={cn("flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 mb-2 p-3", isDark ? "bg-[#6699ff]/50" : "bg-[#003399]/50")}>
                 <Play size={isFeatured ? 32 : 24} fill="white" className="ml-1"/>
             </div>
-            <h3 className={cn("font-black uppercase tracking-tight leading-[1.1] text-balance", isFeatured ? "text-xl line-clamp-3" : "text-[13px] line-clamp-4")}>
-              {news.titulo.replaceAll('|', ' ')}
-            </h3>
+            {/* CORRECCIÓN: Título de miniatura de noticia limitado a 3 líneas */}
+            <h3 className={cn("font-black uppercase tracking-tight leading-[1.1] text-balance line-clamp-3", isFeatured ? "text-xl" : "text-[13px]")}>{news.titulo.replaceAll('|', ' ')}</h3>
         </div>
       </div>
     </div>
@@ -68,7 +81,7 @@ function VideoCarouselBlock({ videos, isDark }: any) {
     <div className="flex flex-col h-full w-full pt-[5px]">
       <div className="flex items-center justify-between px-2 py-0.5 shrink-0">
         <button onClick={() => setActiveCatIndex(p => p === 0 ? categories.length - 1 : p - 1)} className={themeColorClass}><ChevronLeft size={28} /></button>
-        <h2 className={cn("font-extrabold text-xl uppercase tracking-wider text-center flex-1 truncate px-2", themeColorClass)}>{currentCat}</h2>
+        <h2 className={cn("font-extrabold italic text-xl uppercase tracking-wider text-center flex-1 truncate px-2", themeColorClass)}>{currentCat}</h2>
         <button onClick={() => setActiveCatIndex(p => p === categories.length - 1 ? 0 : p + 1)} className={themeColorClass}><ChevronRight size={28} /></button>
       </div>
       <Swiper slidesPerView={2.2} spaceBetween={10} className="w-full flex-1 px-1 mt-[5px]">
@@ -81,7 +94,8 @@ function VideoCarouselBlock({ videos, isDark }: any) {
                 <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white/10 -mt-10"><Play size={21} fill="white" /></div>
               </div>
               <div className="absolute bottom-0 w-full p-1.5 bg-gradient-to-t from-black via-black/60 to-transparent">
-                <p className="text-[14px] text-white font-bold line-clamp-2 uppercase text-center leading-tight">{v.nombre.replaceAll('|', ' ')}</p>
+                {/* CORRECCIÓN: Título de miniatura de video aumentado a 3 líneas */}
+                <p className="text-[14px] text-white font-bold line-clamp-3 uppercase text-center leading-tight">{v.nombre.replaceAll('|', ' ')}</p>
               </div>
             </div>
           </SwiperSlide>
@@ -97,13 +111,21 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const { state, setVideoPool, playManual } = useMediaPlayer(); 
   const { isMuted, unmute, toggleMute } = useVolume(); 
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
+  
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showInstallBtn, setShowInstallBtn] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const searchParams = useSearchParams();
 
   useEffect(() => { setMounted(true); }, []);
 
-  // REESTABLECIDA POLÍTICA DE AUTOPLAY
+  useEffect(() => {
+    const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   useEffect(() => {
     if (data && mounted) {
       const newsId = searchParams.get('id');
@@ -127,12 +149,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
     }
   }, [data, mounted, searchParams, setVideoPool, isMuted, toggleMute, unmute]);
 
-  useEffect(() => {
-    const handler = (e: any) => { e.preventDefault(); setDeferredPrompt(e); setShowInstallBtn(true); };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
   const newsSlides = useMemo(() => {
     const slides = [];
     const articles = data?.articles;
@@ -147,18 +163,34 @@ export default function MobileLayout({ data }: { data: PageData }) {
   return (
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden", isDark ? "bg-black" : "bg-neutral-50")}>
       <header className={cn("shrink-0 h-11 flex items-center justify-between px-3 z-50", isDark ? "bg-neutral-900" : "bg-white border-b")}>
-          <div className="relative w-36 h-full py-1"><Image src={isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png'} alt="Logo" fill className="object-contain" /></div>
+          {!isSearchOpen ? (
+            <div className="relative w-36 h-full py-1"><Image src={isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png'} alt="Logo" fill className="object-contain" /></div>
+          ) : (
+            <div className="flex-1 h-full flex items-center pr-2">
+              <input type="text" autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar..." className={cn("w-full bg-transparent border-b outline-none py-1 text-sm", isDark ? "border-white/20 text-white" : "border-black/10 text-black")} />
+            </div>
+          )}
+
           <div className="flex items-center gap-3">
-             <button onClick={() => setIsDark(!isDark)}>{isDark ? <Sun size={20} className="text-white"/> : <Moon size={20}/>}</button>
-             <button onClick={() => {}} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
-             {showInstallBtn && <button onClick={() => deferredPrompt.prompt()} className={cn("animate-bounce", isDark ? "text-white" : "text-black")}><Download size={20}/></button>}
+             <button onClick={() => { setIsSearchOpen(!isSearchOpen); setSearchQuery(""); }} className={isDark ? "text-neutral-300" : "text-neutral-700"}>
+               {isSearchOpen ? <X size={24}/> : <Search size={20}/>}
+             </button>
+
+             {!isSearchOpen && (
+               <>
+                 <button onClick={() => setIsDark(!isDark)}>{isDark ? <Sun size={20} className="text-white"/> : <Moon size={20}/>}</button>
+                 <button onClick={() => navigator.share?.({ url: window.location.href })} className={isDark ? "text-white" : "text-black"}><Share2 size={20}/></button>
+                 <button onClick={() => {}} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
+                 {showInstallBtn && <button onClick={() => deferredPrompt.prompt()} className={cn("animate-bounce", isDark ? "text-white" : "text-black")}><Download size={20}/></button>}
+               </>
+             )}
           </div>
       </header>
       <div className="relative z-40 w-full aspect-video bg-black"><VideoSection isMobile={true} /></div>
       <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-1 overflow-y-auto">
           <div className="flex items-center justify-between px-2 shrink-0">
             <button onClick={() => newsSwiper?.slidePrev()} className={isDark ? "text-[#6699ff]" : "text-[#003399]"}><ChevronLeft size={28} /></button>
-            <h3 className={cn("font-extrabold text-xl uppercase text-center flex-1 truncate px-2 mt-1", isDark ? "text-[#6699ff]" : "text-[#003399]")}>Últimas Noticias</h3>
+            <h3 className={cn("font-extrabold italic text-xl uppercase text-center flex-1 truncate px-2 mt-1", isDark ? "text-[#6699ff]" : "text-[#003399]")}>Últimas Noticias</h3>
             <button onClick={() => newsSwiper?.slideNext()} className={isDark ? "text-[#6699ff]" : "text-[#003399]"}><ChevronRight size={28} /></button>
           </div>
           <div className="w-full aspect-[16/6.4] shrink-0">

@@ -17,10 +17,8 @@ export async function getPageData(): Promise<PageData> {
 
     const mappedArticles: Article[] = (rawArticles || []).map((item: any) => ({
       id: item.id,
-      // Limpieza del caracter '|'
       titulo: (item.title || item.titulo || 'Sin título').replaceAll('|', ' '),
       bajada: item.summary || item.bajada || item.description || '',
-      // RESTAURADO: Mapeo completo de imagen para evitar pérdidas
       imagen: item.image || item.imagen || item.imageUrl || item.image_url || null,
       categoria: item.category || item.categoria || 'General',
       autor: item.author || item.autor || 'Redacción',
@@ -45,7 +43,6 @@ export async function getPageData(): Promise<PageData> {
       id: item.id,
       nombre: (item.title || item.name || item.nombre || 'Video sin nombre').replaceAll('|', ' '),
       url: item.url || item.videoUrl || '',
-      // RESTAURADO: Mapeo completo de imagen para videos
       imagen: item.image || item.thumbnail || item.imagen || null,
       categoria: item.category || item.categoria || 'Varios',
       fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString()
@@ -62,7 +59,7 @@ export async function getPageData(): Promise<PageData> {
       url: item.url || item.link || '',
       tipo: item.type || item.tipo || 'banner',
       fecha_inicio: item.startDate || item.fecha_inicio || new Date().toISOString(),
-      fecha_fin: item.endDate || item.fecha_fin || new Date().toISOString(),
+      fecha_fin: item.endDate || item.end_date || item.fecha_fin || new Date().toISOString(),
       activo: item.active !== undefined ? item.active : true
     }));
 
