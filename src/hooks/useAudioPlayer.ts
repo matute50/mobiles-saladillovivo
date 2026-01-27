@@ -1,81 +1,50 @@
-// src/hooks/useAudioPlayer.ts
+// src/hooks/useAudioPlayer.ts corregido
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 export const useAudioPlayer = (audioUrl: string | null) => {
   const [state, setState] = useState<'playing' | 'paused' | 'stopped'>('stopped');
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Inicializar el objeto Audio solo una vez
+  if (!audioRef.current && typeof window !== 'undefined') {
+    audioRef.current = new Audio();
+  }
+
   const onPlaying = useCallback(() => setState('playing'), []);
   const onPaused = useCallback(() => setState('paused'), []);
   const onEnded = useCallback(() => setState('stopped'), []);
-  const onLoading = useCallback(() => console.log('Cargando audio...'), []);
-  const onCanPlay = useCallback(() => console.log('Audio listo para reproducir.'), []);
-  const onError = useCallback((e: Event) => {
-    console.error("Error al cargar o reproducir el audio.", e);
-    setState('stopped');
-  }, []);
 
   useEffect(() => {
-    if (!audioUrl) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = ''; // Limpiamos el src para liberar recursos
-      }
-      setState('stopped');
-      return;
-    }
-
-    if (!audioRef.current) {
-      audioRef.current = new Audio(audioUrl);
-    } else {
-      audioRef.current.src = audioUrl;
-      audioRef.current.load(); // Vuelve a cargar si el src ha cambiado
-    }
-
     const audio = audioRef.current;
-    if (audio) {
-      audio.playbackRate = 1.13; // Mantenemos tu velocidad
+    if (!audio || !audioUrl) return;
 
-      audio.addEventListener('playing', onPlaying);
-      audio.addEventListener('pause', onPaused);
-      audio.addEventListener('ended', onEnded);
-      audio.addEventListener('error', onError);
-      audio.addEventListener('loadstart', onLoading);
-      audio.addEventListener('canplaythrough', onCanPlay); // Agregamos un listener para 'canplaythrough'
+    // Configurar el audio solo cuando cambie la URL
+    audio.src = audioUrl;
+    audio.playbackRate = 1.13;
+    audio.load();
 
-      // Intentar cargar y reproducir solo si no está en stopped y tiene URL
-      if (state !== 'stopped' && audioUrl) {
-        audio.load();
-        audio.play().catch(e => console.error("Error al reproducir automáticamente:", e));
-      }
-    }
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('pause', onPaused);
+    audio.addEventListener('ended', onEnded);
 
     return () => {
-      if (audio) {
-        audio.pause();
-        audio.removeEventListener('playing', onPlaying);
-        audio.removeEventListener('pause', onPaused);
-        audio.removeEventListener('ended', onEnded);
-        audio.removeEventListener('error', onError);
-        audio.removeEventListener('loadstart', onLoading);
-        audio.removeEventListener('canplaythrough', onCanPlay); // Limpiamos el nuevo evento
-      }
+      audio.pause();
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('pause', onPaused);
+      audio.removeEventListener('ended', onEnded);
     };
-  }, [audioUrl, state, onPlaying, onPaused, onEnded, onError, onLoading, onCanPlay]);
+    // ELIMINAMOS 'state' de las dependencias para evitar el bucle
+  }, [audioUrl, onPlaying, onPaused, onEnded]);
 
   const play = useCallback(() => {
-    if (audioRef.current && (state === 'paused' || state === 'stopped')) {
+    if (audioRef.current) {
       audioRef.current.play().catch(e => console.error("Error al reproducir:", e));
-      setState('playing');
     }
-  }, [state]);
+  }, []);
 
   const pause = useCallback(() => {
-    if (audioRef.current && state === 'playing') {
-      audioRef.current.pause();
-      setState('paused');
-    }
-  }, [state]);
+    if (audioRef.current) audioRef.current.pause();
+  }, []);
 
   const stop = useCallback(() => {
     if (audioRef.current) {
@@ -85,11 +54,5 @@ export const useAudioPlayer = (audioUrl: string | null) => {
     }
   }, []);
 
-  const setPlaybackSpeed = useCallback((speed: number) => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = speed;
-    }
-  }, []);
-
-  return { state, play, pause, stop, setPlaybackSpeed };
+  return { state, play, pause, stop };
 };

@@ -8,7 +8,8 @@ import VideoSection from './VideoSection';
 import { PageData, Video, Article } from '@/lib/types'; 
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Controller } from 'swiper/modules';
-import { Play, ChevronLeft, ChevronRight, X, Sun, Moon, Share2, Search, HelpCircle } from 'lucide-react';
+// Añadido icono Download para la PWA
+import { Play, ChevronLeft, ChevronRight, X, Sun, Moon, Share2, Search, HelpCircle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import type { Swiper as SwiperClass } from 'swiper';
@@ -79,9 +80,6 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/?id=${news.id}`;
     if (navigator.share) {
-      // CORRECCIÓN: Compartimos únicamente la URL. 
-      // WhatsApp leerá los metadatos de page.tsx para mostrar la "ficha" 
-      // con la miniatura, el título y la frase "Informate con Saladillo Vivo."
       navigator.share({
         url: shareUrl,
       }).catch(console.error);
@@ -103,7 +101,10 @@ function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
             <div className={cn("flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 mb-2 p-3", isDark ? "bg-[#6699ff]/50" : "bg-[#003399]/50")}>
                 <Play size={isFeatured ? 32 : 24} fill="white" className="text-white ml-1"/>
             </div>
-            <h3 className={cn("font-black uppercase tracking-tight leading-[1.1] text-balance", isFeatured ? "text-xl line-clamp-3" : "text-[13px] line-clamp-4")}>{news.titulo}</h3>
+            {/* Invisibilidad del caracter '|' en títulos de noticias */}
+            <h3 className={cn("font-black uppercase tracking-tight leading-[1.1] text-balance", isFeatured ? "text-xl line-clamp-3" : "text-[13px] line-clamp-4")}>
+              {news.titulo.replaceAll('|', ' ')}
+            </h3>
         </div>
       </div>
     </div>
@@ -127,8 +128,6 @@ function VideoCarouselBlock({ videos, isDark }: any) {
     e.stopPropagation();
     const shareUrl = `${window.location.origin}/?v=${v.id}`;
     if (navigator.share) {
-      // CORRECCIÓN: Enviamos solo la URL para una ficha de WhatsApp limpia.
-      // Los metadatos de page.tsx mostrarán el título y "Lo podes ver en Saladillo Vivo".
       navigator.share({
         url: shareUrl,
       }).catch(console.error);
@@ -159,7 +158,10 @@ function VideoCarouselBlock({ videos, isDark }: any) {
                 <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white/10 -mt-10"><Play size={21} fill="white" /></div>
               </div>
               <div className="absolute bottom-0 w-full p-1.5 bg-gradient-to-t from-black via-black/60 to-transparent">
-                <p className="text-[14px] text-white font-bold line-clamp-2 uppercase text-center leading-tight">{v.nombre}</p>
+                {/* Invisibilidad del caracter '|' en nombres de videos */}
+                <p className="text-[14px] text-white font-bold line-clamp-2 uppercase text-center leading-tight">
+                  {v.nombre.replaceAll('|', ' ')}
+                </p>
               </div>
             </div>
           </SwiperSlide>
@@ -182,9 +184,39 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const [adsSwiper, setAdsSwiper] = useState<SwiperClass | null>(null);
 
+  // Estados para instalación de Aplicación (PWA)
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
   const searchParams = useSearchParams();
 
-  // EFECTO: Detección de compartido para Autoplay Silenciado
+  // Detección de entorno para botón de descarga
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallBtn(false);
+    }
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
+
   useEffect(() => {
     if (data && mounted) {
       const newsId = searchParams.get('id');
@@ -206,10 +238,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
       }
 
       if (target) {
-        // Obligatorio: Muteado para que el navegador permita el Autoplay
         if (!isMuted) toggleMute(); 
-        
-        // Listener para activar audio al primer toque
         const forceAudio = () => { 
           unmute(); 
           window.removeEventListener('touchstart', forceAudio); 
@@ -256,6 +285,13 @@ export default function MobileLayout({ data }: { data: PageData }) {
                  <button onClick={toggleTheme}>{isDark ? <Sun size={20} className="text-white"/> : <Moon size={20}/>}</button>
                  <button onClick={() => navigator.share && navigator.share({url: window.location.href})} className={isDark ? "text-white" : "text-black"}><Share2 size={20}/></button>
                  <button onClick={() => {}} className={isDark ? "text-white" : "text-black"}><HelpCircle size={20}/></button>
+                 
+                 {/* Botón de descarga de App a la derecha del botón "?" */}
+                 {showInstallBtn && (
+                   <button onClick={handleInstallClick} className={isDark ? "text-white" : "text-black animate-bounce"}>
+                     <Download size={20}/>
+                   </button>
+                 )}
                </>
              )}
           </div>
@@ -268,7 +304,20 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
       {!isLandscape && (
         <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-1 min-h-0 overflow-y-auto">
-          <h3 className={cn("font-extrabold text-xl uppercase text-center mt-1", themeColorClass)}>Últimas Noticias</h3>
+          
+          {/* Título de Noticias con Flechas de Navegación idénticas a categorías */}
+          <div className="flex items-center justify-between px-2 shrink-0">
+            <button onClick={() => newsSwiper?.slidePrev()} className={themeColorClass}>
+              <ChevronLeft size={28} />
+            </button>
+            <h3 className={cn("font-extrabold text-xl uppercase text-center flex-1 truncate px-2 mt-1", themeColorClass)}>
+              Últimas Noticias
+            </h3>
+            <button onClick={() => newsSwiper?.slideNext()} className={themeColorClass}>
+              <ChevronRight size={28} />
+            </button>
+          </div>
+
           <div className="w-full aspect-[16/8] shrink-0">
             <Swiper modules={[Controller]} onSwiper={setNewsSwiper} controller={{ control: adsSwiper }} slidesPerView={1} className="h-full">
               {newsSlides.map((slide, idx) => (

@@ -17,7 +17,8 @@ export async function getPageData(): Promise<PageData> {
 
     const mappedArticles: Article[] = (rawArticles || []).map((item: any) => ({
       id: item.id,
-      titulo: item.title || item.titulo || 'Sin título',
+      // Limpieza del carácter '|' en el título de la noticia
+      titulo: (item.title || item.titulo || 'Sin título').replaceAll('|', ' '),
       bajada: item.summary || item.bajada || item.description || '',
       imagen: item.image || item.imagen || item.imageUrl || item.image_url || null,
       categoria: item.category || item.categoria || 'General',
@@ -26,7 +27,6 @@ export async function getPageData(): Promise<PageData> {
       contenido: item.content || item.body || item.contenido || '',
       etiquetas: item.tags || item.etiquetas || [],
       url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
-      // Mapeo del audio generado por Google TTS
       audio_url: item.audio_url || item.url_audio || item.audioUrl || null, 
       animation_duration: item.animationDuration || item.animation_duration || item.duration || 45
     }));
@@ -42,7 +42,8 @@ export async function getPageData(): Promise<PageData> {
 
     const mappedVideos: Video[] = (rawVideos || []).map((item: any) => ({
       id: item.id,
-      nombre: item.title || item.name || item.nombre || 'Video sin nombre',
+      // Limpieza del carácter '|' en el nombre del video
+      nombre: (item.title || item.name || item.nombre || 'Video sin nombre').replaceAll('|', ' '),
       url: item.url || item.videoUrl || '',
       imagen: item.image || item.thumbnail || item.imagen || null,
       categoria: item.category || item.categoria || 'Varios',
