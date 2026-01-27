@@ -1,4 +1,3 @@
-// src/components/player/VideoPlayer.tsx completo
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
@@ -8,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 
 interface VideoPlayerProps {
-  content: Video | Article;
+  content: Video | Article | null; 
   shouldPlay: boolean; 
   onEnded: () => void;
   onStart?: () => void;
@@ -18,67 +17,60 @@ interface VideoPlayerProps {
 export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, muted }: VideoPlayerProps) {
   const [volume, setVolume] = useState(0); 
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false); 
   const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const endTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // --- CLÁUSULA DE SEGURIDAD TOTAL ---
+  // Si content es null o undefined, devolvemos un fondo negro y salimos.
+  if (!content) {
+    return <div className="w-full h-full bg-black" />;
+  }
+
+  // Ahora es seguro usar el operador 'in'
   const isArticle = 'url_slide' in content || !('url' in content);
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
 
-  const { play: playAudio, pause: pauseAudio, stop: stopAudio } = useAudioPlayer(articleData?.audio_url || null);
+  const { play: playAudio, pause: pauseAudio } = useAudioPlayer(articleData?.audio_url || null);
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
     setTimeout(() => onEnded(), 500);
   }, [onEnded]);
 
-  const scheduleTimers = useCallback((seconds: number) => {
-    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-    if (endTimerRef.current) clearTimeout(endTimerRef.current);
-    const ms = seconds * 1000;
-    fadeTimerRef.current = setTimeout(() => setIsFadingOut(true), Math.max(0, ms - 500));
-    endTimerRef.current = setTimeout(() => onEnded(), ms);
-  }, [onEnded]);
-
   useEffect(() => {
-    if (isArticle && shouldPlay) {
-      if (!muted) playAudio();
-      else pauseAudio();
-    } else {
-      stopAudio();
-    }
-  }, [shouldPlay, muted, isArticle, playAudio, pauseAudio, stopAudio]);
-
-  useEffect(() => {
-    if (!isArticle || !shouldPlay) return;
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data?.type === 'SET_SLIDE_DURATION') scheduleTimers(e.data.durationSeconds);
-      if (e.data?.type === 'SLIDE_ENDED') triggerEnd();
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [isArticle, shouldPlay, scheduleTimers, triggerEnd]);
-
-  useEffect(() => {
-    if (isArticle && shouldPlay) {
-      setIsFadingOut(false);
-      scheduleTimers(articleData?.animation_duration || 15);
-    }
-  }, [isArticle, shouldPlay, articleData, scheduleTimers]);
+    setIsFadingOut(false);
+    setIsPlayerReady(false);
+  }, [content]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (shouldPlay && !muted && !isArticle) {
+    if (shouldPlay && !muted && !isArticle && isPlayerReady) {
       setVolume(0); 
       let currentVol = 0;
       interval = setInterval(() => {
         currentVol += 0.05; 
-        if (currentVol >= 1) { currentVol = 1; if(interval) clearInterval(interval); }
+        if (currentVol >= 1) { 
+          currentVol = 1; 
+          if(interval) clearInterval(interval); 
+        }
         setVolume(currentVol);
       }, 50); 
     } else if (muted) setVolume(0);
     return () => { if (interval) clearInterval(interval); };
-  }, [shouldPlay, muted, isArticle]);
+  }, [shouldPlay, muted, isArticle, isPlayerReady]);
+
+  useEffect(() => {
+    if (isArticle && shouldPlay && !isFadingOut) {
+      playAudio();
+      const duration = (articleData?.animation_duration || 45) * 1000;
+      fadeTimerRef.current = setTimeout(() => triggerEnd(), duration);
+    } else {
+      pauseAudio();
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    }
+    return () => { if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current); };
+  }, [isArticle, shouldPlay, isFadingOut, playAudio, pauseAudio, articleData, triggerEnd]);
 
   if (isArticle && articleData?.url_slide) {
     return (
@@ -100,16 +92,28 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
       <ReactPlayer
         url={videoData.url} 
         width="100%" 
-        height="100%" 
-        playing={shouldPlay} 
-        muted={muted} 
+        height="100%"
+        playing={shouldPlay && !isFadingOut}
         volume={volume}
-        onEnded={onEnded} 
-        onStart={onStart} 
-        playsinline
-        config={{ youtube: { playerVars: { autoplay: 1, controls: 0, modestbranding: 1, rel: 0, showinfo: 0, iv_load_policy: 3, fs: 0, disablekb: 1 } } }}
+        muted={muted}
+        onEnded={triggerEnd}
+        onStart={onStart}
+        onReady={() => setIsPlayerReady(true)}
+        config={{
+          youtube: {
+            playerVars: { 
+              modestbranding: 1, 
+              controls: 0, 
+              showinfo: 0, 
+              rel: 0,
+              // Corrección para el error de postMessage
+              origin: typeof window !== 'undefined' ? window.location.origin : '' 
+            }
+          }
+        }}
       />
     );
   }
-  return null;
+
+  return <div className="w-full h-full bg-black" />;
 }
