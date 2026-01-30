@@ -39,14 +39,18 @@ const getDisplayCategory = (dbCat: string) => {
   return MAP[upper] || upper; 
 };
 
-const getWeatherIcon = (code: number, size = 24, className = "") => {
-  if (code === 0) return <SunIcon size={size} className={cn("text-yellow-400", className)} />;
-  if (code <= 3) return <Cloud size={size} className={cn("text-blue-400", className)} />;
-  if (code <= 67) return <CloudRain size={size} className={cn("text-blue-500", className)} />;
-  return <CloudLightning size={size} className={cn("text-purple-500", className)} />;
+// Función de iconos actualizada para Visual Crossing
+const getWeatherIcon = (iconName: string, size = 24, className = "") => {
+  const name = iconName?.toLowerCase() || '';
+  if (name.includes('clear-day')) return <SunIcon size={size} className={cn("text-yellow-400", className)} />;
+  if (name.includes('clear-night')) return <Moon size={size} className={cn("text-yellow-200", className)} />;
+  if (name.includes('rain')) return <CloudRain size={size} className={cn("text-blue-500", className)} />;
+  if (name.includes('cloudy')) return <Cloud size={size} className={cn("text-blue-400", className)} />;
+  if (name.includes('thunder')) return <CloudLightning size={size} className={cn("text-purple-500", className)} />;
+  return <SunIcon size={size} className={cn("text-yellow-400", className)} />;
 };
 
-// --- COMPONENTE CLIMA GIGANTE (4 DÍAS) SIN LÍNEA INFERIOR ---
+// --- COMPONENTE CLIMA GIGANTE ACTUALIZADO (Visual Crossing) ---
 
 function WeatherWidget({ isDark }: { isDark: boolean }) {
   const [weather, setWeather] = useState<any>(null);
@@ -54,17 +58,22 @@ function WeatherWidget({ isDark }: { isDark: boolean }) {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${SALADILLO_COORDS.lat}&longitude=${SALADILLO_COORDS.lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`);
+        const API_KEY = process.env.NEXT_PUBLIC_VISUAL_CROSSING_KEY;
+        const url = `https://weather.visualcrossing.com/visual-crossing-weather-api/rest/services/timeline/${SALADILLO_COORDS.lat},${SALADILLO_COORDS.lon}?unitGroup=metric&key=${API_KEY}&contentType=json&lang=es`;
+        
+        const res = await fetch(url);
         const data = await res.json();
         setWeather(data);
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error("Error cargando clima:", e); 
+      }
     };
     fetchWeather();
   }, []);
 
-  if (!weather) return <div className="h-32 animate-pulse bg-neutral-800/10 rounded-2xl mb-6" />;
+  if (!weather) return <div className="h-32 animate-pulse bg-neutral-800/10 rounded-2xl mb-12" />;
 
-  const current = weather.current_weather;
+  const current = weather.currentConditions;
   const themeBlue = isDark ? "text-[#6699ff]" : "text-[#003399]";
 
   return (
@@ -82,26 +91,26 @@ function WeatherWidget({ isDark }: { isDark: boolean }) {
           </div>
           <div className="flex items-center gap-3">
             <h2 className={cn("text-6xl font-black italic tracking-tighter leading-none", isDark ? "text-white" : "text-neutral-900")}>
-              {Math.round(current.temperature)}°
+              {Math.round(current.temp)}°
             </h2>
-            {getWeatherIcon(current.weathercode, 40, "drop-shadow-lg")}
+            {getWeatherIcon(current.icon, 40, "drop-shadow-lg")}
           </div>
         </div>
 
-        {/* LADO DERECHO: 4 DÍAS */}
+        {/* LADO DERECHO: 4 DÍAS PRONÓSTICO */}
         <div className="flex-[1.1] flex justify-between px-4">
-          {weather.daily.time.slice(1, 5).map((time: string, i: number) => (
-            <div key={time} className="flex flex-col items-center gap-2">
+          {weather.days.slice(1, 5).map((day: any) => (
+            <div key={day.datetime} className="flex flex-col items-center gap-2">
               <span className={cn("text-[11px] font-black uppercase italic opacity-60", isDark ? "text-white" : "text-black")}>
-                {new Date(time).toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '').toUpperCase()}
+                {new Date(day.datetime + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '').toUpperCase()}
               </span>
-              {getWeatherIcon(weather.daily.weathercode[i+1], 26)}
+              {getWeatherIcon(day.icon, 26)}
               <div className="flex flex-col items-center leading-none">
                 <span className={cn("text-[14px] font-black italic", isDark ? "text-white" : "text-neutral-900")}>
-                  {Math.round(weather.daily.temperature_2m_max[i+1])}°
+                  {Math.round(day.tempmax)}°
                 </span>
                 <span className="text-[10px] font-bold opacity-30">
-                  {Math.round(weather.daily.temperature_2m_min[i+1])}°
+                  {Math.round(day.tempmin)}°
                 </span>
               </div>
             </div>
@@ -112,7 +121,7 @@ function WeatherWidget({ isDark }: { isDark: boolean }) {
   );
 }
 
-// --- COMPONENTES DE INTERFAZ ---
+// --- COMPONENTES DE INTERFAZ (Se mantienen igual) ---
 
 function MobileNewsCard({ news, isFeatured, onClick, isDark }: any) {
   if (!news) return null;
@@ -198,7 +207,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isDecretoZoomed, setIsDecretoZoomed] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -290,7 +298,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
             <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} />
           </div>
 
-          {/* WIDGET CLIMA GIGANTE (4 DÍAS) SIN LÍNEA */}
+          {/* WIDGET CLIMA GIGANTE (Visual Crossing) */}
           <WeatherWidget isDark={isDark} />
       </div>
 
