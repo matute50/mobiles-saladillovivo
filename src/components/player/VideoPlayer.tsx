@@ -34,7 +34,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    setTimeout(() => onEnded(), 800);
+    setTimeout(() => onEnded(), 500);
   }, [onEnded]);
 
   useEffect(() => {
@@ -74,7 +74,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
       const duration = playerRef.current.getDuration();
       if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
 
-      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 1.2) {
+      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 0.5) {
         setIsFadingOut(true);
       }
     }

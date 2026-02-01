@@ -13,7 +13,7 @@ interface VolumeContextType {
 const VolumeContext = createContext<VolumeContextType | undefined>(undefined);
 
 export const VolumeProvider = ({ children }: { children: ReactNode }) => {
-  const [volume, setVolumeState] = useState(0.05); // Inicial al 5%
+  const [volume, setVolumeState] = useState(1); // Inicial al 100%
   const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
