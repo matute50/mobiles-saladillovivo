@@ -37,6 +37,8 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   useEffect(() => {
     const v = introVideoRef.current;
     if (isIntroVisible && currentIntroUrl && v) {
+      // Rule 4.0: Resetear fade de intro antes de empezar la nueva
+      setIsIntroFadingOut(false);
       v.src = currentIntroUrl;
       v.muted = true;
       v.play().catch(() => {
@@ -47,7 +49,6 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
   const handleStart = () => {
     setIsContentStarted(true);
-    handleIntroEnded();
     // Iniciar búsqueda del próximo contenido tan pronto como el actual arranca
     prepareNext();
   };
@@ -133,6 +134,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
         (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
         <video
+          key={currentIntroUrl}
           ref={introVideoRef}
           className="w-full h-full object-cover"
           onEnded={handleIntroEnded}

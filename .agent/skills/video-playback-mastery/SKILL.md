@@ -40,8 +40,9 @@ La aplicación utiliza un sistema de **capas superpuestas** y **selección antic
 
 ### Flujo de Transición: Intro -> YouTube
 1. **Tuning de Intro**: Ajustar la velocidad de reproducción (`playbackRate`) del video intro para que dure exactamente **4 segundos**.
-2. **Fade-out Intro**: Iniciar desvanecimiento de la intro **0.5 segundos** antes de su fin.
-3. **Sincronización TV**: El video de YouTube en el fondo puede empezar hasta 5 segundos antes (si el flujo lo permite) para estar en un punto de interés al revelarse.
+2. **Independencia de Capas**: El video de YouTube debe iniciar paralelamente bajo la intro, pero **no debe ocultar la intro** al arrancar. La intro solo se retira por su propio fin o el temporizador de 4s.
+3. **Fade-out Intro**: Iniciar desvanecimiento de la intro (opacidad) **0.5 segundos** antes de su fin.
+4. **Sincronización TV**: El video de YouTube en el fondo puede empezar hasta 5 segundos antes (si el flujo lo permite) para estar en un punto de interés al revelarse.
 
 ## 3. Estándares Específicos de Saladillo Vivo
 
