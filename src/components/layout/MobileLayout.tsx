@@ -8,6 +8,7 @@ import { PageData, Video, Article } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 import type { Swiper as SwiperClass } from 'swiper';
 import { cn } from '@/lib/utils';
+import 'swiper/css';
 
 // Sub-componentes
 import { Header } from './Header';
@@ -61,6 +62,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
     for (let i = 0; i < secondary.length; i += 2) slides.push({ type: 'pair', items: secondary.slice(i, i + 2) });
     return slides;
   }, [filteredData]);
+
 
   useEffect(() => {
     if (data && mounted) {
