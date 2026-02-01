@@ -55,38 +55,47 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     return () => { document.removeEventListener('visibilitychange', handleVisibility); releaseWakeLock(); };
   }, [state.shouldPlayContent, requestWakeLock, releaseWakeLock]);
 
+  const introTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleIntroEnded = useCallback(() => {
+    setState(prev => ({ ...prev, isIntroVisible: false }));
+    if (introTimerRef.current) clearTimeout(introTimerRef.current);
+  }, []);
+
   const startTransition = useCallback((nextContent: Video | Article) => {
     const isVideo = 'url' in nextContent && nextContent.url;
+
+    // Limpiar timer anterior
+    if (introTimerRef.current) clearTimeout(introTimerRef.current);
+
     setState({
       currentContent: nextContent,
       currentIntroUrl: isVideo ? INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)] : NEWS_INTRO_VIDEO,
       isIntroVisible: true,
       shouldPlayContent: true,
     });
-  }, []);
+
+    // Auto-descartar intro tras 4 segundos (Skill Rule: 3.5s + 0.5s fade)
+    introTimerRef.current = setTimeout(() => {
+      handleIntroEnded();
+    }, 4000);
+  }, [handleIntroEnded]);
 
   const getNextVideo = useCallback(() => {
     if (videoPool.length === 0) return null;
     const candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY && String(v.id) !== BLOCKED_START_ID);
     if (candidates.length === 0) return null;
-    // Barajado Fisher-Yates para verdadera aleatoriedad en cada selección
     return candidates[Math.floor(Math.random() * candidates.length)];
   }, [videoPool]);
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
-    // Barajar la pool al recibirla
     const shuffled = [...videos].sort(() => Math.random() - 0.5);
     setVideoPoolState(shuffled);
-
     if (initialTarget && !isInitialVideoPicked.current) {
       isInitialVideoPicked.current = true;
       startTransition(initialTarget);
     }
   }, [startTransition]);
-
-  const handleIntroEnded = useCallback(() => {
-    setState(prev => ({ ...prev, isIntroVisible: false }));
-  }, []);
 
   const handleContentEnded = useCallback(() => {
     const next = getNextVideo();

@@ -1,6 +1,6 @@
 ---
 name: video-playback-mastery
-description: Domina la reproducción de video en Next.js, incluyendo políticas de YouTube, Cloudflare R2 para noticias, intros y técnicas anti-branding.
+description: Domina la reproducción de video en Next.js, incluyendo políticas de YouTube, Cloudflare R2 para noticias, intros y técnicas anti-branding. Actualizado con los estándares específicos de Saladillo Vivo.
 ---
 
 # Maestría en Reproducción de Video (Video Playback Mastery)
@@ -9,42 +9,38 @@ Este skill proporciona el conocimiento técnico necesario para implementar siste
 
 ## 1. Política de Reproducción Automática (YouTube & HTML5)
 
-Los navegadores modernos (Chrome, Safari, Edge) bloquean el autoplay con sonido para mejorar la UX y ahorrar datos.
+Los navegadores modernos bloquean el autoplay con sonido. Para garantizar la funcionalidad:
 
 ### YouTube IFrame API
-Para garantizar el autoplay en embeds de YouTube, es obligatorio usar `autoplay=1` y `mute=1`.
-- **URL Completa:** `https://www.youtube.com/embed/VIDEO_ID?autoplay=1&mute=1&enablejsapi=1`
-- **Nota:** Si el usuario no ha interactuado con el sitio previamente, la API de YouTube ignorará la instrucción de "unmute" programática.
+- **Parámetros obligatorios:** `autoplay=1`, `mute=1`, `enablejsapi=1`, `controls=0`.
+- **Reintento Agresivo:** Implementar un `setInterval` que verifique el estado del reproductor cada segundo. Si el estado es `PAUSED` (2), `CUED` (5), o `UNSTARTED` (-1) durante el inicio, forzar `playVideo()`.
+- **Bloqueador de Pausas:** Si se detecta una pausa en los primeros 5 segundos (posible bloqueo del sistema), re-disparar el Play.
 
 ### HTML5 Video (`<video>`)
-Para videos locales o de Cloudflare R2:
-- **Atributos Críticos:** `autoPlay`, `muted`, `playsInline` (esencial para iOS), `loop`.
-- **Preload:** Usa `preload="auto"` para intros cortas o `preload="metadata"` para galerías de noticias.
+- **Atributos:** `autoPlay`, `muted`, `playsInline`, `loop`.
+- **R2 (Noticias):** Servir `.mp4` con `preload="metadata"` y siempre usar una imagen de `poster` para evitar pantallas negras.
 
-## 2. Reproducción de Noticias (Optimización)
+## 2. Estándares Específicos de Saladillo Vivo
 
-Para noticias alojadas en **Cloudflare R2** (accesibles vía URLs en Supabase):
-- **Carga Diferida:** No cargues el video hasta que el usuario haga scroll o el slide sea el activo.
-- **Formátos:** Asegúrate de servir `.mp4` (H.264) para compatibilidad universal.
-- **Poster:** Usa siempre una imagen de `poster` para evitar huecos negros mientras el video carga.
+Para mantener la consistencia premium en toda la aplicación (PC y Mobile):
 
-## 3. Inserción de Videos Intro (Splash Screen)
+### Autoplay y Volumen
+- **Volumen Inicial:** El volumen global por defecto debe ser **100%** (valor 1).
+- **Manejo de Transiciones de Audio:**
+  - **Fade-in:** 1 segundo al iniciar la reproducción para evitar saltos bruscos.
+  - **Fade-out:** Iniciar el desvanecimiento en los últimos **0.5 a 1 segundo** del video.
+- **Sincronización:** El volumen local del reproductor debe sincronizarse con el `useVolumeStore` global, pero permitiendo el control fino para los efectos de fade.
 
-Un video de intro eleva la calidad percibida (Premium Splash). 
-- **Lógica:** Implementar un estado `showIntro` que se ponga en `false` cuando el video termine (`onEnded`).
-- **Persistencia:** Puedes usar `sessionStorage` para mostrar el intro solo una vez por sesión.
-- **Efecto de Salida:** Usa una transición CSS (`opacity`, `scale`) para que el paso del intro al contenido principal sea suave.
+### Secuencia de Intro (Espacio Publicitario)
+- **Overlay de Intro:** Antes de cada video de YouTube, se muestra un overlay de 4 segundos (`3.5s` fijos + `0.5s` de fade CSS).
+- **Precarga:** El video principal debe empezar a cargarse por debajo del overlay de intro para estar listo inmediatamente después.
+- **Transición TV:** En el modo TV, el video de fondo puede empezar a reproducirse hasta 5 segundos antes de que termine la intro para una transición fluida.
 
-## 4. Recursos Anti-Branding (YouTube)
+### Técnicas Anti-Branding (Obligatorio)
+1. **Controles:** `controls=0` en los `playerVars` de YouTube.
+2. **Capa de Bloqueo:** Un `div` con `absolute inset-0` y `z-index` superior para evitar que el usuario haga clic derecho o interactúe directamente con el iframe (Regla de Oro).
+3. **Cropping (Recorte):** Es **obligatorio** envolver el iframe en un contenedor con `overflow: hidden` y aplicar un escalado o altura del **110%** para ocultar la marca de agua de YouTube en la esquina inferior.
 
-YouTube ha dificultado ocultar su marca (deprecación de `modestbranding` y `showinfo`).
+## 3. Implementación en Antigravity
 
-### Técnicas Actuales:
-1. **Controles Desactivados:** Usa `controls=0`. Esto elimina la barra inferior.
-2. **Overlay CSS:** Coloca un `div` invisible o con un gradiente sutil encima del reproductor para bloquear clics directos y ocultar el logo de YouTube en la esquina inferior derecha.
-   - **Tip:** Usa `pointer-events: none` si necesitas que se pueda interactuar con el video, o crea tus propios botones de play/pause personalizados vinculados a la API.
-3. **Recorte (Cropping):** Envuelve el iframe en un contenedor con `overflow: hidden` y haz que el iframe sea ligeramente más grande (ej: 110% de altura) para "sacar" la marca de agua del área visible.
-
-## 5. Implementación en Antigravity
-
-Cada vez que el usuario pida "solucionar el autoplay" o "quitar el logo de YouTube", consulta estas políticas para aplicar las soluciones más actualizadas y robustas.
+Usa estas reglas para diagnosticar problemas de "videos que no arrancan" o "branding de YouTube visible". Prioriza siempre el uso de `usePlayerStore` y `useVolumeStore` para mantener la lógica centralizada.

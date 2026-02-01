@@ -22,7 +22,10 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const { volume: globalVolume } = useVolume();
   const playerRef = useRef<ReactPlayer>(null);
+  const internalPlayerRef = useRef<any>(null);
   const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoplayCheckRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number>(0);
 
   if (!content) return <div className="w-full h-full bg-black" />;
 
@@ -34,19 +37,48 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    setTimeout(() => onEnded(), 500);
+    setTimeout(() => onEnded(), 800);
   }, [onEnded]);
 
   useEffect(() => {
     setIsFadingOut(false);
     setIsPlayerReady(false);
     setTargetVolume(0);
+    startTimeRef.current = Date.now();
+
+    if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
   }, [content]);
 
+  // REINTENTO AGRESIVO DE AUTOPLAY (Skill Rule)
+  useEffect(() => {
+    if (shouldPlay && isPlayerReady && !isArticle && videoData) {
+      autoplayCheckRef.current = setInterval(() => {
+        if (!internalPlayerRef.current) return;
+
+        try {
+          const state = internalPlayerRef.current.getPlayerState();
+          const elapsed = (Date.now() - startTimeRef.current) / 1000;
+
+          // PAUSED (2), CUED (5), UNSTARTED (-1) -> Force Play
+          if ([2, 5, -1].includes(state)) {
+            internalPlayerRef.current.playVideo();
+          }
+
+          // Bloqueador de Pausas en los primeros 10 segundos
+          if (state === 2 && elapsed < 10) {
+            internalPlayerRef.current.playVideo();
+          }
+        } catch (e) { }
+      }, 1000);
+    }
+    return () => { if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current); };
+  }, [shouldPlay, isPlayerReady, isArticle, videoData]);
+
+  // Gestión de FADE-IN y FADE-OUT de Audio (Ajustado a 1s / 0.7s)
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
-      let currentVol = 0;
+      let currentVol = targetVolume;
       interval = setInterval(() => {
         currentVol += 0.02;
         if (currentVol >= globalVolume) {
@@ -74,10 +106,16 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
       const duration = playerRef.current.getDuration();
       if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
 
-      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 0.5) {
+      // Fade-out en los últimos 0.7s (Skill pide 0.5 a 1s)
+      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 0.7) {
         setIsFadingOut(true);
       }
     }
+  };
+
+  const handleReady = (player: any) => {
+    setIsPlayerReady(true);
+    internalPlayerRef.current = player.getInternalPlayer();
   };
 
   useEffect(() => {
@@ -115,6 +153,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
   if (videoData) {
     return (
       <div className="w-full h-full bg-black relative overflow-hidden transition-opacity duration-700" style={{ opacity: isFadingOut ? 0 : 1 }}>
+        {/* ANTI-BRANDING CONTAINER (Cropping 110%) */}
         <div className="absolute inset-0 w-full h-[110%] -top-[5%] pointer-events-none">
           <ReactPlayer
             ref={playerRef}
@@ -126,7 +165,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
             muted={muted}
             onEnded={triggerEnd}
             onStart={onStart}
-            onReady={() => setIsPlayerReady(true)}
+            onReady={handleReady}
             onProgress={handleProgress}
             config={{
               youtube: {
@@ -136,13 +175,21 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
                   showinfo: 0,
                   rel: 0,
                   iv_load_policy: 3,
+                  enablejsapi: 1,
                   origin: typeof window !== 'undefined' ? window.location.origin : ''
+                }
+              },
+              file: {
+                attributes: {
+                  preload: 'metadata',
+                  poster: videoData.imagen || ''
                 }
               }
             }}
           />
         </div>
-        <div className="absolute inset-0 z-10 pointer-events-none bg-transparent" />
+        {/* REGLA DE ORO: CAPA DE BLOQUEO ABSOLUTA */}
+        <div className="absolute inset-0 z-10 bg-transparent cursor-none" />
       </div>
     );
   }

@@ -94,7 +94,7 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
       {/* INTRO VIDEO LAYER */}
       <div className={cn(
-        "absolute inset-0 z-40 bg-black transition-opacity duration-1000",
+        "absolute inset-0 z-40 bg-black transition-opacity duration-500",
         isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
         <video
