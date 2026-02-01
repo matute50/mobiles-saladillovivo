@@ -1,5 +1,5 @@
 // src/lib/data.ts
-import { createClient } from '@/utils/supabase/client'; 
+import { createClient } from '@/utils/supabase/client';
 import { PageData, Video, Article, Ad } from '@/lib/types';
 
 const supabase = createClient();
@@ -7,9 +7,9 @@ const supabase = createClient();
 export async function getPageData(): Promise<PageData> {
   try {
     const { data: rawArticles, error: articlesError } = await supabase
-      .from('articles') 
-      .select('*') 
-      .order('created_at', { ascending: false }) 
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false })
       .limit(20);
 
     if (articlesError) throw articlesError;
@@ -25,7 +25,7 @@ export async function getPageData(): Promise<PageData> {
       contenido: item.contenido || item.content || item.body || '',
       etiquetas: item.etiquetas || item.tags || [],
       url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
-      audio_url: item.audio_url || item.url_audio || item.audioUrl || null, 
+      audio_url: item.audio_url || item.url_audio || item.audioUrl || null,
       animation_duration: item.animation_duration || item.animationDuration || 45
     }));
 
@@ -33,7 +33,7 @@ export async function getPageData(): Promise<PageData> {
       .from('videos')
       .select('*')
       .order('createdAt', { ascending: false })
-      .limit(100);
+      .limit(5000);
 
     if (videosError) throw videosError;
 
@@ -61,10 +61,10 @@ export async function getPageData(): Promise<PageData> {
     }));
 
     return {
-      articles: { 
-        featuredNews: mappedArticles.length > 0 ? mappedArticles[0] : null, 
-        secondaryNews: mappedArticles.slice(1, 5), 
-        otherNews: mappedArticles.slice(5) 
+      articles: {
+        featuredNews: mappedArticles.length > 0 ? mappedArticles[0] : null,
+        secondaryNews: mappedArticles.slice(1, 5),
+        otherNews: mappedArticles.slice(5)
       },
       videos: { allVideos: mappedVideos, liveStream: null },
       ads: mappedAds
