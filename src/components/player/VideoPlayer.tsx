@@ -5,28 +5,27 @@ import ReactPlayer from 'react-player';
 import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useVolume } from '@/context/VolumeContext';
 
 interface VideoPlayerProps {
-  content: Video | Article | null; 
-  shouldPlay: boolean; 
+  content: Video | Article | null;
+  shouldPlay: boolean;
   onEnded: () => void;
   onStart?: () => void;
+  onProgress?: (data: { playedSeconds: number; duration: number }) => void;
   muted: boolean;
 }
 
-export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, muted }: VideoPlayerProps) {
-  const [volume, setVolume] = useState(0); 
+export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onProgress, muted }: VideoPlayerProps) {
+  const [targetVolume, setTargetVolume] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isPlayerReady, setIsPlayerReady] = useState(false); 
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const { volume: globalVolume } = useVolume();
+  const playerRef = useRef<ReactPlayer>(null);
   const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- CLÁUSULA DE SEGURIDAD TOTAL ---
-  // Si content es null o undefined, devolvemos un fondo negro y salimos.
-  if (!content) {
-    return <div className="w-full h-full bg-black" />;
-  }
+  if (!content) return <div className="w-full h-full bg-black" />;
 
-  // Ahora es seguro usar el operador 'in'
   const isArticle = 'url_slide' in content || !('url' in content);
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
@@ -35,30 +34,51 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    setTimeout(() => onEnded(), 500);
+    setTimeout(() => onEnded(), 800);
   }, [onEnded]);
 
   useEffect(() => {
     setIsFadingOut(false);
     setIsPlayerReady(false);
+    setTargetVolume(0);
   }, [content]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (shouldPlay && !muted && !isArticle && isPlayerReady) {
-      setVolume(0); 
+    if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
       let currentVol = 0;
       interval = setInterval(() => {
-        currentVol += 0.05; 
-        if (currentVol >= 1) { 
-          currentVol = 1; 
-          if(interval) clearInterval(interval); 
+        currentVol += 0.02;
+        if (currentVol >= globalVolume) {
+          currentVol = globalVolume;
+          if (interval) clearInterval(interval);
         }
-        setVolume(currentVol);
-      }, 50); 
-    } else if (muted) setVolume(0);
+        setTargetVolume(currentVol);
+      }, 20);
+    } else if (muted || isFadingOut) {
+      let currentVol = targetVolume;
+      interval = setInterval(() => {
+        currentVol -= 0.05;
+        if (currentVol <= 0) {
+          currentVol = 0;
+          if (interval) clearInterval(interval);
+        }
+        setTargetVolume(currentVol);
+      }, 20);
+    }
     return () => { if (interval) clearInterval(interval); };
-  }, [shouldPlay, muted, isArticle, isPlayerReady]);
+  }, [shouldPlay, muted, isArticle, isPlayerReady, isFadingOut, globalVolume, targetVolume]);
+
+  const handleProgress = (progress: { playedSeconds: number; loadedSeconds: number }) => {
+    if (playerRef.current) {
+      const duration = playerRef.current.getDuration();
+      if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
+
+      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 1.2) {
+        setIsFadingOut(true);
+      }
+    }
+  };
 
   useEffect(() => {
     if (isArticle && shouldPlay && !isFadingOut) {
@@ -74,44 +94,56 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, mut
 
   if (isArticle && articleData?.url_slide) {
     return (
-      <div className={cn("w-full h-full bg-black transition-opacity duration-500", isFadingOut ? "opacity-0" : "opacity-100")}>
-        <iframe 
-          src={articleData.url_slide} 
-          className="w-full h-full border-0" 
-          scrolling="no" 
-          allow="autoplay; fullscreen" 
-          sandbox="allow-scripts allow-forms allow-presentation" 
-          onLoad={onStart} 
+      <div className={cn("w-full h-full bg-black transition-opacity duration-700", isFadingOut ? "opacity-0" : "opacity-100")}>
+        <iframe
+          src={articleData.url_slide}
+          className="w-full h-full border-0"
+          scrolling="no"
+          allow="autoplay; fullscreen"
+          sandbox="allow-scripts allow-forms allow-presentation"
+          onLoad={onStart}
         />
+        {!isPlayerReady && articleData.imagen && (
+          <div className="absolute inset-0 bg-black">
+            <img src={articleData.imagen} alt="Poster" className="w-full h-full object-cover opacity-50" onLoad={() => setIsPlayerReady(true)} />
+          </div>
+        )}
       </div>
     );
   }
 
   if (videoData) {
     return (
-      <ReactPlayer
-        url={videoData.url} 
-        width="100%" 
-        height="100%"
-        playing={shouldPlay && !isFadingOut}
-        volume={volume}
-        muted={muted}
-        onEnded={triggerEnd}
-        onStart={onStart}
-        onReady={() => setIsPlayerReady(true)}
-        config={{
-          youtube: {
-            playerVars: { 
-              modestbranding: 1, 
-              controls: 0, 
-              showinfo: 0, 
-              rel: 0,
-              // Corrección para el error de postMessage
-              origin: typeof window !== 'undefined' ? window.location.origin : '' 
-            }
-          }
-        }}
-      />
+      <div className="w-full h-full bg-black relative overflow-hidden transition-opacity duration-700" style={{ opacity: isFadingOut ? 0 : 1 }}>
+        <div className="absolute inset-0 w-full h-[110%] -top-[5%] pointer-events-none">
+          <ReactPlayer
+            ref={playerRef}
+            url={videoData.url}
+            width="100%"
+            height="100%"
+            playing={shouldPlay && !isFadingOut}
+            volume={targetVolume}
+            muted={muted}
+            onEnded={triggerEnd}
+            onStart={onStart}
+            onReady={() => setIsPlayerReady(true)}
+            onProgress={handleProgress}
+            config={{
+              youtube: {
+                playerVars: {
+                  modestbranding: 1,
+                  controls: 0,
+                  showinfo: 0,
+                  rel: 0,
+                  iv_load_policy: 3,
+                  origin: typeof window !== 'undefined' ? window.location.origin : ''
+                }
+              }
+            }}
+          />
+        </div>
+        <div className="absolute inset-0 z-10 pointer-events-none bg-transparent" />
+      </div>
     );
   }
 

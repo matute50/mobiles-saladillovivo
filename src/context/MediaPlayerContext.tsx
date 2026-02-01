@@ -29,8 +29,8 @@ const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(und
 export function MediaPlayerProvider({ children }: { children: React.ReactNode }) {
   const [videoPool, setVideoPoolState] = useState<Video[]>([]);
   const isInitialVideoPicked = useRef(false);
-  const wakeLockRef = useRef<any>(null); 
-  
+  const wakeLockRef = useRef<any>(null);
+
   const [state, setState] = useState<MediaPlayerState>({
     currentContent: null,
     currentIntroUrl: null,
@@ -40,7 +40,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   const requestWakeLock = useCallback(async () => {
     if ('wakeLock' in navigator && !wakeLockRef.current) {
-      try { wakeLockRef.current = await (navigator as any).wakeLock.request('screen'); } catch (err) {}
+      try { wakeLockRef.current = await (navigator as any).wakeLock.request('screen'); } catch (err) { }
     }
   }, []);
 
@@ -68,25 +68,43 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const getNextVideo = useCallback(() => {
     if (videoPool.length === 0) return null;
     const candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY && String(v.id) !== BLOCKED_START_ID);
+    if (candidates.length === 0) return null;
+    // Barajado Fisher-Yates para verdadera aleatoriedad en cada selección
     return candidates[Math.floor(Math.random() * candidates.length)];
   }, [videoPool]);
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
-    setVideoPoolState(videos);
+    // Barajar la pool al recibirla
+    const shuffled = [...videos].sort(() => Math.random() - 0.5);
+    setVideoPoolState(shuffled);
+
     if (initialTarget && !isInitialVideoPicked.current) {
       isInitialVideoPicked.current = true;
       startTransition(initialTarget);
     }
   }, [startTransition]);
 
-  const handleIntroEnded = useCallback(() => setState(prev => ({ ...prev, isIntroVisible: false })), []);
-  const handleContentEnded = useCallback(() => { const next = getNextVideo(); if (next) startTransition(next); }, [getNextVideo, startTransition]);
-  const playManual = useCallback((item: Video | Article) => startTransition(item), [startTransition]);
+  const handleIntroEnded = useCallback(() => {
+    setState(prev => ({ ...prev, isIntroVisible: false }));
+  }, []);
+
+  const handleContentEnded = useCallback(() => {
+    const next = getNextVideo();
+    if (next) startTransition(next);
+  }, [getNextVideo, startTransition]);
+
+  const playManual = useCallback((item: Video | Article) => {
+    isInitialVideoPicked.current = true; // Evitar que el efecto de carga pise la selección manual
+    startTransition(item);
+  }, [startTransition]);
 
   useEffect(() => {
     if (videoPool.length > 0 && !state.currentContent && !isInitialVideoPicked.current) {
       const first = getNextVideo();
-      if (first) { isInitialVideoPicked.current = true; startTransition(first); }
+      if (first) {
+        isInitialVideoPicked.current = true;
+        startTransition(first);
+      }
     }
   }, [videoPool, state.currentContent, getNextVideo, startTransition]);
 
