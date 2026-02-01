@@ -15,15 +15,15 @@ export async function getPageData(): Promise<PageData> {
     if (articlesError) throw articlesError;
 
     const mappedArticles: Article[] = (rawArticles || []).map((item: any) => ({
-      id: item.id,
-      titulo: (item.title || item.titulo || 'Sin título').replaceAll('|', ' '),
-      bajada: item.summary || item.bajada || item.description || '',
-      imagen: item.image || item.imagen || item.imageUrl || item.image_url || null,
-      categoria: item.category || item.categoria || 'General',
-      autor: item.author || item.autor || 'Redacción',
+      id: String(item.id),
+      titulo: (item.titulo || item.title || 'Sin título').replaceAll('|', ' ').trim(),
+      bajada: (item.bajada || item.summary || item.description || '').trim(),
+      imagen: item.imagen || item.image || item.imageUrl || item.image_url || null,
+      categoria: item.categoria || item.category || 'General',
+      autor: item.autor || item.author || 'Redacción',
       fecha: item.created_at || item.createdAt || item.fecha || new Date().toISOString(),
-      contenido: item.content || item.body || item.contenido || '',
-      etiquetas: item.tags || item.etiquetas || [],
+      contenido: item.contenido || item.content || item.body || '',
+      etiquetas: item.etiquetas || item.tags || [],
       url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
       audio_url: item.audio_url || item.url_audio || item.audioUrl || null, 
       animation_duration: item.animation_duration || item.animationDuration || 45
@@ -33,16 +33,16 @@ export async function getPageData(): Promise<PageData> {
       .from('videos')
       .select('*')
       .order('createdAt', { ascending: false })
-      .limit(5000);
+      .limit(100);
 
     if (videosError) throw videosError;
 
     const mappedVideos: Video[] = (rawVideos || []).map((item: any) => ({
-      id: item.id,
-      nombre: (item.title || item.name || item.nombre || 'Video sin nombre').replaceAll('|', ' '),
+      id: String(item.id),
+      nombre: (item.nombre || item.title || item.name || 'Video sin nombre').replaceAll('|', ' ').trim(),
       url: item.url || item.videoUrl || '',
-      imagen: item.image || item.thumbnail || item.imagen || null,
-      categoria: item.category || item.categoria || 'Varios',
+      imagen: item.imagen || item.image || item.thumbnail || null,
+      categoria: item.categoria || item.category || 'Varios',
       fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString()
     }));
 
@@ -50,14 +50,14 @@ export async function getPageData(): Promise<PageData> {
     if (adsError) throw adsError;
 
     const mappedAds: Ad[] = (rawAds || []).map((item: any) => ({
-      id: item.id,
-      cliente: item.client || item.cliente || 'Anónimo',
-      imagen_url: item.imageUrl || item.image_url || item.imagen_url || '',
+      id: String(item.id),
+      cliente: item.cliente || item.client || 'Anónimo',
+      imagen_url: item.imagen_url || item.imageUrl || item.image_url || '',
       url: item.url || item.link || '',
-      tipo: item.type || item.tipo || 'banner',
-      fecha_inicio: item.startDate || item.fecha_inicio || new Date().toISOString(),
-      fecha_fin: item.endDate || item.end_date || item.fecha_fin || new Date().toISOString(),
-      activo: item.active !== undefined ? item.active : true
+      tipo: item.tipo || item.type || 'banner',
+      fecha_inicio: item.fecha_inicio || item.startDate || new Date().toISOString(),
+      fecha_fin: item.fecha_fin || item.endDate || new Date().toISOString(),
+      activo: item.activo !== undefined ? item.activo : (item.active !== undefined ? item.active : true)
     }));
 
     return {
