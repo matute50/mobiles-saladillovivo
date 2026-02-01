@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 
 export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
-  const { state, handleIntroEnded, handleContentEnded } = useMediaPlayer();
-  const { currentContent, currentIntroUrl, isIntroVisible, shouldPlayContent } = state;
+  const { state, handleIntroEnded, handleContentEnded, prepareNext, triggerTransition } = useMediaPlayer();
+  const { currentContent, nextContent, currentIntroUrl, isIntroVisible, shouldPlayContent } = state;
   const { isMuted, toggleMute, unmute } = useVolume();
 
   const introVideoRef = useRef<HTMLVideoElement>(null);
@@ -23,12 +23,15 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [maxTimeReached, setMaxTimeReached] = useState(0);
 
+  const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
+
   useEffect(() => {
     setIsContentStarted(false);
     setIsUserPlaying(true);
     setProgress(0);
     setCurrentTime(0);
     setMaxTimeReached(0);
+    setIsIntroFadingOut(false);
   }, [currentContent]);
 
   useEffect(() => {
@@ -45,6 +48,24 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
   const handleStart = () => {
     setIsContentStarted(true);
     handleIntroEnded();
+    // Iniciar búsqueda del próximo contenido tan pronto como el actual arranca
+    prepareNext();
+  };
+
+  const handleIntroMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (video.duration > 0) {
+      // Rule 4.0: Durar exactamente 4 segundos
+      video.playbackRate = video.duration / 4;
+    }
+  };
+
+  const handleIntroTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    // Fade out 0.5s antes del final (Rule 4.0)
+    if (!isIntroFadingOut && video.duration > 0 && (video.duration - video.currentTime) < 0.5) {
+      setIsIntroFadingOut(true);
+    }
   };
 
   const handleInteraction = () => {
@@ -77,12 +98,26 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
     <div className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
       <style jsx global>{`.analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }`}</style>
 
+      {/* CAPA 0: PRECARGA (Invisible) */}
+      <div className="absolute inset-0 z-0 opacity-0 pointer-events-none">
+        {nextContent && (
+          <VideoPlayer
+            content={nextContent}
+            shouldPlay={shouldPlayContent}
+            onEnded={() => { }}
+            muted={true}
+          />
+        )}
+      </div>
+
+      {/* CAPA 1: ACTUAL */}
       <div className="absolute inset-0 z-10 transition-transform duration-500">
         {currentContent && (
           <VideoPlayer
             content={currentContent}
             shouldPlay={shouldPlayContent && isUserPlaying}
             onEnded={handleContentEnded}
+            onNearEnd={triggerTransition}
             onStart={handleStart}
             onProgress={onPlayerProgress}
             muted={isMuted}
@@ -92,15 +127,17 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
       {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
 
-      {/* INTRO VIDEO LAYER */}
+      {/* INTRO VIDEO LAYER (CAPA 2) */}
       <div className={cn(
         "absolute inset-0 z-40 bg-black transition-opacity duration-500",
-        isIntroVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+        (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
         <video
           ref={introVideoRef}
           className="w-full h-full object-cover"
           onEnded={handleIntroEnded}
+          onLoadedMetadata={handleIntroMetadata}
+          onTimeUpdate={handleIntroTimeUpdate}
           playsInline
           muted
         />
