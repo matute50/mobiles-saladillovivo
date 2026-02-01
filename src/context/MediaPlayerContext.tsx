@@ -69,7 +69,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const startTransition = useCallback((nextContent: Video | Article) => {
     const isVideo = 'url' in nextContent && nextContent.url;
 
-    // Limpiar timer anterior
     if (introTimerRef.current) clearTimeout(introTimerRef.current);
 
     setState({
@@ -80,7 +79,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       shouldPlayContent: true,
     });
 
-    // Auto-descartar intro tras 4 segundos (Skill Rule: 3.5s + 0.5s fade)
     introTimerRef.current = setTimeout(() => {
       handleIntroEnded();
     }, 4000);
@@ -89,14 +87,12 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const getNextVideo = useCallback((excludeCategory?: string) => {
     if (videoPool.length === 0) return null;
 
-    // Reglas de Selección 4.0: Diferente categoría y nunca HCD
     let candidates = videoPool.filter(v =>
       v.categoria !== FORBIDDEN_CATEGORY &&
       v.categoria !== excludeCategory &&
       String(v.id) !== BLOCKED_START_ID
     );
 
-    // Fallback: si no hay de otra categoría, al menos excluir HCD
     if (candidates.length === 0) {
       candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY);
     }
@@ -106,16 +102,17 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, [videoPool]);
 
   const prepareNext = useCallback(() => {
+    if (state.nextContent) return; // Ya hay uno preparado
     const next = getNextVideo(state.currentContent?.categoria);
     if (next) {
       setState(prev => ({ ...prev, nextContent: next }));
     }
-  }, [getNextVideo, state.currentContent]);
+  }, [getNextVideo, state.currentContent, state.nextContent]);
 
   const triggerTransition = useCallback(() => {
-    if (!state.nextContent) return;
+    if (!state.nextContent || state.isIntroVisible) return;
 
-    // Disparar Intro
+    // Iniciar Intro inmediatamente
     const isVideo = 'url' in state.nextContent && state.nextContent.url;
 
     if (introTimerRef.current) clearTimeout(introTimerRef.current);
@@ -126,20 +123,13 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       isIntroVisible: true,
     }));
 
-    // El cambio de currentContent ocurrirá cuando la intro empiece a cubrir
-    // pero para precarga, VideoSection usará nextContent
-    setTimeout(() => {
-      setState(prev => ({
-        ...prev,
-        currentContent: prev.nextContent,
-        nextContent: null
-      }));
-    }, 500); // Dar tiempo al fade-out de YT1
+    // NO SE CAMBIA currentContent AQUÍ.
+    // El cambio ocurrirá cuando el Video actual reporte su fin total (handleContentEnded)
 
     introTimerRef.current = setTimeout(() => {
       handleIntroEnded();
     }, 4000);
-  }, [state.nextContent, handleIntroEnded]);
+  }, [state.nextContent, state.isIntroVisible, handleIntroEnded]);
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
     const shuffled = [...videos].sort(() => Math.random() - 0.5);
@@ -151,9 +141,17 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, [startTransition]);
 
   const handleContentEnded = useCallback(() => {
-    const next = getNextVideo();
-    if (next) startTransition(next);
-  }, [getNextVideo, startTransition]);
+    if (state.nextContent) {
+      setState(prev => ({
+        ...prev,
+        currentContent: prev.nextContent,
+        nextContent: null
+      }));
+    } else {
+      const next = getNextVideo();
+      if (next) startTransition(next);
+    }
+  }, [state.nextContent, getNextVideo, startTransition]);
 
   const playManual = useCallback((item: Video | Article) => {
     isInitialVideoPicked.current = true; // Evitar que el efecto de carga pise la selección manual
