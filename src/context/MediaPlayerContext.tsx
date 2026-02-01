@@ -10,6 +10,7 @@ const BLOCKED_START_ID = '471';
 
 interface MediaPlayerState {
   currentContent: Video | Article | null;
+  nextContent: Video | Article | null;
   currentIntroUrl: string | null;
   isIntroVisible: boolean;
   shouldPlayContent: boolean;
@@ -20,6 +21,8 @@ interface MediaPlayerContextType {
   videoPool: Video[];
   setVideoPool: (videos: Video[], initialTarget?: Video | Article) => void;
   playManual: (item: Video | Article) => void;
+  prepareNext: () => void;
+  triggerTransition: () => void;
   handleIntroEnded: () => void;
   handleContentEnded: () => void;
 }
@@ -33,6 +36,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   const [state, setState] = useState<MediaPlayerState>({
     currentContent: null,
+    nextContent: null,
     currentIntroUrl: null,
     isIntroVisible: true,
     shouldPlayContent: false,
@@ -70,6 +74,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
     setState({
       currentContent: nextContent,
+      nextContent: null,
       currentIntroUrl: isVideo ? INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)] : NEWS_INTRO_VIDEO,
       isIntroVisible: true,
       shouldPlayContent: true,
@@ -81,12 +86,60 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }, 4000);
   }, [handleIntroEnded]);
 
-  const getNextVideo = useCallback(() => {
+  const getNextVideo = useCallback((excludeCategory?: string) => {
     if (videoPool.length === 0) return null;
-    const candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY && String(v.id) !== BLOCKED_START_ID);
+
+    // Reglas de Selección 4.0: Diferente categoría y nunca HCD
+    let candidates = videoPool.filter(v =>
+      v.categoria !== FORBIDDEN_CATEGORY &&
+      v.categoria !== excludeCategory &&
+      String(v.id) !== BLOCKED_START_ID
+    );
+
+    // Fallback: si no hay de otra categoría, al menos excluir HCD
+    if (candidates.length === 0) {
+      candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY);
+    }
+
     if (candidates.length === 0) return null;
     return candidates[Math.floor(Math.random() * candidates.length)];
   }, [videoPool]);
+
+  const prepareNext = useCallback(() => {
+    const next = getNextVideo(state.currentContent?.categoria);
+    if (next) {
+      setState(prev => ({ ...prev, nextContent: next }));
+    }
+  }, [getNextVideo, state.currentContent]);
+
+  const triggerTransition = useCallback(() => {
+    if (!state.nextContent) return;
+
+    // Disparar Intro
+    const isVideo = 'url' in state.nextContent && state.nextContent.url;
+
+    if (introTimerRef.current) clearTimeout(introTimerRef.current);
+
+    setState(prev => ({
+      ...prev,
+      currentIntroUrl: isVideo ? INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)] : NEWS_INTRO_VIDEO,
+      isIntroVisible: true,
+    }));
+
+    // El cambio de currentContent ocurrirá cuando la intro empiece a cubrir
+    // pero para precarga, VideoSection usará nextContent
+    setTimeout(() => {
+      setState(prev => ({
+        ...prev,
+        currentContent: prev.nextContent,
+        nextContent: null
+      }));
+    }, 500); // Dar tiempo al fade-out de YT1
+
+    introTimerRef.current = setTimeout(() => {
+      handleIntroEnded();
+    }, 4000);
+  }, [state.nextContent, handleIntroEnded]);
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
     const shuffled = [...videos].sort(() => Math.random() - 0.5);
@@ -118,7 +171,11 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, [videoPool, state.currentContent, getNextVideo, startTransition]);
 
   return (
-    <MediaPlayerContext.Provider value={{ state, videoPool, setVideoPool, playManual, handleIntroEnded, handleContentEnded }}>
+    <MediaPlayerContext.Provider value={{
+      state, videoPool, setVideoPool, playManual,
+      prepareNext, triggerTransition,
+      handleIntroEnded, handleContentEnded
+    }}>
       {children}
     </MediaPlayerContext.Provider>
   );

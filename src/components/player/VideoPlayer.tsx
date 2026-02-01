@@ -11,12 +11,13 @@ interface VideoPlayerProps {
   content: Video | Article | null;
   shouldPlay: boolean;
   onEnded: () => void;
+  onNearEnd?: () => void;
   onStart?: () => void;
   onProgress?: (data: { playedSeconds: number; duration: number }) => void;
   muted: boolean;
 }
 
-export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onProgress, muted }: VideoPlayerProps) {
+export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, onStart, onProgress, muted }: VideoPlayerProps) {
   const [targetVolume, setTargetVolume] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -37,7 +38,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    setTimeout(() => onEnded(), 1000); // 1.0s para fade out completo
+    setTimeout(() => onEnded(), 500); // 0.5s para fade out (Skill v4.0)
   }, [onEnded]);
 
   useEffect(() => {
@@ -106,9 +107,10 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
       const duration = playerRef.current.getDuration();
       if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
 
-      // Fade-out en los últimos 1.0s (Skill v3.0)
-      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 1.0) {
+      // Fade-out y Señal de Fin Anticipado a los 0.5s (Skill v4.0)
+      if (!isFadingOut && duration > 0 && (duration - progress.playedSeconds) < 0.5) {
         setIsFadingOut(true);
+        if (onNearEnd) onNearEnd();
       }
     }
   };
