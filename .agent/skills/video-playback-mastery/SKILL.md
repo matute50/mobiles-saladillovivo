@@ -20,21 +20,28 @@ Los navegadores modernos bloquean el autoplay con sonido. Para garantizar la fun
 - **Atributos:** `autoPlay`, `muted`, `playsInline`, `loop`.
 - **R2 (Noticias):** Servir `.mp4` con `preload="metadata"` y siempre usar una imagen de `poster` para evitar pantallas negras.
 
-## 2. Progresión y Transiciones (Flujo Maestro)
+## 2. Progresión y Transiciones (Flujo Maestro 4.0)
 
-La aplicación utiliza un sistema de **capas superpuestas** para garantizar transiciones suaves entre contenidos de YouTube y videos institucionales (Intros).
+La aplicación utiliza un sistema de **capas superpuestas** y **selección anticipada** para garantizar transiciones invisibles.
+
+### Selección de Contenido (Reglas de Oro)
+1. **Anticipación**: El reproductor debe elegir el siguiente video *durante* la reproducción del actual.
+2. **Diversidad de Categoría**: El próximo video debe ser de una categoría **diferente** a la del video actual.
+3. **Exclusión**: Nunca elegir videos de la categoría "HCD de Saladillo".
+4. **Estado**: Se debe precargar el `nextContent` en una capa inferior para reproducción inmediata.
 
 ### Flujo de Transición: YouTube -> Intro
-1. **Detección de Fin:** Cuando un video de YouTube termina (`onEnded`), se activa la lógica de `usePlayerStore`.
-2. **Selección del Próximo:** Se busca el siguiente video en la cola/DB.
-3. **Capa Institucional:** Si el próximo destino es otro video de YouTube, **no se muestra directamente**. En su lugar, se activa el `overlayIntroVideo` (Capa de Intro).
-4. **Estado:** `isPreRollOverlayActive` se establece en `true`.
+1. **Disparador (T - 0.5s)**: Exactamente **0.5 segundos** antes del final del video actual:
+   - Iniciar **Fade-out** de audio del video en reproducción.
+   - Iniciar reproducción de un **Video Intro** al azar en la Capa Superior.
+2. **Capas**:
+   - **Capa Superior**: Reproduce la Intro (.mp4 local).
+   - **Capa Inferior**: El nuevo video de YouTube ya ha sido precargado y comienza su reproducción paralelamente a la Intro.
 
 ### Flujo de Transición: Intro -> YouTube
-1. **Carga en Segundo Plano:** Mientras la Intro (.mp4 local) se reproduce en la capa superior, el `VideoPlayer` de YouTube comienza a cargar el video real por debajo (Capa Inferior).
-2. **Temporizador de Salida:** Se activa un temporizador de 4 segundos (3.5s estables + 0.5s de desvanecimiento).
-3. **Sincronización TV (Modo TV):** Para una fluidez total, el video de YouTube en el fondo puede empezar a reproducirse hasta **5 segundos antes** de que termine el video de la intro local.
-4. **Revelación:** Tras el temporizador, el overlay se destruye (`null`), revelando el video de YouTube ya cargado y en reproducción.
+1. **Tuning de Intro**: Ajustar la velocidad de reproducción (`playbackRate`) del video intro para que dure exactamente **4 segundos**.
+2. **Fade-out Intro**: Iniciar desvanecimiento de la intro **0.5 segundos** antes de su fin.
+3. **Sincronización TV**: El video de YouTube en el fondo puede empezar hasta 5 segundos antes (si el flujo lo permite) para estar en un punto de interés al revelarse.
 
 ## 3. Estándares Específicos de Saladillo Vivo
 
@@ -42,7 +49,7 @@ La aplicación utiliza un sistema de **capas superpuestas** para garantizar tran
 - **Volumen Inicial:** El volumen global por defecto debe ser **100%** (valor 1).
 - **Manejo de Transiciones de Audio:**
   - **Fade-in:** 1 segundo al iniciar la reproducción.
-  - **Fade-out:** Iniciar el desvanecimiento en el último **1 segundo** del video de YouTube.
+  - **Fade-out:** Iniciar el desvanecimiento **0.5 segundos** antes del final del video de YouTube.
 - **Sincronización:** El volumen local se sincroniza con `useVolumeStore`, pero se desacopla durante los efectos de fade.
 
 ### Técnicas Anti-Branding (Obligatorio)
