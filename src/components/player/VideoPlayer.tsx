@@ -37,7 +37,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    setTimeout(() => onEnded(), 800);
+    setTimeout(() => onEnded(), 1000); // 1.0s para fade out completo
   }, [onEnded]);
 
   useEffect(() => {
@@ -80,7 +80,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
     if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
       let currentVol = targetVolume;
       interval = setInterval(() => {
-        currentVol += 0.02;
+        currentVol += 0.05; // Incremento más rápido para volumen perceptible
         if (currentVol >= globalVolume) {
           currentVol = globalVolume;
           if (interval) clearInterval(interval);
@@ -106,8 +106,8 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onStart, onP
       const duration = playerRef.current.getDuration();
       if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
 
-      // Fade-out en los últimos 0.7s (Skill pide 0.5 a 1s)
-      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 0.7) {
+      // Fade-out en los últimos 1.0s (Skill v3.0)
+      if (!isFadingOut && duration > 0 && duration - progress.playedSeconds < 1.0) {
         setIsFadingOut(true);
       }
     }

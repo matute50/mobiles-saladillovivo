@@ -35,8 +35,8 @@ export const VolumeProvider = ({ children }: { children: ReactNode }) => {
     setIsMuted(prev => {
       const next = !prev;
       if (!next && volume === 0) {
-        // Si desmutear y el volumen es 0, poner al 5%
-        setVolume(0.05);
+        // Si desmutear y el volumen es 0, poner al 100%
+        setVolume(1.0);
       }
       return next;
     });
@@ -44,7 +44,7 @@ export const VolumeProvider = ({ children }: { children: ReactNode }) => {
 
   const unmute = useCallback(() => {
     setIsMuted(false);
-    if (volume === 0) setVolume(0.05);
+    if (volume === 0) setVolume(1.0);
   }, [volume, setVolume]);
 
   return (
