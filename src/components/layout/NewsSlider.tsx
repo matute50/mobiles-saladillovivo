@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
+import { handleShareContent } from '@/lib/share';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperClass } from 'swiper';
 import Image from 'next/image';
@@ -82,6 +83,17 @@ export const NewsSlider = React.memo(({
                                                     {item.titulo}
                                                 </h3>
                                             </div>
+
+                                            {/* BOTÓN COMPARTIR */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleShareContent(item);
+                                                }}
+                                                className="absolute top-2 right-2 z-30 p-2 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 active:scale-90 transition-all shadow-lg"
+                                            >
+                                                <Share2 size={slide.type === 'featured' ? 20 : 16} />
+                                            </button>
                                         </div>
                                     </div>
                                 ))}

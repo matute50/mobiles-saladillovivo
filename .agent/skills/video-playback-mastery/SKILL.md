@@ -46,7 +46,20 @@ Los videos intro son el puente entre contenidos y deben cumplir estrictamente:
    - **Fade-out de Opacidad**: Debe iniciar exactamente **0.5 segundos** antes del final de la intro (T-0.5s).
    - Este desvanecimiento permite que el video de YouTube (Capa Inferior) se vuelva visible suavemente.
 
-## 3. Estándares Específicos de Saladillo Vivo
+### 3. Técnicas Anti-Branding 5.0 (White-Label YouTube)
+Para que YouTube parezca un reproductor propietario, se deben aplicar simultáneamente:
+
+1. **Ajuste de Escala (Perfect Fit)**:
+   - El player debe escalarse exactamente al **100% de ancho** y **100% de alto**.
+   - Posicionamiento: `left: 0`, `top: 0`. Esto garantiza la visibilidad íntegra del contenido original.
+2. **Parámetros del Player (Hardening)**:
+   - `modestbranding: 1`, `controls: 0`, `showinfo: 0`, `rel: 0`, `iv_load_policy: 3`.
+   - `disablekb: 1` (desactiva atajos de teclado), `fs: 0` (desactiva pantalla completa nativa).
+3. **Bloqueo de Interacción (Glass-Wall Defense)**:
+   - Una capa invisible (`z-index: 20`) sobre todo el área del video con `pointer-events: auto` (intercepta clics antes del iframe).
+   - Esto impide que el usuario haga clic en "Watch on YouTube" o abra menús nativos.
+
+## 4. Estándares Específicos de Saladillo Vivo
 
 ### Autoplay y Volumen
 - **Volumen Inicial:** El volumen global por defecto debe ser **100%** (valor 1).

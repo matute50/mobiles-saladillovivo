@@ -4,48 +4,44 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Coordenadas de Saladillo
-    const lat = -34.6387;
-    const lon = -59.7777;
-    
-    // Open-Meteo: API gratuita y sin Key con zona horaria de Argentina
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FBuenos_Aires&forecast_days=5`;
+    const API_KEY = 'b9fd6909428741cc9aa182830260102';
+    const city = 'Saladillo,Buenos Aires,Argentina';
 
-    const response = await fetch(url, { next: { revalidate: 1800 } });
-    
-    if (!response.ok) throw new Error(`OpenMeteo Error: ${response.status}`);
+    // WeatherAPI.com: Más preciso y con soporte para búsqueda por ciudad
+    const url = `https://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodeURIComponent(city)}&days=5&aqi=no&alerts=no&lang=es`;
+
+    const response = await fetch(url, { cache: 'no-store' });
+
+    if (!response.ok) throw new Error(`WeatherAPI Error: ${response.status}`);
 
     const data = await response.json();
 
-    // Mapeo detallado de códigos WMO de Open-Meteo a iconos de Saladillo Vivo
-    const codeToIcon = (code: number) => {
-      // 0, 1, 2: Despejado o principalmente despejado -> Sol
-      if (code >= 0 && code <= 2) return 'clear-day';
-      // 3: Nublado
-      if (code === 3) return 'cloudy';
-      // 45, 48: Niebla -> Nubes
-      if (code === 45 || code === 48) return 'cloudy';
-      // 51 a 67: Llovizna y Lluvia
-      if (code >= 51 && code <= 67) return 'rain';
-      // 80, 81, 82: Chubascos de lluvia
-      if (code >= 80 && code <= 82) return 'rain';
-      // 95, 96, 99: Tormentas
-      if (code >= 95) return 'thunder';
-      
-      return 'cloudy'; // Fallback por defecto
+    // Mapeo de condiciones de WeatherAPI a iconos de Saladillo Vivo
+    const conditionToIcon = (text: string) => {
+      const t = text.toLowerCase();
+      if (t.includes('sol') || t.includes('despejado') || t.includes('sunny') || t.includes('clear')) return 'clear-day';
+      if (t.includes('nublado') || t.includes('nubes') || t.includes('cloudy') || t.includes('overcast')) return 'cloudy';
+      if (t.includes('lluvia') || t.includes('llovizna') || t.includes('rain') || t.includes('drizzle')) return 'rain';
+      if (t.includes('tormenta') || t.includes('thunder') || t.includes('storm')) return 'thunder';
+
+      return 'cloudy';
     };
 
     // Normalizamos el formato para mantener compatibilidad con el widget
     const normalizedData = {
-      currentConditions: {
-        temp: data.current.temperature_2m,
-        icon: codeToIcon(data.current.weather_code)
+      location: {
+        name: data.location.name,
+        region: data.location.region
       },
-      days: data.daily.time.map((date: string, i: number) => ({
-        datetime: date,
-        tempmax: data.daily.temperature_2m_max[i],
-        tempmin: data.daily.temperature_2m_min[i],
-        icon: codeToIcon(data.daily.weather_code[i])
+      currentConditions: {
+        temp: data.current.temp_c,
+        icon: conditionToIcon(data.current.condition.text)
+      },
+      days: data.forecast.forecastday.map((day: any) => ({
+        datetime: day.date,
+        tempmax: day.day.maxtemp_c,
+        tempmin: day.day.mintemp_c,
+        icon: conditionToIcon(day.day.condition.text)
       }))
     };
 

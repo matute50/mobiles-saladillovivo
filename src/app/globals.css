@@ -27,10 +27,28 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
+  background: linear-gradient(to bottom,
       transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+      rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .animate-ping-pong {
+    animation: ping-pong 1.5s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes ping-pong {
+  0% {
+    transform: scale(1);
+    background-color: rgb(220 38 38 / 1);
+    /* bg-red-600 */
+  }
+
+  100% {
+    transform: scale(1.2);
+    background-color: rgb(220 38 38 / 0.1);
+    /* Rojo casi transparente */
+    box-shadow: 0 0 15px rgb(220 38 38 / 0.4);
+  }
 }

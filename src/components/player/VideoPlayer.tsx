@@ -75,40 +75,35 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
     return () => { if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current); };
   }, [shouldPlay, isPlayerReady, isArticle, videoData]);
 
-  // Gestión de FADE-IN y FADE-OUT de Audio (Ajustado a 1s / 0.7s)
+  // Gestión de FADE-IN y FADE-OUT de Audio (Ajustado a v4.4: Sin reinicios de efecto)
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
-      let currentVol = targetVolume;
-      interval = setInterval(() => {
-        currentVol += 0.05; // Incremento más rápido para volumen perceptible
-        if (currentVol >= globalVolume) {
-          currentVol = globalVolume;
-          if (interval) clearInterval(interval);
+
+    interval = setInterval(() => {
+      setTargetVolume(prev => {
+        if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
+          // Fade In
+          if (prev >= globalVolume) return globalVolume;
+          return Math.min(globalVolume, prev + 0.05);
+        } else {
+          // Fade Out (si está mutado, en fade out, o no debe sonar)
+          if (prev <= 0) return 0;
+          return Math.max(0, prev - 0.05);
         }
-        setTargetVolume(currentVol);
-      }, 20);
-    } else if (muted || isFadingOut) {
-      let currentVol = targetVolume;
-      interval = setInterval(() => {
-        currentVol -= 0.05;
-        if (currentVol <= 0) {
-          currentVol = 0;
-          if (interval) clearInterval(interval);
-        }
-        setTargetVolume(currentVol);
-      }, 20);
-    }
+      });
+    }, 20);
+
     return () => { if (interval) clearInterval(interval); };
-  }, [shouldPlay, muted, isArticle, isPlayerReady, isFadingOut, globalVolume, targetVolume]);
+  }, [shouldPlay, muted, isArticle, isPlayerReady, isFadingOut, globalVolume]);
 
   const handleProgress = (progress: { playedSeconds: number; loadedSeconds: number }) => {
     if (playerRef.current) {
       const duration = playerRef.current.getDuration();
       if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
 
-      // Fade-out y Señal de Fin Anticipado a los 0.5s (Skill v4.0)
-      if (!isFadingOut && duration > 0 && (duration - progress.playedSeconds) < 0.5) {
+      // Regla de Oro v4.2: Detección anticipada robusta (1.5s antes del fin)
+      // Usamos 1.5s como margen de seguridad para asegurar que la intro cubra el final.
+      if (!isFadingOut && duration > 0 && (duration - progress.playedSeconds) < 1.5) {
         setIsFadingOut(true);
         if (onNearEnd) onNearEnd();
       }
@@ -121,7 +116,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
   };
 
   useEffect(() => {
-    if (isArticle && shouldPlay && !isFadingOut) {
+    if (isArticle && shouldPlay && !isFadingOut && articleData?.audio_url) {
       playAudio();
       const duration = (articleData?.animation_duration || 45) * 1000;
       fadeTimerRef.current = setTimeout(() => triggerEnd(), duration);
@@ -145,7 +140,15 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
         />
         {!isPlayerReady && articleData.imagen && (
           <div className="absolute inset-0 bg-black">
-            <img src={articleData.imagen} alt="Poster" className="w-full h-full object-cover opacity-50" onLoad={() => setIsPlayerReady(true)} />
+            {/* Optimización LCP: priority={true} para evitar el warning de Largest Contentful Paint */}
+            <img
+              src={articleData.imagen}
+              alt="Poster"
+              className="w-full h-full object-cover opacity-50"
+              onLoad={() => setIsPlayerReady(true)}
+              loading="eager"
+              {...({ fetchPriority: "high" } as any)}
+            />
           </div>
         )}
       </div>
@@ -155,20 +158,21 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
   if (videoData) {
     return (
       <div className="w-full h-full bg-black relative overflow-hidden transition-opacity duration-700" style={{ opacity: isFadingOut ? 0 : 1 }}>
-        {/* ANTI-BRANDING CONTAINER (Cropping 110%) */}
-        <div className="absolute inset-0 w-full h-[110%] -top-[5%] pointer-events-none">
+        {/* ANTI-BRANDING 5.2 (Escala Original 100%) */}
+        <div className="absolute inset-0 w-full h-full left-0 top-0">
           <ReactPlayer
             ref={playerRef}
             url={videoData.url}
             width="100%"
             height="100%"
-            playing={shouldPlay && !isFadingOut}
+            playing={shouldPlay}
             volume={targetVolume}
             muted={muted}
             onEnded={triggerEnd}
             onStart={onStart}
             onReady={handleReady}
             onProgress={handleProgress}
+            progressInterval={200} // Mayor precisión de reporte (Skill Rule)
             config={{
               youtube: {
                 playerVars: {
@@ -177,21 +181,19 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
                   showinfo: 0,
                   rel: 0,
                   iv_load_policy: 3,
+                  disablekb: 1,
+                  fs: 0,
+                  autohide: 1,
                   enablejsapi: 1,
-                  origin: typeof window !== 'undefined' ? window.location.origin : ''
-                }
-              },
-              file: {
-                attributes: {
-                  preload: 'metadata',
-                  poster: videoData.imagen || ''
+                  origin: typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : ''
                 }
               }
             }}
           />
         </div>
-        {/* REGLA DE ORO: CAPA DE BLOQUEO ABSOLUTA */}
-        <div className="absolute inset-0 z-10 bg-transparent cursor-none" />
+
+        {/* BLOQUEO TOTAL DE INTERACCIÓN NATIVA (Anti-Share, Anti-YouTube branding) */}
+        <div className="absolute inset-0 z-20 bg-transparent cursor-default pointer-events-auto" />
       </div>
     );
   }

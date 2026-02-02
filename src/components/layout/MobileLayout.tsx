@@ -12,7 +12,6 @@ import 'swiper/css';
 
 // Sub-componentes
 import { Header } from './Header';
-import { WeatherWidget } from './WeatherWidget';
 import { VideoCarouselBlock } from './VideoCarouselBlock';
 import { NewsSlider } from './NewsSlider';
 
@@ -100,7 +99,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
       />
 
       <div className="relative z-40 w-full aspect-video bg-black">
-        <VideoSection isMobile={true} />
+        <VideoSection isMobile={true} isDark={isDark} />
       </div>
 
       <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
@@ -113,11 +112,9 @@ export default function MobileLayout({ data }: { data: PageData }) {
           onNext={() => newsSwiper?.slideNext()}
         />
 
-        <div className="h-[160px] shrink-0 -mt-1">
+        <div className="h-[160px] shrink-0 -mt-[22px]">
           <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} />
         </div>
-
-        <WeatherWidget isDark={isDark} />
       </div>
     </div>
   );

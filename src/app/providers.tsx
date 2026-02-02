@@ -3,15 +3,19 @@
 import React from 'react';
 import { MediaPlayerProvider } from '@/context/MediaPlayerContext';
 import { VolumeProvider } from '@/context/VolumeContext';
-// Si tienes un NewsContext, probablemente también lo necesitemos aquí, 
-// pero vamos a arreglar el error actual primero.
+import { WeatherProvider } from '@/context/WeatherContext';
+import { PWAProvider } from '@/context/PWAContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <VolumeProvider>
-      <MediaPlayerProvider>
-        {children}
-      </MediaPlayerProvider>
+      <WeatherProvider>
+        <PWAProvider>
+          <MediaPlayerProvider>
+            {children}
+          </MediaPlayerProvider>
+        </PWAProvider>
+      </WeatherProvider>
     </VolumeProvider>
   );
 }

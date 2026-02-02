@@ -6,6 +6,7 @@ interface VolumeContextType {
   volume: number;
   setVolume: (volume: number) => void;
   isMuted: boolean;
+  hasInteracted: boolean;
   toggleMute: () => void;
   unmute: () => void;
 }
@@ -13,8 +14,9 @@ interface VolumeContextType {
 const VolumeContext = createContext<VolumeContextType | undefined>(undefined);
 
 export const VolumeProvider = ({ children }: { children: ReactNode }) => {
-  const [volume, setVolumeState] = useState(1); // Inicial al 100%
+  const [volume, setVolumeState] = useState(1);
   const [isMuted, setIsMuted] = useState(true);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   useEffect(() => {
     const savedVolume = localStorage.getItem('playerVolume');
@@ -32,10 +34,10 @@ export const VolumeProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const toggleMute = useCallback(() => {
+    setHasInteracted(true);
     setIsMuted(prev => {
       const next = !prev;
-      if (!next && volume === 0) {
-        // Si desmutear y el volumen es 0, poner al 100%
+      if (!next && volume <= 0.05) {
         setVolume(1.0);
       }
       return next;
@@ -43,12 +45,13 @@ export const VolumeProvider = ({ children }: { children: ReactNode }) => {
   }, [volume, setVolume]);
 
   const unmute = useCallback(() => {
+    setHasInteracted(true);
     setIsMuted(false);
-    if (volume === 0) setVolume(1.0);
+    if (volume <= 0.05) setVolume(1.0);
   }, [volume, setVolume]);
 
   return (
-    <VolumeContext.Provider value={{ volume, setVolume, isMuted, toggleMute, unmute }}>
+    <VolumeContext.Provider value={{ volume, setVolume, isMuted, hasInteracted, toggleMute, unmute }}>
       {children}
     </VolumeContext.Provider>
   );

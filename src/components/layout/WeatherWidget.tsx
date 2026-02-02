@@ -1,32 +1,26 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { MapPin, Cloud, Sun as SunIcon, CloudRain, CloudLightning } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWeather } from '@/context/WeatherContext';
 
 interface WeatherWidgetProps {
   isDark: boolean;
 }
 
-const getWeatherIcon = (iconName: string, size = 24, className = "") => {
+const getWeatherIcon = (iconName: string, isDark: boolean, size = 24, className = "") => {
   const name = iconName?.toLowerCase() || '';
+  const sunColor = isDark ? "text-yellow-400" : "text-orange-500";
   if (name.includes('thunder')) return <CloudLightning size={size} className={cn("text-purple-500", className)} />;
   if (name.includes('rain')) return <CloudRain size={size} className={cn("text-blue-500", className)} />;
   if (name.includes('cloudy')) return <Cloud size={size} className={cn("text-blue-400", className)} />;
-  if (name.includes('clear')) return <SunIcon size={size} className={cn("text-yellow-400", className)} />;
-  return <SunIcon size={size} className={cn("text-yellow-400", className)} />;
+  if (name.includes('clear')) return <SunIcon size={size} className={cn(sunColor, className)} />;
+  return <SunIcon size={size} className={cn(sunColor, className)} />;
 };
 
 export const WeatherWidget = React.memo(({ isDark }: WeatherWidgetProps) => {
-  const [weather, setWeather] = useState<any>(null);
-  const [errorText, setErrorText] = useState<string>("");
-
-  useEffect(() => {
-    fetch('/api/weather')
-      .then(res => res.ok ? res.json() : Promise.reject(new Error(`Error ${res.status}`)))
-      .then(data => setWeather(data))
-      .catch((err) => setErrorText(err.message));
-  }, []);
+  const { weather, errorText } = useWeather();
 
   const themeBlue = isDark ? "text-[#6699ff]" : "text-[#003399]";
 
@@ -44,11 +38,13 @@ export const WeatherWidget = React.memo(({ isDark }: WeatherWidgetProps) => {
         <div className="flex-[0.9] flex flex-col justify-center pl-6 pr-4 border-r border-black/5 dark:border-white/5">
           <div className="flex items-center gap-1.5 opacity-50 mb-1">
             <MapPin size={14} className={themeBlue} />
-            <span className={cn("text-[11px] font-black uppercase tracking-[0.2em]", isDark ? "text-white" : "text-black")}>Saladillo</span>
+            <span className={cn("text-[11px] font-black uppercase tracking-[0.2em]", isDark ? "text-white" : "text-black")}>
+              {weather.location?.name || 'Saladillo'}
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <h2 className={cn("text-6xl font-black italic tracking-tighter leading-none", isDark ? "text-white" : "text-neutral-900")}>{Math.round(weather.currentConditions.temp)}°</h2>
-            {getWeatherIcon(weather.currentConditions.icon, 40)}
+            {getWeatherIcon(weather.currentConditions.icon, isDark, 40)}
           </div>
         </div>
         <div className="flex-[1.1] flex justify-between px-4">
@@ -57,7 +53,7 @@ export const WeatherWidget = React.memo(({ isDark }: WeatherWidgetProps) => {
               <span className={cn("text-[11px] font-black uppercase italic opacity-60", isDark ? "text-white" : "text-black")}>
                 {new Date(day.datetime + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase()}
               </span>
-              {getWeatherIcon(day.icon, 26)}
+              {getWeatherIcon(day.icon, isDark, 26)}
               <div className="flex flex-col items-center leading-none">
                 <span className={cn("text-[14px] font-black italic", isDark ? "text-white" : "text-neutral-900")}>{Math.round(day.tempmax)}°</span>
                 <span className="text-[10px] font-bold opacity-30">{Math.round(day.tempmin)}°</span>

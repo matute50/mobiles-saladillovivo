@@ -12,13 +12,14 @@ interface MediaPlayerState {
   currentContent: Video | Article | null;
   nextContent: Video | Article | null;
   currentIntroUrl: string | null;
+  introQueue: string[];
+  introId: number;
   isIntroVisible: boolean;
   shouldPlayContent: boolean;
 }
 
 interface MediaPlayerContextType {
   state: MediaPlayerState;
-  videoPool: Video[];
   setVideoPool: (videos: Video[], initialTarget?: Video | Article) => void;
   playManual: (item: Video | Article) => void;
   prepareNext: () => void;
@@ -38,6 +39,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     currentContent: null,
     nextContent: null,
     currentIntroUrl: null,
+    introQueue: [],
+    introId: 0,
     isIntroVisible: true,
     shouldPlayContent: false,
   });
@@ -66,23 +69,48 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     if (introTimerRef.current) clearTimeout(introTimerRef.current);
   }, []);
 
+  const getNextIntroUrl = useCallback((isVideo: boolean, currentQueue: string[]) => {
+    if (!isVideo) return { url: NEWS_INTRO_VIDEO, newQueue: currentQueue };
+
+    let newQueue = [...currentQueue];
+    if (newQueue.length === 0) {
+      // Recargar y barajar
+      newQueue = [...INTRO_VIDEOS].sort(() => Math.random() - 0.5);
+
+      // Si la primera del nuevo ciclo es igual a la última del anterior, rotar
+      const lastIntro = state.currentIntroUrl;
+      if (lastIntro && newQueue[0] === lastIntro && newQueue.length > 1) {
+        const first = newQueue.shift()!;
+        newQueue.push(first);
+      }
+    }
+
+    const url = newQueue.shift() || INTRO_VIDEOS[0];
+    return { url, newQueue };
+  }, [state.currentIntroUrl]);
+
   const startTransition = useCallback((nextContent: Video | Article) => {
-    const isVideo = 'url' in nextContent && nextContent.url;
+    // Es video si tiene propiedad 'url'. 'Article' tiene 'url_slide'.
+    const isVideo = 'url' in nextContent && typeof (nextContent as any).url === 'string';
 
     if (introTimerRef.current) clearTimeout(introTimerRef.current);
+    const { url: nextIntroUrl, newQueue } = getNextIntroUrl(isVideo, state.introQueue);
 
-    setState({
+    setState(prev => ({
+      ...prev,
       currentContent: nextContent,
       nextContent: null,
-      currentIntroUrl: isVideo ? INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)] : NEWS_INTRO_VIDEO,
+      currentIntroUrl: nextIntroUrl,
+      introQueue: newQueue,
+      introId: Date.now(),
       isIntroVisible: true,
       shouldPlayContent: true,
-    });
+    }));
 
     introTimerRef.current = setTimeout(() => {
       handleIntroEnded();
     }, 4000);
-  }, [handleIntroEnded]);
+  }, [handleIntroEnded, getNextIntroUrl, state.introQueue]);
 
   const getNextVideo = useCallback((excludeCategory?: string) => {
     if (videoPool.length === 0) return null;
@@ -113,18 +141,20 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     if (!state.nextContent || state.isIntroVisible) return;
 
     // Iniciar Intro inmediatamente
-    const isVideo = 'url' in state.nextContent && state.nextContent.url;
+    const isVideo = 'url' in state.nextContent && typeof (state.nextContent as any).url === 'string';
 
     if (introTimerRef.current) clearTimeout(introTimerRef.current);
+    const { url: nextIntroUrl, newQueue } = getNextIntroUrl(isVideo, state.introQueue);
 
     setState(prev => ({
       ...prev,
-      currentIntroUrl: isVideo ? INTRO_VIDEOS[Math.floor(Math.random() * INTRO_VIDEOS.length)] : NEWS_INTRO_VIDEO,
+      currentContent: prev.nextContent, // CAMBIO INMEDIATO (v4.3)
+      nextContent: null,
+      currentIntroUrl: nextIntroUrl,
+      introQueue: newQueue,
+      introId: Date.now(),
       isIntroVisible: true,
     }));
-
-    // NO SE CAMBIA currentContent AQUÍ.
-    // El cambio ocurrirá cuando el Video actual reporte su fin total (handleContentEnded)
 
     introTimerRef.current = setTimeout(() => {
       handleIntroEnded();
@@ -132,8 +162,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, [state.nextContent, state.isIntroVisible, handleIntroEnded]);
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
-    const shuffled = [...videos].sort(() => Math.random() - 0.5);
-    setVideoPoolState(shuffled);
+    setVideoPoolState(videos);
     if (initialTarget && !isInitialVideoPicked.current) {
       isInitialVideoPicked.current = true;
       startTransition(initialTarget);
@@ -170,7 +199,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   return (
     <MediaPlayerContext.Provider value={{
-      state, videoPool, setVideoPool, playManual,
+      state, setVideoPool, playManual,
       prepareNext, triggerTransition,
       handleIntroEnded, handleContentEnded
     }}>

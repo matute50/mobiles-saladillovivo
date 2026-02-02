@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 export const useAudioPlayer = (audioUrl: string | null) => {
   const [state, setState] = useState<'playing' | 'paused' | 'stopped'>('stopped');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playPromiseRef = useRef<Promise<void> | null>(null);
 
   // Inicializar el objeto Audio solo una vez
   if (!audioRef.current && typeof window !== 'undefined') {
@@ -18,7 +19,8 @@ export const useAudioPlayer = (audioUrl: string | null) => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
-    // Configurar el audio solo cuando cambie la URL
+    // Detener cualquier reproducción previa antes de cambiar la fuente
+    audio.pause();
     audio.src = audioUrl;
     audio.playbackRate = 1.13;
     audio.load();
@@ -33,17 +35,37 @@ export const useAudioPlayer = (audioUrl: string | null) => {
       audio.removeEventListener('pause', onPaused);
       audio.removeEventListener('ended', onEnded);
     };
-    // ELIMINAMOS 'state' de las dependencias para evitar el bucle
   }, [audioUrl, onPlaying, onPaused, onEnded]);
 
-  const play = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.play().catch(e => console.error("Error al reproducir:", e));
-    }
-  }, []);
+  const play = useCallback(async () => {
+    if (!audioRef.current || !audioUrl) return;
 
-  const pause = useCallback(() => {
-    if (audioRef.current) audioRef.current.pause();
+    try {
+      // Si hay una promesa de reproducción en curso, esperamos o la ignoramos
+      playPromiseRef.current = audioRef.current.play();
+      await playPromiseRef.current;
+    } catch (e) {
+      if (e instanceof Error && e.name !== 'AbortError') {
+        console.error("Error al reproducir audio:", e);
+      }
+    }
+  }, [audioUrl]);
+
+  const pause = useCallback(async () => {
+    if (!audioRef.current) return;
+
+    if (playPromiseRef.current) {
+      try {
+        await playPromiseRef.current;
+        audioRef.current.pause();
+      } catch (e) {
+        // Ignorar errores de interrupción durante la pausa
+      } finally {
+        playPromiseRef.current = null;
+      }
+    } else {
+      audioRef.current.pause();
+    }
   }, []);
 
   const stop = useCallback(() => {
