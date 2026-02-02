@@ -38,7 +38,7 @@ export const NewsSlider = React.memo(({
                     <ChevronLeft size={32} />
                 </button>
                 <h3 className={cn("font-black italic text-xl uppercase text-center flex-1 truncate px-2 mt-1", isDark ? "text-[#6699ff]" : "text-[#003399]")}>
-                    {searchQuery ? "Resultados" : "Noticias"}
+                    {searchQuery ? "Resultados" : "ÚLTIMAS NOTICIAS"}
                 </h3>
                 <button onClick={onNext} className={isDark ? "text-[#6699ff]" : "text-[#003399]"}>
                     <ChevronRight size={32} />

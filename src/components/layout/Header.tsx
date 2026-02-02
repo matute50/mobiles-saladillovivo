@@ -45,12 +45,12 @@ export const Header = React.memo(({
                 "shrink-0 h-11 flex items-center justify-between px-3 z-50 transition-all duration-300",
                 isDark
                     ? "bg-gradient-to-b from-white/30 to-black text-white"
-                    : "bg-gradient-to-b from-black/60 to-white text-black border-b"
+                    : "bg-gradient-to-b from-white to-black/60 text-black border-b"
             )}>
                 {/* LADO IZQUIERDO: LOGO (Restaurado a posición original) */}
                 <div className="flex items-center">
                     {!isSearchOpen && (
-                        <div className="relative w-36 h-9 py-1">
+                        <div className="relative w-36 h-9 py-1 -mt-[2px]">
                             <Image
                                 src={isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png'}
                                 alt="Logo"
@@ -106,7 +106,7 @@ export const Header = React.memo(({
 
                             <button
                                 onClick={() => setIsDecreeOpen(true)}
-                                className={isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black"}
+                                className={isDark ? "text-white" : "text-black/60 hover:text-black"}
                             >
                                 <HelpCircle size={20} strokeWidth={3} />
                             </button>

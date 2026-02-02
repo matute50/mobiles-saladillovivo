@@ -28,7 +28,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   // Auto-cierre del clima extendido tras 3 segundos (v5.3)
   useEffect(() => {
     if (isExtendedOpen) {
-      const timer = setTimeout(() => setIsExtendedOpen(false), 3000);
+      const timer = setTimeout(() => setIsExtendedOpen(false), 5000);
       return () => clearTimeout(timer);
     }
   }, [isExtendedOpen, setIsExtendedOpen]);

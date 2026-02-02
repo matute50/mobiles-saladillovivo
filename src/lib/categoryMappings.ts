@@ -6,9 +6,9 @@ export interface CategoryMapping {
 export const categoryMappings: CategoryMapping[] = [
   { display: 'Noticias (Slides)', dbCategory: '__NOTICIAS__' },
   { display: 'Novedades', dbCategory: '__NOVEDADES__' }, // Nueva categoría
-  { display: 'HCD de Saladillo', dbCategory: 'HCD DE SALADILLO  - Período 2025' },
-  { display: 'ITEC ¨Augusto Cicaré¨', dbCategory: 'ITEC ¨AUGUSTO CICARE¨ SALADILLO' },
-  { display: 'Fierros de Saladillo', dbCategory: 'FIERROS' },
+  { display: 'HCD de Saladillo', dbCategory: ['HCD DE SALADILLO - Período 2025', 'HCD DE SALADILLO  - Período 2025'] },
+  { display: 'ITEC ¨A. CICARE¨', dbCategory: 'ITEC ¨AUGUSTO CICARE¨ SALADILLO' },
+  { display: 'Fierros Saladillo', dbCategory: 'FIERROS' },
   { display: 'Gente de Acá', dbCategory: 'export' },
   { display: 'Sembrando Futuro', dbCategory: 'SEMBRANDO FUTURO' },
   { display: 'De Otros Tiempos', dbCategory: ['ARCHIVO SALADILLO VIVO', 'historia'] },

@@ -170,17 +170,28 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, [startTransition]);
 
   const handleContentEnded = useCallback(() => {
+    // Detectamos si lo que terminó fue una Noticia (Article)
+    const isNews = state.currentContent && ('url_slide' in state.currentContent || !('url' in state.currentContent));
+
     if (state.nextContent) {
-      setState(prev => ({
-        ...prev,
-        currentContent: prev.nextContent,
-        nextContent: null
-      }));
+      // Sivenimos de una Noticia, QUEREMOS la intro y transición suave.
+      // triggerTransition() maneja exactamente: Intro Random + Background Play de nextContent.
+      if (isNews) {
+        triggerTransition();
+      } else {
+        // Comportamiento estándar para Youtube->Youtube (asumiendo que triggerTransition ya corrió en onNearEnd)
+        // Si llegamos aquí sin trigger, hacemos swap directo.
+        setState(prev => ({
+          ...prev,
+          currentContent: prev.nextContent,
+          nextContent: null
+        }));
+      }
     } else {
       const next = getNextVideo();
-      if (next) startTransition(next);
+      if (next) startTransition(next); // startTransition siempre pone intro para videos
     }
-  }, [state.nextContent, getNextVideo, startTransition]);
+  }, [state.currentContent, state.nextContent, getNextVideo, startTransition, triggerTransition]);
 
   const playManual = useCallback((item: Video | Article) => {
     isInitialVideoPicked.current = true; // Evitar que el efecto de carga pise la selección manual
