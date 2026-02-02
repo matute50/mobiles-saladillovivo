@@ -36,16 +36,16 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
       setProgress(0);
       setCurrentTime(0);
       setMaxTimeReached(0);
-      setIsIntroFadingOut(false);
     }
   }, [currentContent]);
 
   useEffect(() => {
     const v = introVideoRef.current;
     if (isIntroVisible && currentIntroUrl && v) {
+      // Regla de Oro: Resetear fade INMEDIATAMENTE al hacer visible la intro
       setIsIntroFadingOut(false);
       v.src = currentIntroUrl;
-      v.muted = true;
+      v.load(); // Asegurar carga limpia
       v.play().catch(() => handleIntroEnded());
     }
   }, [currentIntroUrl, isIntroVisible, handleIntroEnded]);
