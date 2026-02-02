@@ -30,19 +30,21 @@ La aplicación utiliza un sistema de **capas superpuestas** y **selección antic
 3. **Exclusión**: Nunca elegir videos de la categoría "HCD de Saladillo".
 4. **Estado**: Se debe precargar el `nextContent` en una capa inferior para reproducción inmediata.
 
-### Flujo de Transición: YouTube -> Intro
-1. **Disparador (T - 0.5s)**: Exactamente **0.5 segundos** antes del final del video actual:
-   - Iniciar **Fade-out** de audio del video en reproducción.
-   - Iniciar reproducción de un **Video Intro** al azar en la Capa Superior.
-2. **Capas**:
-   - **Capa Superior**: Reproduce la Intro (.mp4 local).
-   - **Capa Inferior**: El nuevo video de YouTube ya ha sido precargado y comienza su reproducción paralelamente a la Intro.
+### 2. Regla de Oro de Videos Intro (Flujo Maestro 4.0)
+Los videos intro son el puente entre contenidos y deben cumplir estrictamente:
 
-### Flujo de Transición: Intro -> YouTube
-1. **Tuning de Intro**: Ajustar la velocidad de reproducción (`playbackRate`) del video intro para que dure exactamente **4 segundos**.
-2. **Independencia de Capas**: El video de YouTube debe iniciar paralelamente bajo la intro, pero **no debe ocultar la intro** al arrancar. La intro solo se retira por su propio fin o el temporizador de 4s.
-3. **Fade-out Intro**: Iniciar desvanecimiento de la intro (opacidad) **0.5 segundos** antes de su fin.
-4. **Sincronización TV**: El video de YouTube en el fondo puede empezar hasta 5 segundos antes (si el flujo lo permite) para estar en un punto de interés al revelarse.
+1. **Ubicación y Nomenclatura**:
+   - Ruta: `public/videos_intro/`
+   - Nombres: `intro1.mp4`, `intro2.mp4`, `intro3.mp4`, `intro4.mp4`, `intro5.mp4`.
+2. **Sincronización de Capas**:
+   - Siempre se reproducen en la **Capa Superior** con `z-index: 100`.
+   - Deben ocultar completamente la carga del siguiente video de YouTube.
+3. **Duración Exacta (4 Segundos)**:
+   - Independientemente de la duración original del archivo, se debe alterar la velocidad (`playbackRate`) para que dure exactamente **4 segundos**.
+   - `playbackRate = video.duration / 4`.
+4. **Efecto de Transición**:
+   - **Fade-out de Opacidad**: Debe iniciar exactamente **0.5 segundos** antes del final de la intro (T-0.5s).
+   - Este desvanecimiento permite que el video de YouTube (Capa Inferior) se vuelva visible suavemente.
 
 ## 3. Estándares Específicos de Saladillo Vivo
 
