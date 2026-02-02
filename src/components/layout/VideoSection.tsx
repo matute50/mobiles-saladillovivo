@@ -124,9 +124,23 @@ export default function VideoSection({ isMobile }: { isMobile?: boolean }) {
 
       {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
 
-      {/* INTRO VIDEO LAYER (CAPA 2) */}
-      <div className={cn("absolute inset-0 z-40 bg-black transition-opacity duration-500", (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none")}>
-        <video key={currentIntroUrl} ref={introVideoRef} className="w-full h-full object-cover" onEnded={handleIntroEnded} onLoadedMetadata={handleIntroMetadata} onTimeUpdate={handleIntroTimeUpdate} playsInline muted />
+      {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[100] para visibilidad garantizada */}
+      <div className={cn(
+        "absolute inset-0 z-[100] bg-black transition-opacity duration-500",
+        (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}>
+        <video
+          key={currentIntroUrl ? `${currentIntroUrl}-${Date.now()}` : 'no-intro'}
+          ref={introVideoRef}
+          className="w-full h-full object-cover"
+          src={currentIntroUrl || undefined}
+          autoPlay
+          muted
+          playsInline
+          onEnded={handleIntroEnded}
+          onLoadedMetadata={handleIntroMetadata}
+          onTimeUpdate={handleIntroTimeUpdate}
+        />
       </div>
 
       {/* BOTÓN UNMUTE INICIAL */}
