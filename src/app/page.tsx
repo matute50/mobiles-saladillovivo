@@ -94,6 +94,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   // Borramos width/height explícitos. Si la imagen real no coincide EXACTAMENTE con lo que declaramos,
   // WhatsApp la descarga, ve la diferencia y la DESCARTA (provocando el glitch visual que reporta el usuario).
 
+  // v55.0: EXACTITUD TOTAL
+  // WhatsApp valida headers vs archivo real.
+  // hqdefault.jpg es SIEMPRE 480x360.
+  // Declaramos eso explícitamente para que el crawler confíe (Green Check).
+
   // Determinar tipo OG
   const ogType = 'website';
 
@@ -113,8 +118,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       description,
       url: canonicalUrl,
       siteName: 'Saladillo ViVo',
-      // Pasamos solo la URL, sin estructura compleja que pueda fallar
-      images: [finalImage],
+      images: [{
+        url: finalImage,
+        secureUrl: finalImage.replace('http:', 'https:'),
+        width: 480,
+        height: 360,
+        type: 'image/jpeg',
+        alt: title,
+      }],
       locale: 'es_AR',
       type: ogType,
     },
@@ -127,7 +138,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     alternates: {
       canonical: canonicalUrl,
     },
-    // Inyección de urgencia para WhatsApp (Microdata Schema.org)
     other: {
       'itemprop:name': title,
       'itemprop:description': description,
