@@ -26,16 +26,51 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
     const { playManual } = useMediaPlayer();
     const { unmute } = useVolume();
     const [activeCatIndex, setActiveCatIndex] = useState(0);
+    const [shuffledVideos, setShuffledVideos] = useState<Video[]>([]);
+    const [isRandomized, setIsRandomized] = useState(false);
 
-    const categories = useMemo(() =>
-        Array.from(new Set(videos.map((v: Video) => getDisplayCategory(v.categoria)))).sort()
-        , [videos]);
+    // vShuffle: Fisher-Yates Shuffle Algorithm
+    const shuffleArray = (array: Video[]) => {
+        const arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    };
+
+    // vShuffle: Randomize once on mount
+    React.useEffect(() => {
+        if (videos.length > 0) {
+            // 1. Barajar videos
+            const mixedVideos = shuffleArray(videos);
+
+            // 2. Calcular categorías únicas basadas en el orden mezclado
+            const uniqueCats = Array.from(new Set(mixedVideos.map((v: Video) => getDisplayCategory(v.categoria)))).sort();
+
+            // 3. Elegir categoría inicial al azar
+            const randomCatIndex = Math.floor(Math.random() * uniqueCats.length);
+
+            setShuffledVideos(mixedVideos);
+            setActiveCatIndex(randomCatIndex);
+            setIsRandomized(true);
+        }
+    }, [videos]);
+
+    const categories = useMemo(() => {
+        if (!isRandomized) return [];
+        return Array.from(new Set(shuffledVideos.map((v: Video) => getDisplayCategory(v.categoria)))).sort();
+    }, [shuffledVideos, isRandomized]);
 
     const currentCat = (categories[activeCatIndex] as string) || 'VARIOS';
-    const filtered = videos.filter((v: Video) => getDisplayCategory(v.categoria) === currentCat);
+    // Filtrar sobre los videos mezclados
+    const filtered = useMemo(() => {
+        return shuffledVideos.filter((v: Video) => getDisplayCategory(v.categoria) === currentCat);
+    }, [shuffledVideos, currentCat]);
+
     const themeColorClass = isDark ? "text-[#6699ff]" : "text-[#003399]";
 
-    if (videos.length === 0) return null;
+    if (!isRandomized || videos.length === 0) return null; // Esperar a la mezcla
 
     return (
         <div className="flex flex-col h-full w-full pt-1">
