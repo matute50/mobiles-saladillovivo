@@ -18,73 +18,51 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const sParams = await searchParams;
   const newsId = sParams.id;
   const videoId = sParams.v;
-  const data = await getPageData();
+  // v40.0 PERFORMANCE FIX: REMOVED getPageData() call which fetched 5000+ items
+  // const data = await getPageData(); 
 
   let title = "Saladillo ViVo";
   let description = "Noticias y videos de Saladillo en tiempo real.";
   let imageUrl = "/logo_social.png";
 
-  if (newsId) {
-    const allArticles = [
-      ...(data?.articles?.featuredNews ? [data.articles.featuredNews] : []),
-      ...(data?.articles?.secondaryNews || []),
-      ...(data?.articles?.otherNews || [])
-    ];
-    const article = allArticles.find(n => String(n.id) === newsId);
-    if (article) {
-      title = article.titulo;
-      // FRASE SOLICITADA PARA NOTICIAS
-      description = "Informate con Saladillo Vivo.";
-      imageUrl = article.imagen || imageUrl;
-    } else {
-      // FALLBACK: Fetch directo para Artículos antiguos (Rich Preview Rescue)
-      try {
-        const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-        const { data: missingArticle, error } = await sb.from('articles').select('titulo, imagen').eq('id', newsId).single();
-        if (error) console.error("[METADATA_ART_ERROR]", error);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        if (missingArticle) {
-          title = missingArticle.titulo;
-          description = "Informate con Saladillo Vivo.";
-          imageUrl = missingArticle.imagen || imageUrl;
-          console.log(`[METADATA_ART_HIT] Rescued: ${title}`);
-        }
-      } catch (e) { console.error("[METADATA_ART_CRASH]", e); }
-    }
+  if (newsId) {
+    try {
+      // Direct Fetch for Single Article
+      const { data: article, error } = await supabase.from('articles').select('titulo, imagen').eq('id', newsId).single();
+
+      if (article) {
+        title = (article.titulo || "Noticia").replaceAll('|', ' ').trim();
+        description = "Informate con Saladillo Vivo.";
+        imageUrl = article.imagen || imageUrl;
+      }
+    } catch (e) { console.error("[METADATA_ART_FAIL]", e); }
   }
   else if (videoId) {
-    const video = data?.videos?.allVideos?.find((v: any) => String(v.id) === videoId);
-    if (video) {
-      title = video.nombre;
-      description = "Lo podes ver en Saladillo Vivo"; // Frase para videos
-      // v24.3: YouTube Detection Sync with VideoCarouselBlock.tsx
-      const ytMatch = video.url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-      const ytId = (ytMatch && ytMatch[2].length === 11) ? ytMatch[2] : null;
+    try {
+      // Direct Fetch for Single Video
+      const { data: video, error } = await supabase.from('videos').select('*').eq('id', videoId).single();
 
-      if (video.imagen) {
-        imageUrl = video.imagen;
-      } else if (ytId) {
-        // WhatsApp prefiere resoluciones estándar garantizadas (mqdefault matches carousel)
-        imageUrl = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
-      }
-    } else {
-      // FALLBACK: Fetch directo para Videos antiguos (Rich Preview Rescue)
-      try {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        const { data: missingVideo } = await supabase.from('videos').select('*').eq('id', videoId).single();
-        if (missingVideo) {
-          const v = missingVideo as any;
-          const finalName = v.nombre || v.title || v.name || "Video sin nombre";
-          title = finalName.replaceAll('|', ' ').trim();
-          description = "Lo podes ver en Saladillo Vivo";
-          const finalUrl = v.url || v.videoUrl || '';
+      if (video) {
+        const v = video as any;
+        const finalName = v.nombre || v.title || v.name || "Video sin nombre";
+        title = finalName.replaceAll('|', ' ').trim();
+        description = "Lo podes ver en Saladillo Vivo";
+        const finalUrl = v.url || v.videoUrl || '';
 
-          const ytMatch = finalUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-          const ytId = (ytMatch && ytMatch[2].length === 11) ? ytMatch[2] : null;
-          imageUrl = v.imagen || v.image || v.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : imageUrl);
+        // v24.3: YouTube Detection Sync
+        const ytMatch = finalUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+        const ytId = (ytMatch && ytMatch[2].length === 11) ? ytMatch[2] : null;
+
+        if (v.imagen || v.image) {
+          imageUrl = v.imagen || v.image;
+        } else if (ytId) {
+          // WhatsApp prefers lightweight images (mqdefault matches carousel)
+          imageUrl = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
         }
-      } catch (e) { }
-    }
+      }
+    } catch (e) { console.error("[METADATA_VID_FAIL]", e); }
   }
 
   // v24.3: Normalización Blindada para WhatsApp
