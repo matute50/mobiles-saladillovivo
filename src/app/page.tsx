@@ -24,11 +24,13 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   let title = "Saladillo ViVo";
   let description = "Noticias y videos de Saladillo en tiempo real.";
   let imageUrl = "/logo_social.png";
+  let debugStatus = "INIT"; // Debug flag
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   if (newsId) {
     try {
+      debugStatus = `NEWS_ID_${newsId}`;
       // Direct Fetch for Single Article
       const { data: article, error } = await supabase.from('articles').select('titulo, imagen').eq('id', newsId).single();
 
@@ -36,11 +38,15 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         title = (article.titulo || "Noticia").replaceAll('|', ' ').trim();
         description = "Informate con Saladillo Vivo.";
         imageUrl = article.imagen || imageUrl;
+        debugStatus += "_FOUND";
+      } else {
+        debugStatus += `_ERR_${error?.code}`;
       }
-    } catch (e) { console.error("[METADATA_ART_FAIL]", e); }
+    } catch (e) { console.error("[METADATA_ART_FAIL]", e); debugStatus += "_CATCH"; }
   }
   else if (videoId) {
     try {
+      debugStatus = `VID_ID_${videoId}`;
       // Direct Fetch for Single Video
       const { data: video, error } = await supabase.from('videos').select('*').eq('id', videoId).single();
 
@@ -50,6 +56,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         title = finalName.replaceAll('|', ' ').trim();
         description = "Lo podes ver en Saladillo Vivo";
         const finalUrl = v.url || v.videoUrl || '';
+        debugStatus += "_FOUND";
 
         // v24.3: YouTube Detection Sync
         const ytMatch = finalUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
@@ -58,11 +65,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         if (v.imagen || v.image) {
           imageUrl = v.imagen || v.image;
         } else if (ytId) {
-          // WhatsApp prefers lightweight images (mqdefault matches carousel)
-          imageUrl = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
+          // v51.0: UPGRADE to hqdefault (480x360) for better WhatsApp compatibility
+          // mqdefault was 320x180 (sometimes too small height)
+          imageUrl = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
         }
+      } else {
+        debugStatus += `_ERR_${error?.code}`;
       }
-    } catch (e) { console.error("[METADATA_VID_FAIL]", e); }
+    } catch (e) { console.error("[METADATA_VID_FAIL]", e); debugStatus += "_CATCH"; }
   }
 
   // v24.3: Normalización Blindada para WhatsApp
@@ -76,30 +86,30 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   imageUrl = normalizeImageUrl(imageUrl);
 
-  // Lista de imágenes para fallback (v30.0: Strict MIME types & mgdefault priority)
+  // DEBUG INJECTION: Add ID to description to verify server read
+  // description = `${description} [DB:${debugStatus}]`;
+
+  // Lista de imágenes para fallback
   const images: any[] = [{
     url: imageUrl,
     secureUrl: imageUrl.replace('http:', 'https:'),
-    width: 320, // mqdefault standard (Preferred by WhatsApp)
-    height: 180,
-    type: 'image/jpeg', // Explicit MIME type
+    width: 480, // Defaulting to HQ dimensions
+    height: 360,
+    type: 'image/jpeg',
     alt: title
   }];
 
-  // Si usamos mqdefault, añadir hqdefault como respaldo de mayor calidad
-  if (imageUrl.includes('mqdefault.jpg')) {
-    const hqUrl = imageUrl.replace('mqdefault.jpg', 'hqdefault.jpg');
+  // Add maxresdefault as backup if we are using youtube
+  if (imageUrl.includes('hqdefault.jpg')) {
+    const maxRes = imageUrl.replace('hqdefault.jpg', 'maxresdefault.jpg');
     images.push({
-      url: hqUrl,
-      secureUrl: hqUrl.replace('http:', 'https:'),
-      width: 480,
-      height: 360,
+      url: maxRes,
+      secureUrl: maxRes.replace('http:', 'https:'),
+      width: 1280,
+      height: 720,
       type: 'image/jpeg',
       alt: title
     });
-  } else {
-    // Si no es mqdefault (ej: imagen propia), asegurar type jpeg si es posible
-    images[0].type = 'image/jpeg';
   }
 
   // Determinar tipo OG
@@ -107,9 +117,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   // URL Canónica
   const canonicalUrl = newsId
-    ? `${SITE_URL}/articulo/${newsId}`
+    ? `${SITE_URL}/?id=${newsId}`
     : videoId
-      ? `${SITE_URL}/video/${videoId}`
+      ? `${SITE_URL}/?v=${videoId}`
       : SITE_URL;
 
   return {

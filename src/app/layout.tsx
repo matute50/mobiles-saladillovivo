@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   title: "Saladillo Vivo",
   description: "Televisión en vivo desde Saladillo",
   manifest: "/manifest.json",
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
 };
 
 export const viewport: Viewport = {
