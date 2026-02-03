@@ -64,8 +64,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       if (video.imagen) {
         imageUrl = video.imagen;
       } else if (ytId) {
-        // WhatsApp prefiere resoluciones estándar garantizadas
-        imageUrl = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+        // WhatsApp prefiere resoluciones estándar garantizadas (mqdefault matches carousel)
+        imageUrl = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
       }
     } else {
       // FALLBACK: Fetch directo para Videos antiguos (Rich Preview Rescue)
@@ -81,7 +81,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
           const ytMatch = finalUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
           const ytId = (ytMatch && ytMatch[2].length === 11) ? ytMatch[2] : null;
-          imageUrl = v.imagen || v.image || v.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : imageUrl);
+          imageUrl = v.imagen || v.image || v.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : imageUrl);
         }
       } catch (e) { }
     }
@@ -98,25 +98,30 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   imageUrl = normalizeImageUrl(imageUrl);
 
-  // Lista de imágenes para fallback (v24.3)
-  const images = [{
+  // Lista de imágenes para fallback (v30.0: Strict MIME types & mgdefault priority)
+  const images: any[] = [{
     url: imageUrl,
     secureUrl: imageUrl.replace('http:', 'https:'),
-    width: 480, // hqdefault standard
-    height: 360,
+    width: 320, // mqdefault standard (Preferred by WhatsApp)
+    height: 180,
+    type: 'image/jpeg', // Explicit MIME type
     alt: title
   }];
 
-  // Si usamos hqdefault, añadir mq720 o mqdefault de respaldo inverso
-  if (imageUrl.includes('hqdefault.jpg')) {
-    const mqUrl = imageUrl.replace('hqdefault.jpg', 'mqdefault.jpg');
+  // Si usamos mqdefault, añadir hqdefault como respaldo de mayor calidad
+  if (imageUrl.includes('mqdefault.jpg')) {
+    const hqUrl = imageUrl.replace('mqdefault.jpg', 'hqdefault.jpg');
     images.push({
-      url: mqUrl,
-      secureUrl: mqUrl.replace('http:', 'https:'),
-      width: 320,
-      height: 180,
+      url: hqUrl,
+      secureUrl: hqUrl.replace('http:', 'https:'),
+      width: 480,
+      height: 360,
+      type: 'image/jpeg',
       alt: title
     });
+  } else {
+    // Si no es mqdefault (ej: imagen propia), asegurar type jpeg si es posible
+    images[0].type = 'image/jpeg';
   }
 
   // Determinar tipo OG
