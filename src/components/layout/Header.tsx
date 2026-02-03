@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Search, Sparkles, Moon, Share2, Cloud, Sun as SunIcon, CloudRain, CloudLightning, Download, HelpCircle } from 'lucide-react';
+import { Search, Sun, Moon, Share2, Cloud, Sun as SunIcon, CloudRain, CloudLightning, Download, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWeather } from '@/context/WeatherContext';
 import { usePWA } from '@/context/PWAContext';
@@ -15,8 +15,8 @@ const getWeatherIcon = (iconName: string, isDark: boolean, size = 18, className 
     if (name.includes('thunder')) return <CloudLightning size={size} className={cn("text-purple-500", className)} />;
     if (name.includes('rain')) return <CloudRain size={size} className={cn("text-blue-500", className)} />;
     if (name.includes('cloudy')) return <Cloud size={size} className={cn("text-blue-400", className)} />;
-    if (name.includes('clear')) return <SunIcon size={size} className={cn(sunColor, className)} />;
-    return <SunIcon size={size} className={cn(sunColor, className)} />;
+    if (name.includes('clear')) return <SunIcon size={size} className={cn(sunColor, className)} fill="currentColor" />;
+    return <SunIcon size={size} className={cn(sunColor, className)} fill="currentColor" />;
 };
 
 interface HeaderProps {
@@ -82,7 +82,7 @@ export const Header = React.memo(({
                 <div className="flex items-center gap-3">
                     {/* Botón Modo (Ahora a la izquierda de la lupa) */}
                     <button onClick={() => setIsDark(!isDark)} className="shrink-0 p-1">
-                        {isDark ? <Sparkles size={20} className="text-white" /> : <Moon size={20} className="text-black" />}
+                        {isDark ? <Sun size={20} className="text-white" /> : <Moon size={20} className="text-black" />}
                     </button>
 
                     <button
