@@ -14,6 +14,11 @@ export const metadata: Metadata = {
     shortcut: '/icon.png',
     apple: '/icon.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: "Saladillo Vivo",
+  },
 };
 
 export const viewport: Viewport = {

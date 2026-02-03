@@ -12,14 +12,18 @@ import { createClient } from '@/utils/supabase/client';
 import 'swiper/css';
 
 // Sub-componentes
+// Sub-componentes
 import { Header } from './Header';
 import { VideoCarouselBlock } from './VideoCarouselBlock';
 import { NewsSlider } from './NewsSlider';
+import { InstallModal } from './InstallModal';
+import { usePWA } from '@/context/PWAContext';
 
 export default function MobileLayout({ data, initialParams }: { data: PageData; initialParams?: { id?: string; v?: string } }) {
   const [isDark, setIsDark] = useState(true);
   const [mounted, setMounted] = useState(false);
   const { setVideoPool, playManual } = useMediaPlayer();
+  const { isInstallModalOpen, setIsInstallModalOpen } = usePWA();
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);

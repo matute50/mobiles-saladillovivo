@@ -6,6 +6,8 @@ interface PWAContextType {
     isInstallable: boolean;
     installApp: () => Promise<void>;
     isInstalled: boolean;
+    isInstallModalOpen: boolean;
+    setIsInstallModalOpen: (open: boolean) => void;
 }
 
 const PWAContext = createContext<PWAContextType | undefined>(undefined);
@@ -15,6 +17,7 @@ export const PWAProvider = ({ children }: { children: ReactNode }) => {
     const [isInstallable, setIsInstallable] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
+    const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
     useEffect(() => {
         // Validación de Service Worker explícita para asegurar criterio de PWA
@@ -53,14 +56,13 @@ export const PWAProvider = ({ children }: { children: ReactNode }) => {
             setIsInstallable(false);
             setIsInstalled(true);
             setDeferredPrompt(null);
+            setIsInstallModalOpen(false);
         });
 
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     }, []);
 
     const installApp = async () => {
-        const userAgent = window.navigator.userAgent.toLowerCase();
-
         // Si tenemos el prompt nativo, lo usamos (Instalación Directa)
         if (deferredPrompt) {
             try {
@@ -76,19 +78,18 @@ export const PWAProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        // FALLBACK: Solo si no hay prompt nativo
-        if (/iphone|ipad|ipod/.test(userAgent)) {
-            alert('Para instalar: Toca "Compartir" y selecciona "Agregar a Inicio" 📲');
-        } else if (/android/.test(userAgent)) {
-            // Simplificado: Intentamos guiar al menú si no funcionó el directo
-            alert('Instalación desde menú: Toca los tres puntos (⋮) y elige "Instalar aplicación" 📲');
-        } else {
-            alert('Usa la opción "Instalar" de tu navegador 📲');
-        }
+        // FALLBACK: User Requested UI for Manual Instructions
+        setIsInstallModalOpen(true);
     };
 
     return (
-        <PWAContext.Provider value={{ isInstallable, installApp, isInstalled }}>
+        <PWAContext.Provider value={{
+            isInstallable,
+            installApp,
+            isInstalled,
+            isInstallModalOpen,
+            setIsInstallModalOpen
+        }}>
             {children}
         </PWAContext.Provider>
     );

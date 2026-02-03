@@ -144,6 +144,12 @@ export const Header = React.memo(({
                 onClose={() => setIsDecreeOpen(false)}
                 isDark={isDark}
             />
+
+            <InstallModal
+                isOpen={isInstallModalOpen}
+                onClose={() => setIsInstallModalOpen(false)}
+                isDark={isDark}
+            />
         </>
     );
 });
