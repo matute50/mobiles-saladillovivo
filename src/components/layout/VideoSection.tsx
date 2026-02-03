@@ -5,7 +5,7 @@ import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
 import VideoPlayer from '@/components/player/VideoPlayer';
 import { cn } from '@/lib/utils';
-import { Play, Pause, Volume2, VolumeX, Share2, X, Cloud, Sun as SunIcon, CloudRain, CloudLightning, MapPin } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, X, Cloud, Sun as SunIcon, CloudRain, CloudLightning, MapPin } from 'lucide-react';
 import { useWeather } from '@/context/WeatherContext';
 
 const getWeatherIcon = (iconName: string, isDark: boolean, size = 24, className = "") => {
@@ -17,7 +17,6 @@ const getWeatherIcon = (iconName: string, isDark: boolean, size = 24, className 
   if (name.includes('clear')) return <SunIcon size={size} className={cn(sunColor, className)} />;
   return <SunIcon size={size} className={cn(sunColor, className)} />;
 };
-import { handleShareContent } from '@/lib/share';
 
 export default function VideoSection({ isMobile, isDark = true }: { isMobile?: boolean, isDark?: boolean }) {
   const { state, handleIntroEnded, handleContentEnded, prepareNext, triggerTransition } = useMediaPlayer();
@@ -44,7 +43,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   const [currentTime, setCurrentTime] = useState(0);
   const [maxTimeReached, setMaxTimeReached] = useState(0);
   const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
-  const [isSharingAction, setIsSharingAction] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Sistema de Doble Player (A/B) con Smart Slot Management (v18.0 - Persistent Slots)
@@ -165,35 +163,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
     if (data.playedSeconds > maxTimeReached) setMaxTimeReached(data.playedSeconds);
   };
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentContent) return;
-
-    // v11.0: SAFETY DELAY (150ms)
-    // Primero activamos el zoom para que el navegador lo renderice ANTES de perder el foco
-    setIsSharingAction(true);
-
-    setTimeout(() => {
-      handleShareContent(currentContent);
-    }, 150);
-
-    // El zoom se revierte automáticamente por el foco o por timeout de seguridad
-    setTimeout(() => setIsSharingAction(false), 3000);
-  };
-
-  // v11.0: FOCUS REGAIN PROTECTION
-  // Si volvemos de WhatsApp, mantenemos el zoom 1s más para evitar ver el "refresco"
-  useEffect(() => {
-    const handleFocus = () => {
-      // Si estábamos compartiendo y volvemos, mantenemos protección un poco más
-      setIsSharingAction(true);
-      setTimeout(() => setIsSharingAction(false), 1000);
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = Math.floor(seconds % 60);
     return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`;
@@ -208,18 +177,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       <style jsx global>{`
         .analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } 
         @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }
-        
-        /* ANTI-BRANDING v9.0: Cinema Bars & Zoom */
-        .cinema-bar { position: absolute; left: 0; right: 0; background: black; z-index: 50; height: 0; transition: height 0.5s ease-in-out; pointer-events: none; }
-        .cinema-bar-top { top: 0; }
-        .cinema-bar-bottom { bottom: 0; }
-        
-        .is-sharing-active .cinema-bar { height: 72px; transition: none; }
-        .is-sharing-active .player-zoom-container { transform: scale(1.15); transition: none; }
-        
-        /* Smooth exit */
-        :not(.is-sharing-active) .cinema-bar { height: 0; transition: height 0.5s ease-in-out; }
-        :not(.is-sharing-active) .player-zoom-container { transform: scale(1.0); transition: transform 0.5s ease-in-out; }
       `}</style>
 
       {/* PLAYER A */}
@@ -246,7 +203,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onStart={activeSlot === 'A' ? handleStart : undefined}
             onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
             muted={activeSlot === 'A' ? (isMuted || isIntroVisible) : true}
-            isSharingAction={isSharingAction}
           />
         )}
       </div>
@@ -268,12 +224,9 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onStart={activeSlot === 'B' ? handleStart : undefined}
             onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
             muted={activeSlot === 'B' ? (isMuted || isIntroVisible) : true}
-            isSharingAction={isSharingAction}
           />
         )}
       </div>
-
-      {/* BOTÓN COMPARTIR (ELIMINADO DE AQUÍ PARA MOVERLO A CONTROLES) */}
 
       {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
 
@@ -322,9 +275,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
           </button>
           <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className={cn("group flex items-center justify-center rounded-full p-6 active:scale-90 transition-all duration-200 border", isMuted ? "bg-red-600 border-white border-2" : "bg-white/10 border-white/30 backdrop-blur-md")}>
             {isMuted ? <VolumeX size={36} fill="white" /> : <Volume2 size={36} fill="white" />}
-          </button>
-          <button onClick={handleShare} className="group flex items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-md p-6 active:scale-90 transition-all duration-200 text-white">
-            <Share2 size={36} />
           </button>
         </div>
       </div>
