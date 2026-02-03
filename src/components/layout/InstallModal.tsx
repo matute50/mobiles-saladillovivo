@@ -91,7 +91,7 @@ export const InstallModal = ({ isOpen, onClose, isDark }: InstallModalProps) => 
                         <div>
                             <p className={cn("text-xs font-bold uppercase mb-1 opacity-70", isDark ? "text-white" : "text-black")}>Android (Chrome)</p>
                             <p className={cn("text-sm leading-snug", isDark ? "text-neutral-300" : "text-neutral-700")}>
-                                Toca el <b className="text-green-500">Menú</b> y elige <span className="font-bold">Instalar aplicación</span>
+                                Toca el <b className="text-green-500">Menú</b> y elige <span className="font-bold">Agregar a la pantalla de Inicio / Instalar aplicación</span>
                             </p>
                         </div>
                     </div>
