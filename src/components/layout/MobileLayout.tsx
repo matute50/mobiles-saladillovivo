@@ -115,6 +115,11 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
           // Marcamos INMEDIATAMENTE como procesado para evitar que re-renders durante el await disparen otro fetch
           processedDeepLink.current = videoId;
 
+          // v60.0: TIMEOUT HANDLING FIX
+          // Guardamos el ID del timeout para cancelarlo si el fetch tiene éxito.
+          // Si no lo cancelamos, a los 3s sobreescribirá el video rescatado con el random pool user report.
+          let safetyTimeoutId: NodeJS.Timeout;
+
           const fetchMissingVideo = async () => {
             try {
               const supabase = createClient();
@@ -125,6 +130,9 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
                 .single();
 
               if (missingVideo && !error) {
+                // EXITO: Cancelamos la bomba de tiempo
+                clearTimeout(safetyTimeoutId);
+
                 const mappedVideo: Video = {
                   id: String(missingVideo.id),
                   nombre: (missingVideo.nombre || missingVideo.title || 'Video sin nombre').replaceAll('|', ' ').trim(),
@@ -135,8 +143,10 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
                 };
 
                 console.log('Link Rescue: Playing', mappedVideo.nombre);
-                // Importante: Al actualizar el pool aquí, provocamos un re-render.
-                // Pero gracias a processedDeepLink.current, el próximo efecto ignorará este bloque.
+
+                // v59.0 (Recovered): Remove loading spinner
+                setHasFallbackTriggered(true); // Ocultar spinner (ya tenemos video)
+
                 // v56.0: FIX: setVideoPool ya activa la transición automáticamente si pasamos 'mappedVideo'.
                 setVideoPool([mappedVideo, ...allVideos], mappedVideo);
               }
@@ -149,16 +159,12 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
           };
 
           // v58.0: TIMEOUT DE SEGURIDAD
-          // Si Supabase tarda > 3s, abortamos el rescate y mostramos lo que hay.
-          // Evita "Pantalla Negra Eterna".
-          setTimeout(() => {
-            if (!processedDeepLink.current) return; // Ya se procesó
-            // v59.0: FORCE FAIL AFTER 3s
+          // Si Supabase tarda > 3s, abortamos el rescate.
+          safetyTimeoutId = setTimeout(() => {
+            console.warn("Rescue Timeout: Force Fallback");
+            if (!processedDeepLink.current) return;
             setHasFallbackTriggered(true);
             setVideoPool(allVideos);
-            // Chequeamos si el pool se inició (esto es un hack, mejor sería un ref local de "isRescueDone")
-            // Pero como fallback simple: si pasa tiempo y user sigue en negro... play random.
-            // (Implementación real: el catch del fetch maneja errores de red, esto es para hangs).
           }, 3000);
 
           fetchMissingVideo();
