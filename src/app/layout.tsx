@@ -10,9 +10,9 @@ export const metadata: Metadata = {
   description: "Televisión en vivo desde Saladillo",
   manifest: "/manifest.json",
   icons: {
-    icon: '/icon.png',
-    shortcut: '/icon.png',
-    apple: '/icon.png',
+    icon: '/icon-192.png',
+    shortcut: '/icon-192.png',
+    apple: '/icon-512.png',
   },
   appleWebApp: {
     capable: true,
