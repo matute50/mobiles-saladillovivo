@@ -1,78 +1,69 @@
 ---
 name: video-playback-mastery
-description: Domina la reproducción de video en Next.js, incluyendo políticas de YouTube, Cloudflare R2 para noticias, intros y técnicas anti-branding. Actualizado con los estándares específicos de Saladillo Vivo.
+description: Domina la reproducción de video en Next.js con arquitectura "TV-Grade". Incluye Safety Delay (v23), Smart Slots (v18), Deep Linking Blindado (v22.7) y Transición Zero-Black (v20).
 ---
 
-# Maestría en Reproducción de Video (Video Playback Mastery)
+# Maestría en Reproducción de Video (Video Playback Mastery v23.0)
 
-Este skill proporciona el conocimiento técnico necesario para implementar sistemas de video avanzados, optimizados y con una estética premium en aplicaciones Next.js.
+Este skill define la arquitectura "TV-Grade" para aplicaciones de streaming, enfocada en latencia cero, transiciones invisibles y optimización extrema de recursos.
 
-## 1. Política de Reproducción Automática (YouTube & HTML5)
+## 1. Arquitectura de Slots Persistentes (Smart Slot System v18.0)
 
-Los navegadores modernos bloquean el autoplay con sonido. Para garantizar la funcionalidad:
+Para lograr una reproducción continua ("gapless"), nunca se debe montar/desmontar reproductores condicionalmente.
 
-### YouTube IFrame API
-- **Parámetros obligatorios:** `autoplay=1`, `mute=1`, `enablejsapi=1`, `controls=0`.
-- **Reintento Agresivo:** Implementar un `setInterval` que verifique el estado del reproductor cada segundo. Si el estado es `PAUSED` (2), `CUED` (5), o `UNSTARTED` (-1) durante el inicio, forzar `playVideo()`.
-- **Bloqueador de Pausas:** Si se detecta una pausa en los primeros 5 segundos (posible bloqueo del sistema), re-disparar el Play.
+### Principios:
+1.  **Doble Slot Permanente (A/B)**:
+    -   Existen dos contenedores de video (`VideoPlayer`) siempre montados en el DOM.
+    -   **Active Slot**: El que el usuario ve (`opacity-100`, `z-10`).
+    -   **Inactive Slot**: El que precarga el siguiente video (`opacity-100`, `z-0`).
+    -   *Nota*: La opacidad del inactivo es 100% (pero tapado por el activo) para evitar que el navegador congele el buffering.
 
-### HTML5 Video (`<video>`)
-- **Atributos:** `autoPlay`, `muted`, `playsInline`, `loop`.
-- **R2 (Noticias):** Servir `.mp4` con `preload="metadata"` y siempre usar una imagen de `poster` para evitar pantallas negras.
+2.  **Reciclaje de Instancias**:
+    -   Al cambiar de video, **NO** cambiar el componente.
+    -   Solo cambiar la visibilidad (`z-index`) e iniciar la reproducción.
+    -   El estado se gestiona via `useRef` o lógica de Slots (`slotAContent`, `slotBContent`) para evitar re-renders innecesarios.
 
-## 2. Progresión y Transiciones (Flujo Maestro 4.0)
+## 2. Intros con Persistencia de Nodo (Node Persistence v16.0)
 
-La aplicación utiliza un sistema de **capas superpuestas** y **selección anticipada** para garantizar transiciones invisibles.
+Los videos de transición (Intros) son críticos y no toleran "pantallazos negros" por re-montaje.
 
-### Selección de Contenido (Reglas de Oro)
-1. **Anticipación**: El reproductor debe elegir el siguiente video *durante* la reproducción del actual.
-2. **Diversidad de Categoría**: El próximo video debe ser de una categoría **diferente** a la del video actual.
-3. **Exclusión**: Nunca elegir videos de la categoría "HCD de Saladillo".
-4. **Estado**: Se debe precargar el `nextContent` en una capa inferior para reproducción inmediata.
+### Implementación:
+-   **Elemento Único**: Un solo tag `<video>` en `VideoSection` que nunca se desmonta.
+-   **Sin Atributo `key`**: Prohibido usar `key={id}` en el tag `<video>`, ya que fuerza la destrucción del nodo.
+-   **Z-Index Supremacy (v23.0)**: La intro debe tener un `z-index: 999` para garantizar que cubra absolutamente todo el contenido subyacente.
+-   **Buffer Cleaning**: Al terminar, pausar y limpiar recursos, pero mantener el nodo vivo.
 
-### 2. Regla de Oro de Videos Intro (Flujo Maestro 4.0)
-Los videos intro son el puente entre contenidos y deben cumplir estrictamente:
+## 3. Transiciones Avanzadas (v23.0 - TV Grade)
 
-1. **Ubicación y Nomenclatura**:
-   - Ruta: `public/videos_intro/`
-   - Nombres: `intro1.mp4`, `intro2.mp4`, `intro3.mp4`, `intro4.mp4`, `intro5.mp4`.
-2. **Sincronización de Capas**:
-   - Siempre se reproducen en la **Capa Superior** con `z-index: 100`.
-   - Deben ocultar completamente la carga del siguiente video de YouTube.
-3. **Duración Exacta (4 Segundos)**:
-   - Independientemente de la duración original del archivo, se debe alterar la velocidad (`playbackRate`) para que dure exactamente **4 segundos**.
-   - `playbackRate = video.duration / 4`.
-4. **Efecto de Transición**:
-   - **Fade-out de Opacidad**: Debe iniciar exactamente **0.5 segundos** antes del final de la intro (T-0.5s).
-   - Este desvanecimiento permite que el video de YouTube (Capa Inferior) se vuelva visible suavemente.
+### A. Principio "Cover First, Swap Later" (Safety Delay - v23.0)
+El mayor error es sincronizar la aparición de la intro con el cambio de video. Esto causa parpadeos si la intro tarda 1ms en cargar.
+-   **Fase 1 (Inmediata)**: Activar visualmente la Intro (`isIntroVisible = true`).
+-   **Fase 2 (Diferida 800ms)**: Esperar el **Safety Delay**. Mientras tanto, el video anterior sigue reproduciéndose (o pausado) DEBAJO de la intro.
+-   **Fase 3 (Swap)**: Recién cuando la intro es sólida (T+800ms), cambiar el contenido subyacente (`currentContent = nextContent`).
+-   **Resultado**: El usuario jamás ve el cambio técnico.
 
-### 3. Técnicas Anti-Branding 5.0 (White-Label YouTube)
-Para que YouTube parezca un reproductor propietario, se deben aplicar simultáneamente:
+### B. Transición Aditiva ("Cover, Don't Fade" - v20.0)
+-   **Regla**: El contenido saliente (video/noticia) **NUNCA** baja su opacidad (fade-out).
+-   **Acción**: La Intro aparece *encima* con un `fade-in` (o corte directo).
+-   **Resultado**: Opacidad base siempre = 1. No hay transparencias accidentales.
 
-1. **Ajuste de Escala (Perfect Fit)**:
-   - El player debe escalarse exactamente al **100% de ancho** y **100% de alto**.
-   - Posicionamiento: `left: 0`, `top: 0`. Esto garantiza la visibilidad íntegra del contenido original.
-2. **Parámetros del Player (Hardening)**:
-   - `modestbranding: 1`, `controls: 0`, `showinfo: 0`, `rel: 0`, `iv_load_policy: 3`.
-   - `disablekb: 1` (desactiva atajos de teclado), `fs: 0` (desactiva pantalla completa nativa).
-3. **Bloqueo de Interacción (Glass-Wall Defense)**:
-   - Una capa invisible (`z-index: 20`) sobre todo el área del video con `pointer-events: auto` (intercepta clics antes del iframe).
-   - Esto impide que el usuario haga clic en "Watch on YouTube" o abra menús nativos.
+## 4. Deep Linking Blindado (v22.7)
 
-## 4. Estándares Específicos de Saladillo Vivo
+El sistema debe recuperar el estado desde una URL compartida (`/video/:id`) sin fallos.
 
-### Autoplay y Volumen
-- **Volumen Inicial:** El volumen global por defecto debe ser **100%** (valor 1).
-- **Manejo de Transiciones de Audio:**
-  - **Fade-in:** 1 segundo al iniciar la reproducción.
-  - **Fade-out:** Iniciar el desvanecimiento **0.5 segundos** antes del final del video de YouTube.
-- **Sincronización:** El volumen local se sincroniza con `useVolumeStore`, pero se desacopla durante los efectos de fade.
+1.  **Fetch-On-Demand**: Si el ID no está en la carga inicial (cache/pool), hacer un fetch directo a la DB, inyectar el video en la lista y reproducirlo.
+2.  **Loop Protection**: Usar `useRef` para marcar IDs procesados. Nunca re-procesar un deep link en el mismo montaje del componente.
+3.  **Sync Fix**: Si el video ya existe localmente, no enviar doble comando de play.
 
-### Técnicas Anti-Branding (Obligatorio)
-1. **Controles:** `controls=0` en los `playerVars` de YouTube.
-2. **Capa de Bloqueo:** Un `div` con `absolute inset-0` y `z-index` superior para evitar clics directos sobre el iframe.
-3. **Cropping (Recorte):** Es **obligatorio** envolver el iframe en un contenedor con `overflow: hidden` y aplicar una altura del **110%** para ocultar la marca de agua de YouTube.
+## 5. Política de Reproducción Automática y Anti-Branding
 
-## 4. Implementación en Antigravity
+### YouTube Hardening
+-   **Parametros Vitales**: `autoplay=1`, `mute=1`, `controls=0`, `modestbranding=1`, `rel=0`.
+-   **Escalado 100%**: El video debe ocupar todo el contenedor para ocultar elementos de UI residuales.
+-   **Capa de Bloqueo**: `div` transparente con `pointer-events: auto` sobre el iframe para impedir navegación a YouTube.
 
-Usa estas reglas para diagnosticar problemas de "videos que no arrancan" o "branding de YouTube visible". Prioriza siempre el uso de `usePlayerStore` y `useVolumeStore` para mantener la lógica centralizada.
+### HTML5 News
+-   **Prioridad de Carga**: Usar `loading="eager"` y `fetchPriority="high"` en imágenes poster.
+
+---
+*Estándar actualizado a v23.0 - Saladillo Vivo Mobile*

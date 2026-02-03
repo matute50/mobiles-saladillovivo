@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-// import { MediaPlayerProvider } from "@/context/MediaPlayerContext"; // Eliminar esta importación
-// import { VolumeProvider } from "@/context/VolumeContext"; // Eliminar esta importación
 import { Providers } from "@/app/providers"; // Importar el componente Providers
 
 const inter = Inter({ subsets: ["latin"] });

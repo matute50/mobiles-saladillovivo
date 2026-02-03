@@ -17,13 +17,13 @@ export const slugify = (text: string | undefined | null, id: number | string): s
     .replace(/\s+/g, '-') // Replace spaces with -
     .replace(p, c => b.charAt(a.indexOf(c))) // Replace special characters
     .replace(/&/g, '-and-') // Replace & with 'and'
-    
+
     // --- ARREGLO 1: Quitado el '\' de [^\w-]+ ---
     .replace(/[^\w-]+/g, '') // Remove all non-word chars
-    
+
     // --- ARREGLO 2: Quitado el '\' de /--+/g ---
     .replace(/--+/g, '-') // Replace multiple - with single -
-    
+
     .replace(/^-+/, '') // Trim - from start of text
     .replace(/-+$/, '') + '-' + id // Trim - from end of text and append id
 }
@@ -46,14 +46,6 @@ export const formatDate = (dateString: string, format: 'short' | 'numeric' = 'nu
 };
 
 export function isValidSlideUrl(url: string | null | undefined): url is string {
-  console.log('DEBUG isValidSlideUrl - Input URL:', url);
-  if (!url) {
-    console.log('DEBUG isValidSlideUrl - URL is null or undefined.');
-    return false;
-  }
-  const startsWithCorrectPrefix = url.startsWith('https://media.saladillovivo.com.ar/slides/');
-  console.log('DEBUG isValidSlideUrl - Starts with correct prefix:', startsWithCorrectPrefix);
-  const includesWebm = url.includes('.webm');
-  console.log('DEBUG isValidSlideUrl - Includes .webm:', includesWebm);
-  return startsWithCorrectPrefix && includesWebm;
+  if (!url) return false;
+  return url.startsWith('https://media.saladillovivo.com.ar/slides/') && url.includes('.webm');
 }

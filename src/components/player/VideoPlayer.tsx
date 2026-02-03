@@ -15,9 +15,10 @@ interface VideoPlayerProps {
   onStart?: () => void;
   onProgress?: (data: { playedSeconds: number; duration: number }) => void;
   muted: boolean;
+  isSharingAction?: boolean;
 }
 
-export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, onStart, onProgress, muted }: VideoPlayerProps) {
+export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, onStart, onProgress, muted, isSharingAction }: VideoPlayerProps) {
   const [targetVolume, setTargetVolume] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -120,16 +121,28 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
       playAudio();
       const duration = (articleData?.animation_duration || 45) * 1000;
       fadeTimerRef.current = setTimeout(() => triggerEnd(), duration);
+
+      // Timer para Near End (1s antes para Crossfade con Intro)
+      const nearEndDuration = Math.max(0, duration - 1000);
+      const nearEndTimer = setTimeout(() => {
+        if (onNearEnd) onNearEnd();
+      }, nearEndDuration);
+
+      return () => {
+        if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+        clearTimeout(nearEndTimer);
+        pauseAudio();
+      };
     } else {
       pauseAudio();
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     }
-    return () => { if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current); };
-  }, [isArticle, shouldPlay, isFadingOut, playAudio, pauseAudio, articleData, triggerEnd]);
+  }, [isArticle, shouldPlay, isFadingOut, playAudio, pauseAudio, articleData, triggerEnd, onNearEnd]);
 
   if (isArticle && articleData?.url_slide) {
     return (
-      <div className={cn("w-full h-full bg-black transition-opacity duration-700", isFadingOut ? "opacity-0" : "opacity-100")}>
+      // v20.0: Eliminado fade-out visual (opacity permanece 100). La intro cubre esto.
+      <div className="w-full h-full bg-black opacity-100">
         <iframe
           src={articleData.url_slide}
           className="w-full h-full border-0"
@@ -157,9 +170,13 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
 
   if (videoData) {
     return (
-      <div className="w-full h-full bg-black relative overflow-hidden transition-opacity duration-700" style={{ opacity: isFadingOut ? 0 : 1 }}>
-        {/* ANTI-BRANDING 5.2 (Escala Original 100%) */}
-        <div className="absolute inset-0 w-full h-full left-0 top-0">
+      // v20.0: Eliminado fade-out visual. Opacity fija a 1.
+      <div className="w-full h-full bg-black relative overflow-hidden" style={{ opacity: 1 }}>
+        {/* ANTI-BRANDING 8.0 (Dynamic Zoom: 115% while sharing, 100% normal) */}
+        <div
+          className="absolute inset-0 w-full h-full left-0 top-0 transition-transform duration-500 ease-in-out"
+          style={{ transform: isSharingAction ? 'scale(1.15)' : 'scale(1.0)' }}
+        >
           <ReactPlayer
             ref={playerRef}
             url={videoData.url}

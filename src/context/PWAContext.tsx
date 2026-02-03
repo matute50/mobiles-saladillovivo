@@ -20,7 +20,6 @@ export const PWAProvider = ({ children }: { children: ReactNode }) => {
         // Validación de Service Worker explícita para asegurar criterio de PWA
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('SW Registered:', reg.scope))
                 .catch(err => console.error('SW Failed:', err));
         }
 
@@ -44,7 +43,6 @@ export const PWAProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const handleBeforeInstallPrompt = (e: any) => {
-            console.log('PWA: capturing beforeinstallprompt');
             e.preventDefault();
             setDeferredPrompt(e);
             setIsInstallable(true);

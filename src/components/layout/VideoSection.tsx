@@ -38,36 +38,89 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   const [isContentStarted, setIsContentStarted] = useState(false);
   const [showControls, setShowControls] = useState(false);
 
-  // Sistema de Doble Player (A/B) para Precarga Real
-  const [activePlayer, setActivePlayer] = useState<'A' | 'B'>('A');
-
-  // Estados para la línea de tiempo
+  // Estados para la línea de tiempo (Restaurados v18.0)
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [maxTimeReached, setMaxTimeReached] = useState(0);
   const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
+  const [isSharingAction, setIsSharingAction] = useState(false);
 
-  // Sincronizar el intercambio de players al cambiar currentContent
+  // Sistema de Doble Player (A/B) con Smart Slot Management (v18.0 - Persistent Slots)
+  const [slotAContent, setSlotAContent] = useState<any>(null);
+  const [slotBContent, setSlotBContent] = useState<any>(null);
+  const [activeSlot, setActiveSlot] = useState<'A' | 'B'>('A');
+
+  // Sincronización Inteligente: Detectar cambios y asignar slots sin destruir instancias
+  useEffect(() => {
+    // 1. Manejo del CURRENT Content
+    if (currentContent) {
+      if (slotAContent?.id === currentContent.id) {
+        // Ya está en A -> Activar A
+        if (activeSlot !== 'A') setActiveSlot('A');
+      } else if (slotBContent?.id === currentContent.id) {
+        // Ya está en B (Precargado!) -> Activar B
+        if (activeSlot !== 'B') setActiveSlot('B');
+      } else {
+        // No está en ninguno (Cold Start o cambio brusco)
+        // Cargar en el slot que correspondía al activo o forzar A
+        if (activeSlot === 'A') setSlotAContent(currentContent);
+        else setSlotBContent(currentContent);
+      }
+    }
+
+    // 2. Manejo del NEXT Content (Precarga)
+    if (nextContent) {
+      // Identificar el slot INACTIVO (Target para precarga)
+      // Nota: Si acabamos de cambiar activeSlot arriba, necesitamos saber cuál será el activo final.
+      // Usamos lógica predictiva básica: si current está en A, next va a B.
+
+      const targetIsB = (currentContent?.id === slotAContent?.id) || (activeSlot === 'A' && !slotBContent);
+
+      if (targetIsB) {
+        if (slotBContent?.id !== nextContent.id) setSlotBContent(nextContent);
+      } else {
+        if (slotAContent?.id !== nextContent.id) setSlotAContent(nextContent);
+      }
+    }
+  }, [currentContent, nextContent, activeSlot, slotAContent, slotBContent]);
+
+  // Efecto de Reset al cambiar de contenido real
   useEffect(() => {
     if (currentContent) {
-      setActivePlayer(prev => prev === 'A' ? 'B' : 'A');
       setIsContentStarted(false);
       setIsUserPlaying(true);
       setProgress(0);
       setCurrentTime(0);
       setMaxTimeReached(0);
     }
-  }, [currentContent]);
+  }, [currentContent?.id]); // Solo si cambia el ID
 
   useEffect(() => {
     const v = introVideoRef.current;
-    if (isIntroVisible && currentIntroUrl && v) {
-      // Regla de Oro: Resetear fade INMEDIATAMENTE al hacer visible la intro
+    if (!v) return;
+
+    if (isIntroVisible && currentIntroUrl) {
+      // OPTIMIZACIÓN v16.0: Carga instantánea sobre nodo existente
       setIsIntroFadingOut(false);
+
+      // Solo asignamos src si cambia para no interrumpir si ya estaba listo (opcional, pero seguro reiniciar en intro)
       v.src = currentIntroUrl;
-      v.load(); // Asegurar carga limpia
-      v.play().catch(() => handleIntroEnded());
+      v.load(); // Forzar buffer refresh
+
+      const playPromise = v.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          console.warn("Intro play failed, skipping");
+          handleIntroEnded();
+        });
+      }
+    } else {
+      // Limpieza agresiva de recursos cuando no se usa
+      v.pause();
+      v.currentTime = 0;
+      // No limpiamos src a "" inmediatamente para evitar flash si hay fade out tardío, 
+      // pero el parent div tiene pointer-events-none y opacity-0.
     }
   }, [currentIntroUrl, isIntroVisible, handleIntroEnded]);
 
@@ -114,7 +167,15 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!currentContent) return;
+
+    // v8.0: Dynamic Zoom + Safety Cover
+    setIsSharingAction(true);
     handleShareContent(currentContent);
+
+    // Revertir zoom después de 2 segundos (User Request)
+    setTimeout(() => {
+      setIsSharingAction(false);
+    }, 2000);
   };
 
   const formatTime = (seconds: number) => {
@@ -122,9 +183,9 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
     return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Player A es el "otro" si activePlayer es 'B'
-  const contentA = activePlayer === 'A' ? currentContent : nextContent;
-  const contentB = activePlayer === 'B' ? currentContent : nextContent;
+  // Player A es slotAContent
+  const contentA = slotAContent;
+  const contentB = slotBContent;
 
   return (
     <div className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
@@ -133,17 +194,28 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       {/* PLAYER A */}
       <div className={cn(
         "absolute inset-0 transition-opacity duration-1000",
-        (activePlayer === 'A' && !isIntroVisible) ? "z-10 opacity-100" : "z-0 opacity-0 pointer-events-none"
+        // OPTIMIZACIÓN v18.0: Permitir visibilidad lógica (aunque tapada por intro) para que el navegador no pause
+        (activeSlot === 'A') ? "z-10 opacity-100" : "z-0 opacity-100"
       )}>
         {contentA && (
           <VideoPlayer
             content={contentA}
-            shouldPlay={activePlayer === 'A' ? (shouldPlayContent && isUserPlaying) : (shouldPlayContent && isIntroVisible)}
-            onEnded={activePlayer === 'A' ? handleContentEnded : () => { }}
-            onNearEnd={activePlayer === 'A' ? triggerTransition : undefined}
-            onStart={activePlayer === 'A' ? handleStart : undefined}
-            onProgress={activePlayer === 'A' ? onPlayerProgress : undefined}
-            muted={activePlayer === 'A' ? (isMuted || isIntroVisible) : true}
+            shouldPlay={activeSlot === 'A' ? (shouldPlayContent && (isUserPlaying || isIntroVisible)) : false}
+            // Nota: El 'Background Player' (B si A es activo) debe estar PAUSADO hasta que sea activo? 
+            // NO! Si es Next, debe estar PRELOADED. Pero VideoPlayer no tiene modo 'Preload'.
+            // Sin embargo, si triggerTransition ocurre, Active pasa a ser este slot.
+            // Entonces, si activeSlot === 'A', shouldPlay es TRUE (incluso si isIntroVisible es true).
+            // Si es Next (Inactivo), shouldPlay es FALSE (solo bufferea).
+
+            onEnded={activeSlot === 'A' ? handleContentEnded : () => { }}
+            onNearEnd={activeSlot === 'A' ? () => {
+              const isNews = 'url_slide' in contentA;
+              triggerTransition(isNews ? 1000 : 0);
+            } : undefined}
+            onStart={activeSlot === 'A' ? handleStart : undefined}
+            onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
+            muted={activeSlot === 'A' ? (isMuted || isIntroVisible) : true}
+            isSharingAction={isSharingAction}
           />
         )}
       </div>
@@ -151,38 +223,47 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       {/* PLAYER B */}
       <div className={cn(
         "absolute inset-0 transition-opacity duration-1000",
-        (activePlayer === 'B' && !isIntroVisible) ? "z-10 opacity-100" : "z-0 opacity-0 pointer-events-none"
+        (activeSlot === 'B') ? "z-10 opacity-100" : "z-0 opacity-100"
       )}>
         {contentB && (
           <VideoPlayer
             content={contentB}
-            shouldPlay={activePlayer === 'B' ? (shouldPlayContent && isUserPlaying) : (shouldPlayContent && isIntroVisible)}
-            onEnded={activePlayer === 'B' ? handleContentEnded : () => { }}
-            onNearEnd={activePlayer === 'B' ? triggerTransition : undefined}
-            onStart={activePlayer === 'B' ? handleStart : undefined}
-            onProgress={activePlayer === 'B' ? onPlayerProgress : undefined}
-            muted={activePlayer === 'B' ? (isMuted || isIntroVisible) : true}
+            shouldPlay={activeSlot === 'B' ? (shouldPlayContent && (isUserPlaying || isIntroVisible)) : false}
+            onEnded={activeSlot === 'B' ? handleContentEnded : () => { }}
+            onNearEnd={activeSlot === 'B' ? () => {
+              const isNews = 'url_slide' in contentB;
+              triggerTransition(isNews ? 1000 : 0);
+            } : undefined}
+            onStart={activeSlot === 'B' ? handleStart : undefined}
+            onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
+            muted={activeSlot === 'B' ? (isMuted || isIntroVisible) : true}
+            isSharingAction={isSharingAction}
           />
         )}
       </div>
 
       {/* BOTÓN COMPARTIR (ELIMINADO DE AQUÍ PARA MOVERLO A CONTROLES) */}
 
+      {/* SAFETY COVER (v8.0) - Capa de seguridad durante el compartir */}
+      <div className={cn(
+        "absolute inset-0 z-[1001] bg-black/40 backdrop-blur-sm transition-opacity duration-300",
+        isSharingAction ? "opacity-100" : "opacity-0 pointer-events-none"
+      )} />
+
       {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
 
-      {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[100] para visibilidad garantizada */}
+      {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[999] para supremacía TOTAL (v23.0) */}
       <div className={cn(
-        "absolute inset-0 z-[100] bg-black transition-opacity duration-500",
+        "absolute inset-0 z-[999] bg-black transition-opacity duration-1000",
         (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
+        {/* OPTIMIZACIÓN v16.0: Eliminamos 'key' para evitar re-mount. El nodo persiste. */}
         <video
-          key={state.introId}
           ref={introVideoRef}
           className="w-full h-full object-cover"
-          src={currentIntroUrl || undefined}
-          autoPlay
-          muted
           playsInline
+          muted
+          // No autoPlay here, we control it in useEffect
           onEnded={handleIntroEnded}
           onLoadedMetadata={handleIntroMetadata}
           onTimeUpdate={handleIntroTimeUpdate}

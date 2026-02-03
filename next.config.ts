@@ -11,10 +11,22 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
+        protocol: 'https' as const,
         hostname: '**',
       },
     ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/articulo/:id',
+        destination: '/?id=:id',
+      },
+      {
+        source: '/video/:id',
+        destination: '/?v=:id',
+      },
+    ];
   },
 };
 
@@ -24,7 +36,6 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  swcMinify: true,
   disable: false, // Habilitar PWA incluso en desarrollo para probar
   workboxOptions: {
     disableDevLogs: true,

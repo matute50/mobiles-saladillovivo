@@ -21,27 +21,7 @@ const getYouTubeThumbnail = (url: string) => {
     return (match && match[2].length === 11) ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : '/placeholder.png';
 };
 
-const getDisplayCategory = (dbCat: string) => {
-    if (!dbCat) return 'VARIOS';
-    // Normalizar: quitar acentos y pasar a mayúsculas
-    const normalized = dbCat.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-    const MAP: Record<string, string> = {
-        'EXPORT': 'Gente de Acá',
-        'GENTE DE ACA': 'Gente de Acá',
-        'SEMBRANDO FUTURO': 'Sembrando Futuro',
-        'ARCHIVO SALADILLO VIVO': 'De Otros Tiempos',
-        'HISTORIA': 'De Otros Tiempos',
-        'NOTICIAS': 'Últimas Noticias',
-        'CLIPS': 'Saladillo Canta',
-        'SALADILLO CANTA': 'Saladillo Canta',
-        'CORTOS': 'Hacelo Corto',
-        'HACELO CORTO': 'Hacelo Corto',
-        'FIERROS': 'Fierros Saladillo',
-        'FIERROS SALADILLO': 'Fierros Saladillo'
-    };
-    return MAP[normalized] || dbCat.trim();
-};
+import { getDisplayCategory } from '@/lib/categoryMappings';
 
 export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselBlockProps) => {
     const { playManual } = useMediaPlayer();

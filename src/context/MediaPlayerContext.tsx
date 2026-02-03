@@ -23,7 +23,7 @@ interface MediaPlayerContextType {
   setVideoPool: (videos: Video[], initialTarget?: Video | Article) => void;
   playManual: (item: Video | Article) => void;
   prepareNext: () => void;
-  triggerTransition: () => void;
+  triggerTransition: (delayMs?: number) => void;
   handleIntroEnded: () => void;
   handleContentEnded: () => void;
 }
@@ -137,7 +137,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [getNextVideo, state.currentContent, state.nextContent]);
 
-  const triggerTransition = useCallback(() => {
+  const triggerTransition = useCallback((delayMs = 0) => {
     if (!state.nextContent || state.isIntroVisible) return;
 
     // Iniciar Intro inmediatamente
@@ -146,20 +146,37 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     if (introTimerRef.current) clearTimeout(introTimerRef.current);
     const { url: nextIntroUrl, newQueue } = getNextIntroUrl(isVideo, state.introQueue);
 
+    // FASE 0: Definir Safety Delay (v23.0)
+    // Regla: Nunca hacer swap instantáneo. Siempre dar tiempo a la intro para cubrir (800ms mínimo).
+    const SAFETY_DELAY = 800;
+    const effectiveDelay = Math.max(delayMs, SAFETY_DELAY);
+
+    // FASE 1: Activar Intro Visualmente (Overlay) - INMEDIATO
     setState(prev => ({
       ...prev,
-      currentContent: prev.nextContent, // CAMBIO INMEDIATO (v4.3)
-      nextContent: null,
+      // NO cambiamos currentContent todavía. Mantenemos el anterior sonando/viéndose.
+      currentContent: prev.currentContent,
+      nextContent: prev.nextContent,
       currentIntroUrl: nextIntroUrl,
       introQueue: newQueue,
       introId: Date.now(),
       isIntroVisible: true,
     }));
 
+    // FASE 2: Swap Lógico - DIFERIDO (Cover First, Swap Later)
+    setTimeout(() => {
+      setState(prev => ({
+        ...prev,
+        currentContent: prev.nextContent, // AHORA sí cambiamos (con intro encima)
+        nextContent: null
+      }));
+    }, effectiveDelay);
+
+    // FASE 3: Apagar Intro
     introTimerRef.current = setTimeout(() => {
       handleIntroEnded();
-    }, 4000);
-  }, [state.nextContent, state.isIntroVisible, handleIntroEnded]);
+    }, 4000); // 4s total de intro
+  }, [state.nextContent, state.isIntroVisible, handleIntroEnded, state.introQueue, getNextIntroUrl]);
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
     setVideoPoolState(videos);
