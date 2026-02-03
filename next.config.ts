@@ -39,6 +39,8 @@ const withPWA = withPWAInit({
   disable: false, // Habilitar PWA incluso en desarrollo para probar
   workboxOptions: {
     disableDevLogs: true,
+    skipWaiting: true,
+    clientsClaim: true,
   },
 });
 
