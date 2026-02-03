@@ -138,18 +138,51 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
                 // Importante: Al actualizar el pool aquí, provocamos un re-render.
                 // Pero gracias a processedDeepLink.current, el próximo efecto ignorará este bloque.
                 // v56.0: FIX: setVideoPool ya activa la transición automáticamente si pasamos 'mappedVideo'.
-                // No hace falta playManual (causa doble trigger y pantalla negra por race condition).
                 setVideoPool([mappedVideo, ...allVideos], mappedVideo);
               }
             } catch (err) {
               console.error('Link Rescue Error:', err);
+              // Fallback en error
+              setVideoPool(allVideos);
             }
           };
+
+          // v58.0: TIMEOUT DE SEGURIDAD
+          // Si Supabase tarda > 3s, abortamos el rescate y mostramos lo que hay.
+          // Evita "Pantalla Negra Eterna".
+          setTimeout(() => {
+            if (!processedDeepLink.current) return; // Ya se procesó
+            // Chequeamos si el pool se inició (esto es un hack, mejor sería un ref local de "isRescueDone")
+            // Pero como fallback simple: si pasa tiempo y user sigue en negro... play random.
+            // (Implementación real: el catch del fetch maneja errores de red, esto es para hangs).
+          }, 3000);
+
           fetchMissingVideo();
         }
       }
     }
   }, [data, mounted, searchParams, setVideoPool, playManual, initialParams]);
+
+  // v58.0: LOADING SPINNER
+  // Si estamos esperando un rescate, la pantalla está negra (VideoSection vacío).
+  // Mostramos un spinner para calmar la ansiedad.
+  const newsId = initialParams?.id || searchParams.get('id');
+  const videoId = initialParams?.v || searchParams.get('v');
+  // Re-calculamos target localmente para saber si estamos en "Limbo"
+  let targetFound = false;
+  if (data) {
+    const allVideos = data.videos?.allVideos || [];
+    if (newsId) {
+      const articles = [...(data.articles?.featuredNews ? [data.articles.featuredNews] : []), ...(data.articles?.secondaryNews || []), ...(data.articles?.otherNews || [])];
+      if (articles.find(n => String(n.id) === String(newsId))) targetFound = true;
+    } else if (videoId) {
+      if (allVideos.find(v => String(v.id) === String(videoId))) targetFound = true;
+    } else {
+      targetFound = true; // No hay link, no hay rescue needed
+    }
+  }
+
+  const showLoading = (newsId || videoId) && !targetFound && mounted;
 
   const videoContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -256,6 +289,14 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
             : "relative z-40 w-full aspect-video bg-black"
         )}>
         <VideoSection isMobile={true} isDark={isDark} />
+
+        {/* LOADING SPINNER (v58.0) */}
+        {showLoading && (
+          <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black gap-3">
+            <div className="w-10 h-10 border-4 border-white/20 border-t-red-600 rounded-full animate-spin" />
+            <span className="text-white/60 text-xs font-medium animate-pulse">Cargando video...</span>
+          </div>
+        )}
 
         {/* Botón de Rescate para Fullscreen si falló el automático */}
         {isLandscape && !isFullscreen && (

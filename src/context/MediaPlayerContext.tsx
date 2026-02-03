@@ -41,7 +41,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     currentIntroUrl: null,
     introQueue: [],
     introId: 0,
-    isIntroVisible: true,
+    isIntroVisible: false, // v58.0: FIX: Default hidden. Only show when startTransition activates it.
     shouldPlayContent: false,
   });
 
