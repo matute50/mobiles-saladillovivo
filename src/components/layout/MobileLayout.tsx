@@ -143,6 +143,7 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
             } catch (err) {
               console.error('Link Rescue Error:', err);
               // Fallback en error
+              setHasFallbackTriggered(true);
               setVideoPool(allVideos);
             }
           };
@@ -152,6 +153,9 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
           // Evita "Pantalla Negra Eterna".
           setTimeout(() => {
             if (!processedDeepLink.current) return; // Ya se procesó
+            // v59.0: FORCE FAIL AFTER 3s
+            setHasFallbackTriggered(true);
+            setVideoPool(allVideos);
             // Chequeamos si el pool se inició (esto es un hack, mejor sería un ref local de "isRescueDone")
             // Pero como fallback simple: si pasa tiempo y user sigue en negro... play random.
             // (Implementación real: el catch del fetch maneja errores de red, esto es para hangs).
@@ -182,7 +186,11 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
     }
   }
 
-  const showLoading = (newsId || videoId) && !targetFound && mounted;
+  // v59.0: FIX ETERNAL SPINNER
+  // Necesitamos un estado local para saber si ya nos rendimos (fallback triggered).
+  // Si el fallback se activa, debemos ocultar el spinner aunque el video no esté en 'data'.
+  const [hasFallbackTriggered, setHasFallbackTriggered] = useState(false);
+  const showLoading = (newsId || videoId) && !targetFound && mounted && !hasFallbackTriggered;
 
   const videoContainerRef = React.useRef<HTMLDivElement>(null);
 
