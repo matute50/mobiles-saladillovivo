@@ -137,14 +137,9 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
                 console.log('Link Rescue: Playing', mappedVideo.nombre);
                 // Importante: Al actualizar el pool aquí, provocamos un re-render.
                 // Pero gracias a processedDeepLink.current, el próximo efecto ignorará este bloque.
+                // v56.0: FIX: setVideoPool ya activa la transición automáticamente si pasamos 'mappedVideo'.
+                // No hace falta playManual (causa doble trigger y pantalla negra por race condition).
                 setVideoPool([mappedVideo, ...allVideos], mappedVideo);
-
-                // v55.0: DEEP LINK SAFETY DELAY
-                // Damos un respiro (100ms) para que el state y el contexto absorban el nuevo pool
-                // antes de forzar el playManual. Evita race conditions con el auto-play random.
-                setTimeout(() => {
-                  playManual(mappedVideo);
-                }, 100);
               }
             } catch (err) {
               console.error('Link Rescue Error:', err);
