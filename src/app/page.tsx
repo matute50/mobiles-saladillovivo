@@ -57,22 +57,20 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     if (video) {
       title = video.nombre;
       description = "Lo podes ver en Saladillo Vivo"; // Frase para videos
-      // Regex robusto para YouTube ID
-      const ytMatch = video.url.match(/(?:youtu\.be\/|youtube\.com\/[^\/]+\/|youtube.com\/watch\?v=|v\/)([^"&?\/\s]{11})/);
-      const ytId = ytMatch ? ytMatch[1] : null;
+      // v24.3: YouTube Detection Sync with VideoCarouselBlock.tsx
+      const ytMatch = video.url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+      const ytId = (ytMatch && ytMatch[2].length === 11) ? ytMatch[2] : null;
 
-      // v24.0: Dual-Res Strategy (WhatsApp preference)
       if (video.imagen) {
         imageUrl = video.imagen;
       } else if (ytId) {
-        // Enviar un array de imágenes ayuda a que los scrapers elijan la mejor
-        imageUrl = `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
+        // WhatsApp prefiere resoluciones estándar garantizadas
+        imageUrl = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
       }
     } else {
       // FALLBACK: Fetch directo para Videos antiguos (Rich Preview Rescue)
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        // Usamos select('*') y cast a 'any' para máxima flexibilidad con columnas legacy
         const { data: missingVideo } = await supabase.from('videos').select('*').eq('id', videoId).single();
         if (missingVideo) {
           const v = missingVideo as any;
@@ -81,15 +79,15 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
           description = "Lo podes ver en Saladillo Vivo";
           const finalUrl = v.url || v.videoUrl || '';
 
-          const ytMatch = finalUrl.match(/(?:youtu\.be\/|youtube\.com\/[^\/]+\/|youtube.com\/watch\?v=|v\/)([^"&?\/\s]{11})/);
-          const ytId = ytMatch ? ytMatch[1] : null;
+          const ytMatch = finalUrl.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+          const ytId = (ytMatch && ytMatch[2].length === 11) ? ytMatch[2] : null;
           imageUrl = v.imagen || v.image || v.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : imageUrl);
         }
       } catch (e) { }
     }
   }
 
-  // v24.2: Normalización Blindada para WhatsApp
+  // v24.3: Normalización Blindada para WhatsApp
   const normalizeImageUrl = (url: string) => {
     if (!url) return `${SITE_URL}/logo_social.png`;
     if (url.startsWith('//')) return `https:${url}`;
@@ -100,23 +98,23 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   imageUrl = normalizeImageUrl(imageUrl);
 
-  // Lista de imágenes para fallback (v24.2)
+  // Lista de imágenes para fallback (v24.3)
   const images = [{
     url: imageUrl,
     secureUrl: imageUrl.replace('http:', 'https:'),
-    width: 1200,
-    height: 630,
+    width: 480, // hqdefault standard
+    height: 360,
     alt: title
   }];
 
-  // Si es YouTube y probamos maxres, añadir hqdefault de respaldo OBLIGATORIO (WhatsApp lo prefiere si el otro pesa mucho o no existe)
-  if (imageUrl.includes('maxresdefault.jpg')) {
-    const hqUrl = imageUrl.replace('maxresdefault.jpg', 'hqdefault.jpg');
+  // Si usamos hqdefault, añadir mq720 o mqdefault de respaldo inverso
+  if (imageUrl.includes('hqdefault.jpg')) {
+    const mqUrl = imageUrl.replace('hqdefault.jpg', 'mqdefault.jpg');
     images.push({
-      url: hqUrl,
-      secureUrl: hqUrl.replace('http:', 'https:'),
-      width: 480,
-      height: 360,
+      url: mqUrl,
+      secureUrl: mqUrl.replace('http:', 'https:'),
+      width: 320,
+      height: 180,
       alt: title
     });
   }
