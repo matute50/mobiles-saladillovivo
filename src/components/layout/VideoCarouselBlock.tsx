@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Play, Share2 } from 'lucide-react';
-import { shareToWhatsApp } from '@/lib/share';
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -79,17 +78,6 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
                                     <Play size={21} fill="white" />
                                 </div>
                             </div>
-
-                            {/* SHARE BTN */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    shareToWhatsApp(v);
-                                }}
-                                className="absolute top-2 right-2 z-30 p-1.5 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 active:scale-90 transition-all shadow-lg"
-                            >
-                                <Share2 size={16} />
-                            </button>
 
                             <div className="absolute bottom-0 w-full p-1.5 bg-gradient-to-t from-black via-black/60 to-transparent text-center leading-tight">
                                 <p className="text-[14px] text-white font-bold line-clamp-3 uppercase px-1">
