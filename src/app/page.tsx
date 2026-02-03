@@ -71,7 +71,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     } else {
       // FALLBACK: Fetch directo para Videos antiguos (Rich Preview Rescue)
       try {
-        const supabase = createClient();
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
         // Usamos select('*') y cast a 'any' para máxima flexibilidad con columnas legacy
         const { data: missingVideo } = await supabase.from('videos').select('*').eq('id', videoId).single();
         if (missingVideo) {
@@ -89,23 +89,36 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     }
   }
 
-  // Asegurar URL absoluta para la imagen (v24.1: Mejorado para urls sin protocolo)
-  if (imageUrl.startsWith('//')) {
-    imageUrl = `https:${imageUrl}`;
-  } else if (imageUrl.startsWith('/')) {
-    imageUrl = `${SITE_URL}${imageUrl}`;
-  } else if (!imageUrl.startsWith('http')) {
-    // Si es un path relativo perdido (ej: "images/foo.jpg")
-    imageUrl = `${SITE_URL}/${imageUrl}`;
-  }
+  // v24.2: Normalización Blindada para WhatsApp
+  const normalizeImageUrl = (url: string) => {
+    if (!url) return `${SITE_URL}/logo_social.png`;
+    if (url.startsWith('//')) return `https:${url}`;
+    if (url.startsWith('/')) return `${SITE_URL}${url}`;
+    if (!url.startsWith('http')) return `${SITE_URL}/${url}`;
+    return url;
+  };
 
-  // Lista de imágenes para fallback (v24.0)
-  const images = [{ url: imageUrl, width: 1200, height: 630, alt: title }];
+  imageUrl = normalizeImageUrl(imageUrl);
 
-  // Si es YouTube y probamos maxres, añadir hqdefault de respaldo por si maxres no existe
+  // Lista de imágenes para fallback (v24.2)
+  const images = [{
+    url: imageUrl,
+    secureUrl: imageUrl.replace('http:', 'https:'),
+    width: 1200,
+    height: 630,
+    alt: title
+  }];
+
+  // Si es YouTube y probamos maxres, añadir hqdefault de respaldo OBLIGATORIO (WhatsApp lo prefiere si el otro pesa mucho o no existe)
   if (imageUrl.includes('maxresdefault.jpg')) {
     const hqUrl = imageUrl.replace('maxresdefault.jpg', 'hqdefault.jpg');
-    images.push({ url: hqUrl, width: 480, height: 360, alt: title });
+    images.push({
+      url: hqUrl,
+      secureUrl: hqUrl.replace('http:', 'https:'),
+      width: 480,
+      height: 360,
+      alt: title
+    });
   }
 
   // Determinar tipo OG
