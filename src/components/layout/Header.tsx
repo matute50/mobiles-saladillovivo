@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useWeather } from '@/context/WeatherContext';
 import { usePWA } from '@/context/PWAContext';
 import { DecreeModal } from './DecreeModal';
+import { InstallModal } from './InstallModal';
 
 const getWeatherIcon = (iconName: string, isDark: boolean, size = 18, className = "") => {
     const name = iconName?.toLowerCase() || '';
@@ -36,7 +37,7 @@ export const Header = React.memo(({
     setSearchQuery,
 }: HeaderProps) => {
     const { weather, setIsExtendedOpen } = useWeather();
-    const { isInstallable, installApp } = usePWA();
+    const { isInstallable, installApp, isInstallModalOpen, setIsInstallModalOpen } = usePWA();
     const [isDecreeOpen, setIsDecreeOpen] = React.useState(false);
 
     return (
