@@ -148,8 +148,28 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
           className="w-full h-full border-0"
           scrolling="no"
           allow="autoplay; fullscreen"
-          sandbox="allow-scripts allow-forms allow-presentation"
-          onLoad={onStart}
+          sandbox="allow-scripts allow-forms allow-presentation allow-same-origin"
+          onLoad={(e) => {
+            if (onStart) onStart();
+            // INTENTO AUTO-RESPONSIVE: Inyectar CSS si es Same-Origin
+            try {
+              const doc = e.currentTarget.contentDocument;
+              if (doc) {
+                const style = doc.createElement('style');
+                style.textContent = `
+                      @media (orientation: landscape) {
+                         h1, .titulo, .title, [class*="titulo"], [class*="title"] {
+                            font-size: clamp(2rem, 5vw, 4rem) !important;
+                            line-height: 1.1 !important;
+                         }
+                      }
+                   `;
+                doc.head.appendChild(style);
+              }
+            } catch (err) {
+              console.warn("Cross-Origin restriction: Cannot inject responsive styles into news slide.", err);
+            }
+          }}
         />
         {!isPlayerReady && articleData.imagen && (
           <div className="absolute inset-0 bg-black">
