@@ -180,9 +180,17 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
     setVideoPoolState(videos);
-    if (initialTarget && !isInitialVideoPicked.current) {
+
+    // v57.0: FORCE PLAY ON RESCUE
+    // Si nos pasan un target explícito, lo tocamos SÍ o SÍ.
+    // Ignoramos isInitialVideoPicked.current porque si viene de un Rescue Fetch, 
+    // es probable que el pool ya se hubiera seteado (vacío o parcial) antes.
+    if (initialTarget) {
       isInitialVideoPicked.current = true;
       startTransition(initialTarget);
+    } else if (!isInitialVideoPicked.current) {
+      // Comportamiento standard: solo bloquear si no hay target explícito
+      // (esperar a que el useEffect de random pick actúe)
     }
   }, [startTransition]);
 
