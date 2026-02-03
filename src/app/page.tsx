@@ -75,7 +75,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     } catch (e) { console.error("[METADATA_VID_FAIL]", e); debugStatus += "_CATCH"; }
   }
 
-  // v24.3: Normalización Blindada para WhatsApp
+  // Normalización Blindada para WhatsApp
   const normalizeImageUrl = (url: string) => {
     if (!url) return `${SITE_URL}/logo_social.png`;
     if (url.startsWith('//')) return `https:${url}`;
@@ -86,34 +86,33 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   imageUrl = normalizeImageUrl(imageUrl);
 
-  // DEBUG INJECTION: Add ID to description to verify server read
-  // description = `${description} [DB:${debugStatus}]`;
-
-  // Lista de imágenes para fallback
-  const images: any[] = [{
-    url: imageUrl,
-    secureUrl: imageUrl.replace('http:', 'https:'),
-    width: 480, // Defaulting to HQ dimensions
-    height: 360,
-    type: 'image/jpeg',
-    alt: title
-  }];
-
-  // Add maxresdefault as backup if we are using youtube
+  // v52.0: Prioridad ABSOLUTA a MaxResDefault (HD)
+  // Si tenemos YOUTUBE HQ, intentamos "upgradear" a MAXRES.
+  // WhatsApp prefiere imágenes grandes (>300px) y claras.
+  let finalImage = imageUrl;
   if (imageUrl.includes('hqdefault.jpg')) {
-    const maxRes = imageUrl.replace('hqdefault.jpg', 'maxresdefault.jpg');
-    images.push({
-      url: maxRes,
-      secureUrl: maxRes.replace('http:', 'https:'),
-      width: 1280,
-      height: 720,
-      type: 'image/jpeg',
-      alt: title
-    });
+    finalImage = imageUrl.replace('hqdefault.jpg', 'maxresdefault.jpg');
   }
 
+  // Debug injection removed for production cleanliness
+
+  // Estrategia de Imagen Única y Robusta
+  // En lugar de pasar un array complejo que a veces WhatsApp ignora,
+  // pasamos la mejor imagen disponible como única opción principal.
+  const images = [{
+    url: finalImage,
+    secureUrl: finalImage.replace('http:', 'https:'),
+    width: 1280,
+    height: 720,
+    type: 'image/jpeg',
+    alt: title,
+  }];
+
   // Determinar tipo OG
-  const ogType = videoId ? 'video.other' : 'article';
+  // v52.0: Forzamos 'website' o 'article' incluso para videos.
+  // 'video.other' a veces causa que WhatsApp intente parsear un player y falle, mostrando nada.
+  // 'website' es lo más seguro para garantizar la "Large Image Card".
+  const ogType = 'website';
 
   // URL Canónica
   const canonicalUrl = newsId
@@ -139,7 +138,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       card: 'summary_large_image',
       title,
       description,
-      images: [imageUrl],
+      images: [finalImage],
     },
     alternates: {
       canonical: canonicalUrl,
