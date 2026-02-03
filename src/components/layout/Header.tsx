@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Search, Sun, Moon, Share2, Cloud, Sun as SunIcon, CloudRain, CloudLightning, Download, HelpCircle } from 'lucide-react';
+import { Search, Sparkles, Moon, Share2, Cloud, Sun as SunIcon, CloudRain, CloudLightning, Download, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWeather } from '@/context/WeatherContext';
 import { usePWA } from '@/context/PWAContext';
@@ -82,7 +82,7 @@ export const Header = React.memo(({
                 <div className="flex items-center gap-3">
                     {/* Botón Modo (Ahora a la izquierda de la lupa) */}
                     <button onClick={() => setIsDark(!isDark)} className="shrink-0 p-1">
-                        {isDark ? <Sun size={20} className="text-white" /> : <Moon size={20} className="text-black" />}
+                        {isDark ? <Sparkles size={20} className="text-white" /> : <Moon size={20} className="text-black" />}
                     </button>
 
                     <button
