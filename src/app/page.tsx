@@ -86,32 +86,23 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   imageUrl = normalizeImageUrl(imageUrl);
 
-  // v52.0: Prioridad ABSOLUTA a MaxResDefault (HD)
-  // Si tenemos YOUTUBE HQ, intentamos "upgradear" a MAXRES.
-  // WhatsApp prefiere imágenes grandes (>300px) y claras.
-  let finalImage = imageUrl;
-  if (imageUrl.includes('hqdefault.jpg')) {
-    finalImage = imageUrl.replace('hqdefault.jpg', 'maxresdefault.jpg');
-  }
+  // v53.0: RETORNO A LA SEGURIDAD (hqdefault)
+  // maxresdefault a veces falla (404) y rompe la preview. hqdefault (480x360) siempre existe.
+  // WhatsApp acepta imágenes desde 300x200, así que hqdefault es perfecto y seguro.
+  const finalImage = imageUrl;
 
-  // Debug injection removed for production cleanliness
-
-  // Estrategia de Imagen Única y Robusta
-  // En lugar de pasar un array complejo que a veces WhatsApp ignora,
-  // pasamos la mejor imagen disponible como única opción principal.
+  // Estrategia Multi-Tags:
+  // Definimos la imagen explícitamente con dimensiones de HQ para evitar dudas.
   const images = [{
     url: finalImage,
     secureUrl: finalImage.replace('http:', 'https:'),
-    width: 1280,
-    height: 720,
+    width: 480,
+    height: 360,
     type: 'image/jpeg',
     alt: title,
   }];
 
   // Determinar tipo OG
-  // v52.0: Forzamos 'website' o 'article' incluso para videos.
-  // 'video.other' a veces causa que WhatsApp intente parsear un player y falle, mostrando nada.
-  // 'website' es lo más seguro para garantizar la "Large Image Card".
   const ogType = 'website';
 
   // URL Canónica
@@ -142,6 +133,12 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     },
     alternates: {
       canonical: canonicalUrl,
+    },
+    // Inyección de urgencia para WhatsApp (Microdata Schema.org)
+    other: {
+      'itemprop:name': title,
+      'itemprop:description': description,
+      'itemprop:image': finalImage,
     }
   };
 }
