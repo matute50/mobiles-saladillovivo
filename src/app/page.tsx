@@ -2,12 +2,9 @@
 import { Metadata } from 'next';
 import MobileLayout from '@/components/layout/MobileLayout';
 import { getPageData } from '@/lib/data';
-import { createClient } from '@supabase/supabase-js'; // DIRECTO
 
 export const dynamic = 'force-dynamic';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const SITE_URL = 'https://m.saladillovivo.com.ar';
 
 type Props = {
@@ -49,12 +46,11 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function Home({ searchParams }: Props) {
+export default async function Home() {
   const data = await getPageData();
-  const sParams = await searchParams;
   return (
     <main className="min-h-screen bg-black">
-      <MobileLayout data={data as any} initialParams={sParams} />
+      <MobileLayout data={data as any} />
     </main>
   );
 }

@@ -6,15 +6,27 @@ const supabase = createClient();
 
 export async function getPageData(): Promise<PageData> {
   try {
-    const { data: rawArticles, error: articlesError } = await supabase
-      .from('articles')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20);
+    const [articlesRes, videosRes, adsRes] = await Promise.all([
+      supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('videos')
+        .select('*')
+        .order('createdAt', { ascending: false })
+        .limit(100), // v61.0: OPTIMIZATION - Reduced from 5000 to 100 for initial load
+      supabase
+        .from('anuncios')
+        .select('*')
+    ]);
 
-    if (articlesError) throw articlesError;
+    if (articlesRes.error) throw articlesRes.error;
+    if (videosRes.error) throw videosRes.error;
+    if (adsRes.error) throw adsRes.error;
 
-    const mappedArticles: Article[] = (rawArticles || []).map((item: any) => ({
+    const mappedArticles: Article[] = (articlesRes.data || []).map((item: any) => ({
       id: String(item.id),
       titulo: (item.titulo || item.title || 'Sin título').replaceAll('|', ' ').trim(),
       bajada: (item.bajada || item.summary || item.description || '').trim(),
@@ -29,15 +41,7 @@ export async function getPageData(): Promise<PageData> {
       animation_duration: item.animation_duration || item.animationDuration || 45
     }));
 
-    const { data: rawVideos, error: videosError } = await supabase
-      .from('videos')
-      .select('*')
-      .order('createdAt', { ascending: false })
-      .limit(5000);
-
-    if (videosError) throw videosError;
-
-    const mappedVideos: Video[] = (rawVideos || []).map((item: any) => ({
+    const mappedVideos: Video[] = (videosRes.data || []).map((item: any) => ({
       id: String(item.id),
       nombre: (item.nombre || item.title || item.name || 'Video sin nombre').replaceAll('|', ' ').trim(),
       url: item.url || item.videoUrl || '',
@@ -46,10 +50,7 @@ export async function getPageData(): Promise<PageData> {
       fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString()
     }));
 
-    const { data: rawAds, error: adsError } = await supabase.from('anuncios').select('*');
-    if (adsError) throw adsError;
-
-    const mappedAds: Ad[] = (rawAds || []).map((item: any) => ({
+    const mappedAds: Ad[] = (adsRes.data || []).map((item: any) => ({
       id: String(item.id),
       cliente: item.cliente || item.client || 'Anónimo',
       imagen_url: item.imagen_url || item.imageUrl || item.image_url || '',

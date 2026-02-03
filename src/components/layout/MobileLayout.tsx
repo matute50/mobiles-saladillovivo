@@ -8,7 +8,6 @@ import { PageData, Video, Article } from '@/lib/types';
 import { useSearchParams } from 'next/navigation';
 import type { Swiper as SwiperClass } from 'swiper';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/utils/supabase/client';
 import 'swiper/css';
 
 import { Maximize } from 'lucide-react';
@@ -21,7 +20,7 @@ import { NewsSlider } from './NewsSlider';
 import { InstallModal } from './InstallModal';
 import { usePWA } from '@/context/PWAContext';
 
-export default function MobileLayout({ data, initialParams }: { data: PageData; initialParams?: { id?: string; v?: string } }) {
+export default function MobileLayout({ data }: { data: PageData }) {
   const [isDark, setIsDark] = useState(true);
   const [mounted, setMounted] = useState(false);
   const { setVideoPool, playManual } = useMediaPlayer();
@@ -30,7 +29,6 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
   const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const processedDeepLink = React.useRef<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
