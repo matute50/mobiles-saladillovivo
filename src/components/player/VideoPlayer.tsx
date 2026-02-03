@@ -116,11 +116,19 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
     internalPlayerRef.current = player.getInternalPlayer();
   };
 
+  // Estabilizar valores para el efecto (evitar re-runs por cambios de referencia en articleData)
+  const audioUrl = articleData?.audio_url;
+  const animDuration = articleData?.animation_duration;
+
   useEffect(() => {
-    if (isArticle && shouldPlay && !isFadingOut && articleData?.audio_url) {
+    if (isArticle && shouldPlay && !isFadingOut && audioUrl) {
       playAudio();
-      const duration = (articleData?.animation_duration || 45) * 1000;
-      fadeTimerRef.current = setTimeout(() => triggerEnd(), duration);
+      const duration = (animDuration || 45) * 1000;
+
+      // SOLO si no hay timer activo (evitar reiniciar el timer si el componente se re-renderiza pero sigue playing)
+      if (!fadeTimerRef.current) {
+        fadeTimerRef.current = setTimeout(() => triggerEnd(), duration);
+      }
 
       // Timer para Near End (1s antes para Crossfade con Intro)
       const nearEndDuration = Math.max(0, duration - 1000);
@@ -129,15 +137,32 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
       }, nearEndDuration);
 
       return () => {
-        if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+        // CRITICAL: No pausar ni limpiar timers si solo es un re-render superficial.
+        // Solo limpiar si shouldPlay se vuelve false o el componente se desmonta realemente.
+        // Sin embargo, React cleanup corre siempre antes del nuevo efecto.
+        // La solución real es que ESTE efecto no corra seguido.
+
+        // Limpiamos timers auxiliares pero el principal lo manejamos con cuidado
         clearTimeout(nearEndTimer);
-        pauseAudio();
+
+        // Si shouldPlay cambió a false, entonces sí pausamos y limpiamos todo
+        if (!shouldPlay) {
+          if (fadeTimerRef.current) {
+            clearTimeout(fadeTimerRef.current);
+            fadeTimerRef.current = null;
+          }
+          pauseAudio();
+        }
       };
     } else {
+      // Si no debe sonar, pausar y limpiar
       pauseAudio();
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+      if (fadeTimerRef.current) {
+        clearTimeout(fadeTimerRef.current);
+        fadeTimerRef.current = null;
+      }
     }
-  }, [isArticle, shouldPlay, isFadingOut, playAudio, pauseAudio, articleData, triggerEnd, onNearEnd]);
+  }, [isArticle, shouldPlay, isFadingOut, playAudio, pauseAudio, audioUrl, animDuration, triggerEnd, onNearEnd]);
 
   const [slideHtml, setSlideHtml] = useState<string | null>(null);
 
@@ -156,21 +181,36 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
             <base href="${baseUrl}">
             <style>
               @media (orientation: landscape) {
+                * {
+                   box-sizing: border-box;
+                }
+                body {
+                  margin: 0 !important;
+                  padding: 0 5vw !important; /* Margen horizontal generoso */
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  overflow: hidden;
+                }
                 h1, h2, .titulo, .title, [class*="titulo"], [class*="title"] {
-                  font-size: 6vh !important;
+                  font-size: 5.5vh !important;
                   line-height: 1.1 !important;
-                  margin-bottom: 0.5rem !important;
+                  margin-bottom: 1vh !important;
+                  max-width: 90% !important; /* Evitar que toque el borde derecho */
+                  width: 100%;
                 }
                 p, .bajada, .description {
                   font-size: 3vh !important;
                   line-height: 1.4 !important;
+                  max-width: 95%;
                 }
-                /* Ajustar padding del contenedor si es necesario */
-                body {
-                  padding: 0 4vw !important;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
+                /* Forzar imágenes a comportarse */
+                img {
+                   max-height: 50vh;
+                   width: auto;
+                   object-fit: contain;
                 }
               }
             </style>
