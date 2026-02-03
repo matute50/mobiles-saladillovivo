@@ -244,12 +244,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
       {/* BOTÓN COMPARTIR (ELIMINADO DE AQUÍ PARA MOVERLO A CONTROLES) */}
 
-      {/* SAFETY COVER (v8.0) - Capa de seguridad durante el compartir */}
-      <div className={cn(
-        "absolute inset-0 z-[1001] bg-black/40 backdrop-blur-sm transition-opacity duration-300",
-        isSharingAction ? "opacity-100" : "opacity-0 pointer-events-none"
-      )} />
-
       {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
 
       {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[999] para supremacía TOTAL (v23.0) */}
