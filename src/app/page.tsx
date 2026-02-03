@@ -88,19 +88,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   // v53.0: RETORNO A LA SEGURIDAD (hqdefault)
   // maxresdefault a veces falla (404) y rompe la preview. hqdefault (480x360) siempre existe.
-  // WhatsApp acepta imágenes desde 300x200, así que hqdefault es perfecto y seguro.
   const finalImage = imageUrl;
 
-  // Estrategia Multi-Tags:
-  // Definimos la imagen explícitamente con dimensiones de HQ para evitar dudas.
-  const images = [{
-    url: finalImage,
-    secureUrl: finalImage.replace('http:', 'https:'),
-    width: 480,
-    height: 360,
-    type: 'image/jpeg',
-    alt: title,
-  }];
+  // v54.0: SIMPLIFICACIÓN RADICAL
+  // Borramos width/height explícitos. Si la imagen real no coincide EXACTAMENTE con lo que declaramos,
+  // WhatsApp la descarga, ve la diferencia y la DESCARTA (provocando el glitch visual que reporta el usuario).
 
   // Determinar tipo OG
   const ogType = 'website';
@@ -121,7 +113,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       description,
       url: canonicalUrl,
       siteName: 'Saladillo ViVo',
-      images: images,
+      // Pasamos solo la URL, sin estructura compleja que pueda fallar
+      images: [finalImage],
       locale: 'es_AR',
       type: ogType,
     },
