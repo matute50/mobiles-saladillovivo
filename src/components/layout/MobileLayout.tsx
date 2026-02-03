@@ -140,37 +140,85 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
     }
   }, [data, mounted, searchParams, setVideoPool, playManual, initialParams]);
 
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      const isLand = window.matchMedia("(orientation: landscape)").matches;
+      // Pequeño workaround para teclados virtuales: verificar que el alto sea menor que el ancho
+      const isKeyboardOpen = (window.visualViewport?.height || window.innerHeight) < 300 && !isLand;
+
+      if (!isKeyboardOpen) {
+        setIsLandscape(isLand);
+      }
+    };
+
+    // Check inicial
+    handleOrientationChange();
+
+    // Listeners
+    const mediaQuery = window.matchMedia("(orientation: landscape)");
+
+    // Modern API
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleOrientationChange);
+    } else {
+      // Deprecated API fallback
+      mediaQuery.addListener(handleOrientationChange);
+    }
+
+    // Backup 'resize' para mayor compatibilidad
+    window.addEventListener("resize", handleOrientationChange);
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleOrientationChange);
+      } else {
+        mediaQuery.removeListener(handleOrientationChange);
+      }
+      window.removeEventListener("resize", handleOrientationChange);
+    };
+  }, []);
+
   if (!mounted) return null;
 
   return (
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden", isDark ? "bg-black" : "bg-neutral-50")}>
-      <Header
-        isDark={isDark}
-        setIsDark={setIsDark}
-        isSearchOpen={isSearchOpen}
-        setIsSearchOpen={setIsSearchOpen}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-      />
+      {!isLandscape && (
+        <Header
+          isDark={isDark}
+          setIsDark={setIsDark}
+          isSearchOpen={isSearchOpen}
+          setIsSearchOpen={setIsSearchOpen}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
+      )}
 
-      <div className="relative z-40 w-full aspect-video bg-black">
+      <div className={cn(
+        isLandscape
+          ? "fixed inset-0 z-[100] w-screen h-screen bg-black touch-none"
+          : "relative z-40 w-full aspect-video bg-black"
+      )}>
         <VideoSection isMobile={true} isDark={isDark} />
       </div>
 
-      <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
-        <NewsSlider
-          newsSlides={newsSlides}
-          isDark={isDark}
-          searchQuery={searchQuery}
-          onSwiper={setNewsSwiper}
-          onPrev={() => newsSwiper?.slidePrev()}
-          onNext={() => newsSwiper?.slideNext()}
-        />
+      {!isLandscape && (
+        <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
+          <NewsSlider
+            newsSlides={newsSlides}
+            isDark={isDark}
+            searchQuery={searchQuery}
+            onSwiper={setNewsSwiper}
+            onPrev={() => newsSwiper?.slidePrev()}
+            onNext={() => newsSwiper?.slideNext()}
+          />
 
-        <div className="h-[160px] shrink-0 -mt-[22px]">
-          <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} />
+          <div className="h-[160px] shrink-0 -mt-[22px]">
+            <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
