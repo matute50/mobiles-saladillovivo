@@ -181,36 +181,22 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
             <base href="${baseUrl}">
             <style>
               @media (orientation: landscape) {
-                * {
-                   box-sizing: border-box;
-                }
-                body {
-                  margin: 0 !important;
-                  padding: 0 5vw !important; /* Margen horizontal generoso */
-                  width: 100vw !important;
-                  height: 100vh !important;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  overflow: hidden;
-                }
+                /* Solo ajustamos la tipografía y márgenes para seguridad, SIN cambiar el layout general */
                 h1, h2, .titulo, .title, [class*="titulo"], [class*="title"] {
-                  font-size: 5.5vh !important;
+                  font-size: 6vh !important;
                   line-height: 1.1 !important;
-                  margin-bottom: 1vh !important;
-                  max-width: 90% !important; /* Evitar que toque el borde derecho */
-                  width: 100%;
+                  /* Asegurar que no se salga del ancho */
+                  max-width: 90vw !important;
+                  box-sizing: border-box !important;
+                  /* Si el original tiene position absolute, esto ayuda a centrarlo si es left/right 0 */
+                  /* No forzamos position para no romper el flujo original */
                 }
+                
+                /* Ajuste de bajada */
                 p, .bajada, .description {
-                  font-size: 3vh !important;
-                  line-height: 1.4 !important;
-                  max-width: 95%;
-                }
-                /* Forzar imágenes a comportarse */
-                img {
-                   max-height: 50vh;
-                   width: auto;
-                   object-fit: contain;
+                  font-size: 3.5vh !important;
+                  line-height: 1.3 !important;
+                  max-width: 90vw !important;
                 }
               }
             </style>
