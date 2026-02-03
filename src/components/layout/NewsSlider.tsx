@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
+import { shareToWhatsApp } from '@/lib/share';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperClass } from 'swiper';
 import Image from 'next/image';
@@ -67,6 +68,18 @@ export const NewsSlider = React.memo(({
                                                 sizes="50vw"
                                                 className="object-cover opacity-90"
                                             />
+
+                                            {/* SHARE BTN */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    shareToWhatsApp(item);
+                                                }}
+                                                className="absolute top-2 right-2 z-30 p-2 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 active:scale-90 transition-all shadow-lg"
+                                            >
+                                                <Share2 size={slide.type === 'featured' ? 20 : 16} />
+                                            </button>
+
                                             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-10" />
                                             <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center text-white">
                                                 <div className={cn(

@@ -5,7 +5,8 @@ import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
 import VideoPlayer from '@/components/player/VideoPlayer';
 import { cn } from '@/lib/utils';
-import { Play, Pause, Volume2, VolumeX, X, Cloud, Sun as SunIcon, CloudRain, CloudLightning, MapPin } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, X, Cloud, Sun as SunIcon, CloudRain, CloudLightning, MapPin, Share2 } from 'lucide-react';
+import { shareToWhatsApp } from '@/lib/share';
 import { useWeather } from '@/context/WeatherContext';
 
 const getWeatherIcon = (iconName: string, isDark: boolean, size = 24, className = "") => {
@@ -278,6 +279,17 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
           </button>
         </div>
       </div>
+
+      {/* BOTÓN FLOTANTE SHARE (Growth Hacking) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (currentContent) shareToWhatsApp(currentContent);
+        }}
+        className="absolute top-4 right-4 z-[60] p-3 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 active:scale-90 transition-all shadow-lg"
+      >
+        <Share2 size={24} />
+      </button>
 
       {/* ZÓCALO DE CLIMA EXTENDIDO (v5.2) - Superior y Ultra-Fino */}
       <div className={cn(
