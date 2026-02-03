@@ -90,7 +90,15 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
       }
 
       // Inicializar pool
-      setVideoPool(allVideos, target);
+      // v56.0: DEEP LINK BLOCKER
+      // "Loop de Reseteo": Si un user entra con link (?v=XYZ), pero el video no está en la lista inicial (rescue pending),
+      // NO debemos activar el pool todavía. Si lo hacemos, el context arranca un video random "mientras tanto".
+      // Esperamos a que el fetch termine.
+      const isRescuePending = (newsId || videoId) && !target;
+
+      if (!isRescuePending) {
+        setVideoPool(allVideos, target);
+      }
 
       // REFUERZO DE DEEP LINKING (v22.7 - Loop Fix):
       const currentId = newsId || videoId;
