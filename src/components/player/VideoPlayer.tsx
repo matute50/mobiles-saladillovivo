@@ -15,9 +15,10 @@ interface VideoPlayerProps {
   onStart?: () => void;
   onProgress?: (data: { playedSeconds: number; duration: number }) => void;
   muted: boolean;
+  isSharingAction?: boolean;
 }
 
-export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, onStart, onProgress, muted }: VideoPlayerProps) {
+export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, onStart, onProgress, muted, isSharingAction }: VideoPlayerProps) {
   const [targetVolume, setTargetVolume] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -171,11 +172,25 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
     return (
       // v20.0: Eliminado fade-out visual. Opacity fija a 1.
       <div className="w-full h-full bg-black relative overflow-hidden" style={{ opacity: 1 }}>
-        {/* ANTI-BRANDING 9.0 (Cinema Bars + Power Zoom) */}
-        <div className="cinema-bar cinema-bar-top" />
-        <div className="cinema-bar cinema-bar-bottom" />
+        {/* ANTI-BRANDING 11.0 (Armored Zoom 125% + Heavy Cinema Bars) */}
+        <div className={cn(
+          "absolute left-0 right-0 bg-black z-50 pointer-events-none transition-all duration-500",
+          isSharingAction ? "h-20" : "h-0", // 80px protection
+          "top-0"
+        )} />
+        <div className={cn(
+          "absolute left-0 right-0 bg-black z-50 pointer-events-none transition-all duration-500",
+          isSharingAction ? "h-20" : "h-0",
+          "bottom-0"
+        )} />
 
-        <div className="absolute inset-0 w-full h-full left-0 top-0 will-change-transform player-zoom-container">
+        <div
+          className={cn(
+            "absolute inset-0 w-full h-full left-0 top-0 will-change-transform",
+            isSharingAction ? "transition-none" : "transition-transform duration-500 ease-in-out"
+          )}
+          style={{ transform: isSharingAction ? 'scale(1.25)' : 'scale(1.0)' }}
+        >
           <ReactPlayer
             ref={playerRef}
             url={videoData.url}

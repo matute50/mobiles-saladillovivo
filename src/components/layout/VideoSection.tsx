@@ -44,6 +44,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   const [currentTime, setCurrentTime] = useState(0);
   const [maxTimeReached, setMaxTimeReached] = useState(0);
   const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
+  const [isSharingAction, setIsSharingAction] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Sistema de Doble Player (A/B) con Smart Slot Management (v18.0 - Persistent Slots)
@@ -166,17 +167,32 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!currentContent || !containerRef.current) return;
+    if (!currentContent) return;
 
-    // v9.0: Direct DOM Manipulation (No Re-render)
-    containerRef.current.classList.add('is-sharing-active');
-    handleShareContent(currentContent);
+    // v11.0: SAFETY DELAY (150ms)
+    // Primero activamos el zoom para que el navegador lo renderice ANTES de perder el foco
+    setIsSharingAction(true);
 
-    // Revertir zoom después de 2 segundos (User Request)
     setTimeout(() => {
-      containerRef.current?.classList.remove('is-sharing-active');
-    }, 2000);
+      handleShareContent(currentContent);
+    }, 150);
+
+    // El zoom se revierte automáticamente por el foco o por timeout de seguridad
+    setTimeout(() => setIsSharingAction(false), 3000);
   };
+
+  // v11.0: FOCUS REGAIN PROTECTION
+  // Si volvemos de WhatsApp, mantenemos el zoom 1s más para evitar ver el "refresco"
+  useEffect(() => {
+    const handleFocus = () => {
+      // Si estábamos compartiendo y volvemos, mantenemos protección un poco más
+      setIsSharingAction(true);
+      setTimeout(() => setIsSharingAction(false), 1000);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600), m = Math.floor((seconds % 3600) / 60), s = Math.floor(seconds % 60);
@@ -230,6 +246,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onStart={activeSlot === 'A' ? handleStart : undefined}
             onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
             muted={activeSlot === 'A' ? (isMuted || isIntroVisible) : true}
+            isSharingAction={isSharingAction}
           />
         )}
       </div>
@@ -251,6 +268,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onStart={activeSlot === 'B' ? handleStart : undefined}
             onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
             muted={activeSlot === 'B' ? (isMuted || isIntroVisible) : true}
+            isSharingAction={isSharingAction}
           />
         )}
       </div>
