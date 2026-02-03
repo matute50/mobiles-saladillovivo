@@ -140,6 +140,33 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
     }
   }, [data, mounted, searchParams, setVideoPool, playManual, initialParams]);
 
+  const videoContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Helper para Fullscreen Cross-Browser
+  const toggleFullscreen = async (enter: boolean) => {
+    try {
+      if (enter) {
+        const el = videoContainerRef.current as any;
+        if (!el) return;
+
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen(); // Safari/Chrome legacy
+        else if (el.mozRequestFullScreen) await el.mozRequestFullScreen(); // Firefox
+        else if (el.msRequestFullscreen) await el.msRequestFullscreen(); // IE/Edge legacy
+      } else {
+        const doc = document as any;
+        if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement) {
+          if (doc.exitFullscreen) await doc.exitFullscreen();
+          else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+          else if (doc.mozCancelFullScreen) await doc.mozCancelFullScreen();
+          else if (doc.msExitFullscreen) await doc.msExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn("Fullscreen API blocked:", err);
+    }
+  };
+
   const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
@@ -150,6 +177,7 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
 
       if (!isKeyboardOpen) {
         setIsLandscape(isLand);
+        toggleFullscreen(isLand);
       }
     };
 
@@ -195,11 +223,13 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
         />
       )}
 
-      <div className={cn(
-        isLandscape
-          ? "fixed inset-0 z-[100] w-screen h-screen bg-black touch-none"
-          : "relative z-40 w-full aspect-video bg-black"
-      )}>
+      <div
+        ref={videoContainerRef}
+        className={cn(
+          isLandscape
+            ? "fixed inset-0 z-[100] w-screen h-screen bg-black touch-none"
+            : "relative z-40 w-full aspect-video bg-black"
+        )}>
         <VideoSection isMobile={true} isDark={isDark} />
       </div>
 
