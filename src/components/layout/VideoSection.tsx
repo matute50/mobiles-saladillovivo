@@ -44,7 +44,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   const [currentTime, setCurrentTime] = useState(0);
   const [maxTimeReached, setMaxTimeReached] = useState(0);
   const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
-  const [isSharingAction, setIsSharingAction] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Sistema de Doble Player (A/B) con Smart Slot Management (v18.0 - Persistent Slots)
   const [slotAContent, setSlotAContent] = useState<any>(null);
@@ -166,15 +166,15 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!currentContent) return;
+    if (!currentContent || !containerRef.current) return;
 
-    // v8.0: Dynamic Zoom + Safety Cover
-    setIsSharingAction(true);
+    // v9.0: Direct DOM Manipulation (No Re-render)
+    containerRef.current.classList.add('is-sharing-active');
     handleShareContent(currentContent);
 
     // Revertir zoom después de 2 segundos (User Request)
     setTimeout(() => {
-      setIsSharingAction(false);
+      containerRef.current?.classList.remove('is-sharing-active');
     }, 2000);
   };
 
@@ -188,8 +188,23 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   const contentB = slotBContent;
 
   return (
-    <div className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
-      <style jsx global>{`.analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }`}</style>
+    <div ref={containerRef} className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
+      <style jsx global>{`
+        .analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } 
+        @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }
+        
+        /* ANTI-BRANDING v9.0: Cinema Bars & Zoom */
+        .cinema-bar { position: absolute; left: 0; right: 0; background: black; z-index: 50; height: 0; transition: height 0.5s ease-in-out; pointer-events: none; }
+        .cinema-bar-top { top: 0; }
+        .cinema-bar-bottom { bottom: 0; }
+        
+        .is-sharing-active .cinema-bar { height: 72px; transition: none; }
+        .is-sharing-active .player-zoom-container { transform: scale(1.15); transition: none; }
+        
+        /* Smooth exit */
+        :not(.is-sharing-active) .cinema-bar { height: 0; transition: height 0.5s ease-in-out; }
+        :not(.is-sharing-active) .player-zoom-container { transform: scale(1.0); transition: transform 0.5s ease-in-out; }
+      `}</style>
 
       {/* PLAYER A */}
       <div className={cn(
@@ -215,7 +230,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onStart={activeSlot === 'A' ? handleStart : undefined}
             onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
             muted={activeSlot === 'A' ? (isMuted || isIntroVisible) : true}
-            isSharingAction={isSharingAction}
           />
         )}
       </div>
@@ -237,7 +251,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onStart={activeSlot === 'B' ? handleStart : undefined}
             onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
             muted={activeSlot === 'B' ? (isMuted || isIntroVisible) : true}
-            isSharingAction={isSharingAction}
           />
         )}
       </div>
