@@ -13,7 +13,9 @@ export const shareToWhatsApp = (content: any) => {
     const path = isVideo ? `/video/${id}` : `/articulo/${id}`;
 
     // "CleanUrl" según prompt (force https), applied to our App Link
-    const cleanUrl = `${baseUrl}${path}`;
+    // v45.0: CACHE BUSTER FORCE (Re-activado estrategicamente)
+    // Agregamos ?t=timestamp para obligar a WhatsApp a leer la imagen NUEVA y no usar su caché vieja equivocada.
+    const cleanUrl = `${baseUrl}${path}?t=${Date.now()}`;
 
     // 2. Formateo de Mensaje (Reglas de Oro: Negritas y Link al final)
     const titleUpper = rawTitle.toString().toUpperCase().replaceAll('|', ' ').trim();
