@@ -9,6 +9,9 @@ export const handleShareContent = (content: Article | Video) => {
     const shareTitle = ('titulo' in content ? content.titulo : (content as Video).nombre).replaceAll('|', ' ').replaceAll('"', '').trim();
     const text = `Mira esto en Saladillo Vivo: ${shareTitle}`.trim();
 
+    // v24.3: Cache-Busting (?u=1) para forzar a WhatsApp a re-leer la imagen nueva
+    const bustUrl = `${shareUrl}${shareUrl.includes('?') ? '&' : '?'}u=1`;
+
     // v22.0: Forzar siempre WhatsApp Directo (User Request)
-    window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + shareUrl)}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + bustUrl)}`, '_blank');
 };
