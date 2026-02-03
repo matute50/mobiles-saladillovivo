@@ -142,8 +142,8 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
     // Calculamos el progreso proporcional al tiempo real vs duración ajustada.
     const effectiveTime = video.currentTime / video.playbackRate;
 
-    // Fade out 0.5s antes de los 4s (es decir, a los 3.5s del tiempo efectivo)
-    if (!isIntroFadingOut && effectiveTime >= 3.5) {
+    // Fade out 0.3s antes de los 4s (es decir, a los 3.7s del tiempo efectivo)
+    if (!isIntroFadingOut && effectiveTime >= 3.7) {
       setIsIntroFadingOut(true);
     }
   };
@@ -181,7 +181,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
       {/* PLAYER A */}
       <div className={cn(
-        "absolute inset-0 transition-opacity duration-1000",
+        "absolute inset-0 transition-opacity duration-300",
         // OPTIMIZACIÓN v18.0: Permitir visibilidad lógica (aunque tapada por intro) para que el navegador no pause
         (activeSlot === 'A') ? "z-10 opacity-100" : "z-0 opacity-100"
       )}>
@@ -198,7 +198,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onEnded={activeSlot === 'A' ? handleContentEnded : () => { }}
             onNearEnd={activeSlot === 'A' ? () => {
               const isNews = 'url_slide' in contentA;
-              triggerTransition(isNews ? 1000 : 0);
+              triggerTransition(isNews ? 300 : 0);
             } : undefined}
             onStart={activeSlot === 'A' ? handleStart : undefined}
             onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
@@ -209,7 +209,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
       {/* PLAYER B */}
       <div className={cn(
-        "absolute inset-0 transition-opacity duration-1000",
+        "absolute inset-0 transition-opacity duration-300",
         (activeSlot === 'B') ? "z-10 opacity-100" : "z-0 opacity-100"
       )}>
         {contentB && (
@@ -219,7 +219,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             onEnded={activeSlot === 'B' ? handleContentEnded : () => { }}
             onNearEnd={activeSlot === 'B' ? () => {
               const isNews = 'url_slide' in contentB;
-              triggerTransition(isNews ? 1000 : 0);
+              triggerTransition(isNews ? 300 : 0);
             } : undefined}
             onStart={activeSlot === 'B' ? handleStart : undefined}
             onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
@@ -232,7 +232,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
       {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[999] para supremacía TOTAL (v23.0) */}
       <div className={cn(
-        "absolute inset-0 z-[999] bg-black transition-opacity duration-1000",
+        "absolute inset-0 z-[999] bg-black transition-opacity duration-300",
         (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
         {/* OPTIMIZACIÓN v16.0: Eliminamos 'key' para evitar re-mount. El nodo persiste. */}

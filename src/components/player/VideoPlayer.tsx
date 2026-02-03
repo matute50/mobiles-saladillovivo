@@ -39,7 +39,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    setTimeout(() => onEnded(), 500); // 0.5s para fade out (Skill v4.0)
+    setTimeout(() => onEnded(), 200); // 0.2s para fade out (Fast Transition)
   }, [onEnded]);
 
   useEffect(() => {
