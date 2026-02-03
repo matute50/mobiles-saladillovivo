@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/client';
 import 'swiper/css';
 
+import { Maximize } from 'lucide-react';
+
 // Sub-componentes
 // Sub-componentes
 import { Header } from './Header';
@@ -142,6 +144,8 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
 
   const videoContainerRef = React.useRef<HTMLDivElement>(null);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // Helper para Fullscreen Cross-Browser
   const toggleFullscreen = async (enter: boolean) => {
     try {
@@ -170,6 +174,15 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
   const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
+    const handleFullscreenChange = () => {
+      const doc = document as any;
+      const isFull = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+      setIsFullscreen(isFull);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
     const handleOrientationChange = () => {
       const isLand = window.matchMedia("(orientation: landscape)").matches;
       // Pequeño workaround para teclados virtuales: verificar que el alto sea menor que el ancho
@@ -199,6 +212,9 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
     window.addEventListener("resize", handleOrientationChange);
 
     return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+
       if (mediaQuery.removeEventListener) {
         mediaQuery.removeEventListener("change", handleOrientationChange);
       } else {
@@ -231,6 +247,16 @@ export default function MobileLayout({ data, initialParams }: { data: PageData; 
             : "relative z-40 w-full aspect-video bg-black"
         )}>
         <VideoSection isMobile={true} isDark={isDark} />
+
+        {/* Botón de Rescate para Fullscreen si falló el automático */}
+        {isLandscape && !isFullscreen && (
+          <button
+            onClick={() => toggleFullscreen(true)}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] bg-black/60 text-white p-4 rounded-full backdrop-blur-sm border border-white/20 animate-pulse"
+          >
+            <Maximize size={48} />
+          </button>
+        )}
       </div>
 
       {!isLandscape && (
