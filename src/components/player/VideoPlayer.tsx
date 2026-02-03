@@ -139,37 +139,72 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
     }
   }, [isArticle, shouldPlay, isFadingOut, playAudio, pauseAudio, articleData, triggerEnd, onNearEnd]);
 
+  const [slideHtml, setSlideHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (articleData?.url_slide) {
+      const fetchAndProcess = async () => {
+        try {
+          const res = await fetch(articleData.url_slide!);
+          if (!res.ok) throw new Error("Failed to load slide");
+          const originalHtml = await res.text();
+
+          const baseUrl = articleData.url_slide!.substring(0, articleData.url_slide!.lastIndexOf('/') + 1);
+
+          // Inyección inteligente: Base URL + CSS Responsivo
+          const responsiveStyles = `
+            <base href="${baseUrl}">
+            <style>
+              @media (orientation: landscape) {
+                h1, h2, .titulo, .title, [class*="titulo"], [class*="title"] {
+                  font-size: 6vh !important;
+                  line-height: 1.1 !important;
+                  margin-bottom: 0.5rem !important;
+                }
+                p, .bajada, .description {
+                  font-size: 3vh !important;
+                  line-height: 1.4 !important;
+                }
+                /* Ajustar padding del contenedor si es necesario */
+                body {
+                  padding: 0 4vw !important;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                }
+              }
+            </style>
+          `;
+
+          // Insertar antes del cierre de head, o al principio si no hay head
+          const modifiedHtml = originalHtml.includes('</head>')
+            ? originalHtml.replace('</head>', `${responsiveStyles}</head>`)
+            : responsiveStyles + originalHtml;
+
+          setSlideHtml(modifiedHtml);
+        } catch (err) {
+          console.warn("Could not fetch slide content for styling, falling back to direct iframe", err);
+          setSlideHtml(null);
+        }
+      };
+
+      fetchAndProcess();
+    }
+  }, [articleData?.url_slide]);
+
   if (isArticle && articleData?.url_slide) {
     return (
       // v20.0: Eliminado fade-out visual (opacity permanece 100). La intro cubre esto.
       <div className="w-full h-full bg-black opacity-100">
         <iframe
-          src={articleData.url_slide}
+          key={articleData.url_slide} // Force re-render on change
+          src={!slideHtml ? articleData.url_slide : undefined}
+          srcDoc={slideHtml || undefined}
           className="w-full h-full border-0"
           scrolling="no"
           allow="autoplay; fullscreen"
           sandbox="allow-scripts allow-forms allow-presentation allow-same-origin"
-          onLoad={(e) => {
-            if (onStart) onStart();
-            // INTENTO AUTO-RESPONSIVE: Inyectar CSS si es Same-Origin
-            try {
-              const doc = e.currentTarget.contentDocument;
-              if (doc) {
-                const style = doc.createElement('style');
-                style.textContent = `
-                      @media (orientation: landscape) {
-                         h1, .titulo, .title, [class*="titulo"], [class*="title"] {
-                            font-size: clamp(2rem, 5vw, 4rem) !important;
-                            line-height: 1.1 !important;
-                         }
-                      }
-                   `;
-                doc.head.appendChild(style);
-              }
-            } catch (err) {
-              console.warn("Cross-Origin restriction: Cannot inject responsive styles into news slide.", err);
-            }
-          }}
+          onLoad={onStart}
         />
         {!isPlayerReady && articleData.imagen && (
           <div className="absolute inset-0 bg-black">
