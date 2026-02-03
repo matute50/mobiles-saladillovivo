@@ -286,7 +286,10 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
           e.stopPropagation();
           if (currentContent) shareToWhatsApp(currentContent);
         }}
-        className="absolute top-4 right-4 z-[60] p-3 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 active:scale-90 transition-all shadow-lg"
+        className={cn(
+          "absolute top-4 right-4 z-[60] p-3 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 active:scale-90 transition-all shadow-lg duration-500",
+          (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
       >
         <Share2 size={24} />
       </button>
