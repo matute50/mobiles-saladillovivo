@@ -2,15 +2,19 @@ export const shareToWhatsApp = (content: any) => {
     if (!content) return;
 
     // 1. Extraction & Cleaning (Adaptado al Prompt + Contexto de App)
-    const isVideo = 'videoUrl' in content || 'url' in content || 'youtube_id' in content; // Basic detection
+    // v46.0: Robust Detection based on types.ts (Article has 'titulo', Video has 'nombre')
+    const isVideo = 'nombre' in content && !('titulo' in content);
+    const isArticle = 'titulo' in content;
+
     const rawTitle = content.titulo || content.title || content.nombre || "Nuevo Contenido";
     const id = content.id;
 
     // Generamos el App Link (Canonical) para que WhatsApp use nuestros metadatos optimizados (page.tsx)
-    // Usamos t=Date.now() como "Cache Buster" implícito si quisiéramos, pero el prompt pide "Limpieza de URL".
-    // Sin embargo, para que el preview funcione, necesitamos el link de la APP, no el directo de YouTube/mp4.
     const baseUrl = 'https://m.saladillovivo.com.ar';
-    const path = isVideo ? `/video/${id}` : `/articulo/${id}`;
+
+    // v50.0 CRITICAL FIX: The app does NOT have /video or /articulo routes. 
+    // It relies on Query Params (?v=... & ?id=...) handled by page.tsx
+    const path = isArticle ? `/?id=${id}` : `/?v=${id}`;
 
     // "CleanUrl" según prompt (force https), applied to our App Link
     // v45.0: CACHE BUSTER FORCE (Re-activado estrategicamente)
@@ -21,7 +25,8 @@ export const shareToWhatsApp = (content: any) => {
     const titleUpper = rawTitle.toString().toUpperCase().replaceAll('|', ' ').trim();
 
     // Prompt Text: "*TITLE*\n\nHe seleccionado este video para ti. Míralo aquí:\n\nURL"
-    const body = `*${titleUpper}*\n\nHe seleccionado este video para ti. Míralo aquí:\n\n${cleanUrl}`;
+    const contextText = isArticle ? "He seleccionado esta noticia para ti." : "He seleccionado este video para ti.";
+    const body = `*${titleUpper}*\n\n${contextText} Míralo aquí:\n\n${cleanUrl}`;
 
     // 3. Generación de Deep Link
     // encodeURIComponent es CRÍTICO según el prompt
