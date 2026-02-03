@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, ArrowUpRight, Menu } from 'lucide-react';
+import { X, Share, MoreVertical, PlusSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -14,11 +14,9 @@ interface InstallModalProps {
 export const InstallModal = ({ isOpen, onClose, isDark }: InstallModalProps) => {
     if (!isOpen) return null;
 
-    const mainColor = isDark ? "#6699ff" : "#003399";
-
     return (
         <div
-            className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 px-4"
+            className="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-4"
             onClick={onClose}
         >
             <div
@@ -32,46 +30,76 @@ export const InstallModal = ({ isOpen, onClose, isDark }: InstallModalProps) => 
                 <button
                     onClick={onClose}
                     className={cn(
-                        "absolute top-3 right-3 p-1 rounded-full transition-colors",
+                        "absolute top-3 right-3 p-2 rounded-full transition-colors",
                         isDark ? "text-white/50 hover:bg-white/10 hover:text-white" : "text-black/50 hover:bg-black/10 hover:text-black"
                     )}
                 >
                     <X size={20} />
                 </button>
 
-                {/* Icono de la App */}
-                <div className="mb-4 relative w-20 h-20 rounded-[18px] overflow-hidden shadow-lg border border-white/10">
-                    <Image
-                        src="/icon.png"
-                        alt="Saladillo Vivo"
-                        fill
-                        className="object-cover"
-                    />
+                {/* Cabecera con Logo */}
+                <div className="flex flex-col items-center mb-6">
+                    <div className="relative w-24 h-24 mb-4 rounded-[22px] overflow-hidden shadow-2xl border border-white/10">
+                        <Image
+                            src="/icon-192.png"
+                            alt="Saladillo Vivo"
+                            fill
+                            className="object-cover"
+                            sizes="96px"
+                            priority
+                        />
+                    </div>
+                    <h3 className={cn(
+                        "text-xl font-black italic tracking-tight",
+                        isDark ? "text-white" : "text-neutral-900"
+                    )}>
+                        Instalar Saladillo Vivo
+                    </h3>
+                    <p className={cn(
+                        "text-sm font-medium mt-1",
+                        isDark ? "text-neutral-400" : "text-neutral-500"
+                    )}>
+                        Agrega la app a tu inicio para una mejor experiencia.
+                    </p>
                 </div>
 
-                <h3 className={cn(
-                    "text-xl font-black italic tracking-tight mb-2",
-                    isDark ? "text-white" : "text-neutral-900"
+                {/* Instrucciones */}
+                <div className={cn(
+                    "w-full text-left space-y-4 mb-6 p-4 rounded-xl",
+                    isDark ? "bg-white/5" : "bg-neutral-100"
                 )}>
-                    Instalar Aplicación
-                </h3>
+                    {/* iOS */}
+                    <div className="flex items-start gap-3">
+                        <div className="shrink-0 p-2 bg-blue-500/10 rounded-lg text-blue-500 mt-1">
+                            <Share size={18} />
+                        </div>
+                        <div>
+                            <p className={cn("text-xs font-bold uppercase mb-1 opacity-70", isDark ? "text-white" : "text-black")}>iPhone / iPad (Safari)</p>
+                            <p className={cn("text-sm leading-snug", isDark ? "text-neutral-300" : "text-neutral-700")}>
+                                Toca <b className="text-blue-500">Compartir</b> y elige <span className="whitespace-nowrap font-bold"><PlusSquare size={12} className="inline mx-1 mb-0.5" />Agregar a Inicio</span>
+                            </p>
+                        </div>
+                    </div>
 
-                <p className={cn(
-                    "text-sm font-medium leading-relaxed mb-6",
-                    isDark ? "text-neutral-400" : "text-neutral-600"
-                )}>
-                    Instalación desde el menu: pulsa en <b className={isDark ? "text-white" : "text-black"}>Opciones</b> y elige <span className="inline-block px-1.5 py-0.5 rounded bg-neutral-100 text-black text-xs font-bold border border-neutral-200 mt-1">Agregar a pantalla de inicio</span>
-                </p>
+                    <div className={cn("w-full h-px", isDark ? "bg-white/10" : "bg-black/10")} />
 
-                {/* Visual Aid / Flecha animada opcional */}
-                <div className="flex items-center justify-center gap-2 mb-2 opacity-50">
-                    <Menu size={20} />
-                    <ArrowUpRight size={20} className="animate-bounce" />
+                    {/* Android */}
+                    <div className="flex items-start gap-3">
+                        <div className="shrink-0 p-2 bg-green-500/10 rounded-lg text-green-500 mt-1">
+                            <MoreVertical size={18} />
+                        </div>
+                        <div>
+                            <p className={cn("text-xs font-bold uppercase mb-1 opacity-70", isDark ? "text-white" : "text-black")}>Android (Chrome)</p>
+                            <p className={cn("text-sm leading-snug", isDark ? "text-neutral-300" : "text-neutral-700")}>
+                                Toca el <b className="text-green-500">Menú</b> y elige <span className="font-bold">Instalar aplicación</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <button
                     onClick={onClose}
-                    className="mt-2 text-sm font-bold text-blue-500 hover:underline"
+                    className="py-3 px-8 rounded-full bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 active:scale-95 transition-all w-full"
                 >
                     Entendido
                 </button>
