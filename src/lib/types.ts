@@ -11,7 +11,7 @@ export interface Article {
   etiquetas: string[];
   url_slide?: string | null;
   audio_url?: string | null; // <-- Propiedad añadida para el audio de Google TTS
-  animation_duration?: number; 
+  animation_duration?: number;
 }
 
 export interface Video {
@@ -21,6 +21,7 @@ export interface Video {
   imagen: string | null;
   categoria: string;
   fecha: string;
+  volumen_extra?: number;
 }
 
 export interface Ad {

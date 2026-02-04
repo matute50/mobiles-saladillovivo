@@ -47,7 +47,8 @@ export async function getPageData(): Promise<PageData> {
       url: item.url || item.videoUrl || '',
       imagen: item.imagen || item.image || item.thumbnail || null,
       categoria: item.categoria || item.category || 'Varios',
-      fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString()
+      fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString(),
+      volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
     }));
 
     const mappedAds: Ad[] = (adsRes.data || []).map((item: any) => ({
@@ -116,6 +117,7 @@ export async function getVideoById(id: string): Promise<Video | null> {
     url: data.url || data.videoUrl || '',
     imagen: data.imagen || data.image || data.thumbnail || null,
     categoria: data.categoria || data.category || 'Varios',
-    fecha: data.createdAt || data.created_at || data.fecha || new Date().toISOString()
+    fecha: data.createdAt || data.created_at || data.fecha || new Date().toISOString(),
+    volumen_extra: data.volumen_extra ? Number(data.volumen_extra) : 1
   };
 }

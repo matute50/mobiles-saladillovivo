@@ -82,10 +82,16 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
 
     interval = setInterval(() => {
       setTargetVolume(prev => {
+        // vNormalización: Factor multiplicador desde DB (Default 1)
+        const multiplier = (videoData && videoData.volumen_extra) ? videoData.volumen_extra : 1;
+
         if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
-          // Fade In
-          if (prev >= globalVolume) return globalVolume;
-          return Math.min(globalVolume, prev + 0.05);
+          // Fade In con Multiplicador
+          // El objetivo final no es 'globalVolume', sino 'globalVolume * multiplier' (clamped a 1.0)
+          const finalGoal = Math.min(1, globalVolume * multiplier);
+
+          if (prev >= finalGoal) return finalGoal;
+          return Math.min(finalGoal, prev + 0.05);
         } else {
           // Fade Out (si está mutado, en fade out, o no debe sonar)
           if (prev <= 0) return 0;
