@@ -29,6 +29,37 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  /* -------------------------------------------------------------
+    * KEYBOARD DETECTION (v63.1) - MOVIDO AL INICIO PARA EVITAR ERROR #310
+    * Detectamos si la altura visual es significativamente menor al alto de ventana
+    * y si estamos en modo búsqueda (para mayor precisión).
+    * ------------------------------------------------------------- */
+  useEffect(() => {
+    // Check if window is defined (SSR safety)
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+
+    const handleResize = () => {
+      const height = window.visualViewport?.height || window.innerHeight;
+      const screenHeight = window.innerHeight;
+      // Si el viewport es menor al 85% de la pantalla, asumimos teclado
+      setIsKeyboardOpen(height < (screenHeight * 0.85) && isSearchOpen);
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+
+    // Initial check
+    handleResize();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
+    };
+  }, [isSearchOpen]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -161,31 +192,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
   if (!mounted) return null;
 
-  /* -------------------------------------------------------------
-     * KEYBOARD DETECTION (v63.1)
-     * Detectamos si la altura visual es significativamente menor al alto de ventana
-     * y si estamos en modo búsqueda (para mayor precisión).
-     * ------------------------------------------------------------- */
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-
-  useEffect(() => {
-    if (!window.visualViewport) return;
-
-    const handleResize = () => {
-      const height = window.visualViewport?.height || window.innerHeight;
-      const screenHeight = window.innerHeight;
-      // Si el viewport es menor al 75% de la pantalla, asumimos teclado
-      setIsKeyboardOpen(height < (screenHeight * 0.85) && isSearchOpen);
-    };
-
-    window.visualViewport.addEventListener('resize', handleResize);
-    window.visualViewport.addEventListener('scroll', handleResize); // A veces el scroll cambia en iOS
-
-    return () => {
-      window.visualViewport?.removeEventListener('resize', handleResize);
-      window.visualViewport?.removeEventListener('scroll', handleResize);
-    };
-  }, [isSearchOpen]);
 
 
   return (
