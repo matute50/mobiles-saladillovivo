@@ -31,7 +31,18 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       if (video) {
         title = video.nombre.substring(0, 60);
         description = "Mirá este video en Saladillo ViVo";
-        if (video.imagen) imageUrl = video.imagen;
+
+        // Prioridad 1: Imagen explícita del backend
+        if (video.imagen) {
+          imageUrl = video.imagen;
+        } else if (video.url) {
+          // Prioridad 2: Extracción robusta de YouTube
+          const match = video.url.match(/^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/);
+          const id = (match && match[1]) ? match[1] : null;
+          if (id && id.length === 11) {
+            imageUrl = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          }
+        }
       }
     }
   } catch (e) {
