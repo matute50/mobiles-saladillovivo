@@ -48,7 +48,7 @@ export const Header = React.memo(({
                 "shrink-0 h-11 flex items-center justify-between px-3 z-50 transition-all duration-300",
                 isDark
                     ? "bg-gradient-to-b from-white/30 to-black text-white"
-                    : "bg-gradient-to-b from-white to-black/60 text-black border-b"
+                    : "bg-gradient-to-b from-white to-black/60 text-black border-b border-black"
             )}>
                 {/* LADO IZQUIERDO: LOGO */}
                 {/* Si hay teclado o no hay busqueda -> Mostrar Logo */}
