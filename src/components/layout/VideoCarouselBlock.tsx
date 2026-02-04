@@ -149,7 +149,7 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onV
                                 unoptimized
                             />
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white/10 -mt-8">
+                                <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white -mt-8">
                                     <Play size={21} fill="white" />
                                 </div>
                             </div>

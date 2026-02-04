@@ -84,7 +84,7 @@ export const NewsSlider = React.memo(({
 
                                             <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center text-white">
                                                 <div className={cn(
-                                                    "flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 mb-2 p-3",
+                                                    "flex items-center justify-center rounded-full backdrop-blur-sm border border-white mb-2 p-3",
                                                     isDark ? "bg-[#6699ff]/50" : "bg-[#003399]/50"
                                                 )}>
                                                     <Play size={slide.type === 'featured' ? 32 : 24} fill="white" className="ml-1" />
