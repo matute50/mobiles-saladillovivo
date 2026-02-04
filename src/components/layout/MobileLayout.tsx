@@ -242,7 +242,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
             />
           )}
 
-          <div className="h-[160px] shrink-0 -mt-[22px]">
+          <div className={cn("h-[160px] shrink-0", isKeyboardOpen ? "mt-2" : "-mt-[22px]")}>
             {/* Pasar searchQuery para activar 'TU BUSQUEDA' */}
             <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} searchQuery={searchQuery} />
           </div>
