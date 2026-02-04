@@ -73,7 +73,7 @@ export const DecreeModal = ({ isOpen, onClose, isDark }: DecreeModalProps) => {
 
                             <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-white/5 bg-white">
                                 <Image
-                                    src="/DECRETO.png"
+                                    src="/decreto.png"
                                     alt="Decreto Municipal"
                                     width={800}
                                     height={1100}
