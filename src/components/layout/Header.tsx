@@ -95,27 +95,34 @@ export const Header = React.memo(({
                     {!isSearchOpen && (
                         <>
                             <button
-                                onClick={async () => {
-                                    const shareData = {
-                                        title: 'Saladillo Vivo',
-                                        text: 'Sentí el pulso de Saladillo: su historia, el trabajo y el talento que proyecta nuestro futuro. Mucho más que noticias.',
-                                        url: 'https://m.saladillovivo.com.ar'
-                                    };
-
-                                    try {
-                                        if (navigator.share) {
-                                            await navigator.share(shareData);
-                                        } else {
-                                            const message = `${shareData.text} ${shareData.url}`;
-                                            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-                                        }
-                                    } catch (err) {
-                                        console.error('Error sharing:', err);
-                                    }
+                                onClick={() => {
+                                    const text = "Sentí el pulso de Saladillo: su historia, el trabajo y el talento que proyecta nuestro futuro. Mucho más que noticias.";
+                                    const url = "https://m.saladillovivo.com.ar";
+                                    const message = `${text} ${url}`;
+                                    // v63.0: Direct WhatsApp share (User Request)
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
                                 }}
-                                className={isDark ? "text-white" : "text-black"}
+                                className={isDark ? "text-white hover:text-green-400" : "text-black hover:text-green-600"}
                             >
-                                <Share2 size={20} />
+                                {/* WhatsApp Icon SVG */}
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+                                    <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0 .5-.5l1.4-1.4a.5.5 0 0 0 0-.7l-.7-.7a.5.5 0 0 0-.7 0l-1.4 1.4a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5Z" opacity="0" />
+                                    <path d="M9 10a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1h-1.5" opacity="0" />
+                                    <path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-4.85-1.4l-3.9 1.4 1.4-3.9A9 9 0 0 1 12 3c4.97 0 9 4.03 9 9z" style={{ display: 'none' }} />
+                                    {/* Simple Phone/Speech bubble shape approximating WhatsApp */}
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                </svg>
                             </button>
 
                             <button
