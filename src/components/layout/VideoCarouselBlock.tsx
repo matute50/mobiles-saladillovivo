@@ -165,7 +165,7 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onV
                                 <ShareButton
                                     content={v}
                                     variant="simple"
-                                    className="bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 p-1.5"
+                                    className="bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 p-1.5 border border-black"
                                     iconSize={16}
                                 />
                             </div>
