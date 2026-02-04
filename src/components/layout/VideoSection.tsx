@@ -272,15 +272,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       {/* SHARE BUTTON FOR ARTICLES (Top Right) */}
       {/* Se oculta si está Muted (req: "mientras video muted nunca aparecera ningun otro control") ?? */}
       {/* User dijo: "mientras el video este muted nunca aparecera ningun otro control ni linea de tiempo". Asumimos también floating controls. */}
-      {!isMuted && isActiveContentArticle && activeContent && (
-        <div className="absolute top-4 right-4 z-[80]">
-          <ShareButton
-            content={activeContent}
-            variant="floating"
-            className={cn("transition-opacity duration-300", isExtendedOpen ? "opacity-0 pointer-events-none" : "opacity-100")}
-          />
-        </div>
-      )}
+
 
       {/* CONTROLES (Solo Video - Pausa, Mute, Share, Timeline) */}
       {/* Se ocultan TOTALMENTE si está Muted */}
@@ -324,8 +316,8 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
               {isMuted ? <VolumeX size={36} fill="white" /> : <Volume2 size={36} fill="white" />}
             </button>
 
-            {/* SHARE BUTTON (Solo Video - Integrado en controles) */}
-            {!isActiveContentArticle && activeContent && (
+            {/* SHARE BUTTON (Integrado en controles para todo tipo de contenido) */}
+            {activeContent && (
               <ShareButton
                 content={activeContent}
                 variant="player-control"
