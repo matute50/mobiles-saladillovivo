@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { Video } from '@/lib/types';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
+import { ShareButton } from '@/components/ui/ShareButton';
+
 
 interface VideoCarouselBlockProps {
     videos: Video[];
@@ -16,9 +18,11 @@ interface VideoCarouselBlockProps {
 
 const getYouTubeThumbnail = (url: string) => {
     if (!url) return '/placeholder.png';
-    const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-    return (match && match[2].length === 11) ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : '/placeholder.png';
+    // Robust Regex for ID extraction
+    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : '/placeholder.png'; // Updated to hqdefault (better quality)
 };
+
 
 import { getDisplayCategory } from '@/lib/categoryMappings';
 
@@ -132,6 +136,17 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
                                     {v.nombre}
                                 </p>
                             </div>
+
+                            {/* Share Button Overlay */}
+                            <div className="absolute top-1 right-1 z-30">
+                                <ShareButton
+                                    content={v}
+                                    variant="simple"
+                                    className="bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 p-1.5"
+                                    iconSize={16}
+                                />
+                            </div>
+
                         </div>
                     </SwiperSlide>
                 ))}

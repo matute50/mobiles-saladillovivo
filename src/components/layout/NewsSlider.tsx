@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { Article } from '@/lib/types';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
+import { ShareButton } from '@/components/ui/ShareButton';
+
 
 interface NewsSliderProps {
     newsSlides: any[];
@@ -68,7 +70,18 @@ export const NewsSlider = React.memo(({
                                                 className="object-cover opacity-90"
                                             />
 
+                                            {/* Share Button Overlay */}
+                                            <div className="absolute top-2 right-2 z-30">
+                                                <ShareButton
+                                                    content={item}
+                                                    variant="simple"
+                                                    className="bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 p-1.5"
+                                                    iconSize={18}
+                                                />
+                                            </div>
+
                                             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-10" />
+
                                             <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center text-white">
                                                 <div className={cn(
                                                     "flex items-center justify-center rounded-full backdrop-blur-sm border border-white/20 mb-2 p-3",
