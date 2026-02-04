@@ -86,7 +86,7 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onV
     }, [shuffledVideos, isRandomized]);
 
     const isSearchMode = !!(searchQuery && searchQuery.trim().length > 0);
-    const currentCat = isSearchMode ? 'TU BUSQUEDA' : ((categories[activeCatIndex] as string) || 'VARIOS');
+    const currentCat = isSearchMode ? 'TU BUSQUEDA 🔎' : ((categories[activeCatIndex] as string) || 'VARIOS');
 
     // Si es búsqueda, mostrar TODOS los resultados (ya están filtrados por el padre). Si no, filtrar por categoría.
     const filtered = useMemo(() => {

@@ -12,8 +12,7 @@ import 'swiper/css';
 
 import { Maximize } from 'lucide-react';
 
-// Sub-componentes
-// Sub-componentes
+
 import { Header } from './Header';
 import { VideoCarouselBlock } from './VideoCarouselBlock';
 import { NewsSlider } from './NewsSlider';
@@ -248,10 +247,10 @@ export default function MobileLayout({ data }: { data: PageData }) {
               videos={filteredData?.videos?.allVideos || []}
               isDark={isDark}
               searchQuery={searchQuery}
-              onVideoSelect={() => {
+              onVideoSelect={React.useCallback(() => {
                 setSearchQuery("");
                 setIsSearchOpen(false);
-              }}
+              }, [])}
             />
           </div>
         </div>
