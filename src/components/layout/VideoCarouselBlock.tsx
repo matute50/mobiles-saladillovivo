@@ -18,9 +18,10 @@ interface VideoCarouselBlockProps {
 
 const getYouTubeThumbnail = (url: string) => {
     if (!url) return '/placeholder.png';
-    // Robust Regex for ID extraction
-    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-    return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : '/placeholder.png'; // Updated to hqdefault (better quality)
+    // Comprehensive Regex: Supports watch?v=, youtu.be, embed, shorts, v, etc.
+    const match = url.match(/^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/);
+    const id = (match && match[1]) ? match[1] : null;
+    return (id && id.length === 11) ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : '/placeholder.png';
 };
 
 
