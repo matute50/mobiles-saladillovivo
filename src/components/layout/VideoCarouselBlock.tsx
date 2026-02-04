@@ -132,7 +132,7 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onV
                                 unmute();
                                 playManual(v);
                                 if (onVideoSelect) {
-                                    setTimeout(() => onVideoSelect(), 0);
+                                    setTimeout(() => onVideoSelect(), 500);
                                 }
                             }}
                             className={cn(
