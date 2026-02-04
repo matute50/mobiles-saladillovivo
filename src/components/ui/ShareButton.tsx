@@ -47,66 +47,64 @@ export const ShareButton = ({
             }
         }
 
-    }
+        const shareData = {
+            title: shareTitle,
+            text: `${shareTitle}\n${shareUrl}`, // WhatsApp prefers text+url in body
+            url: shareUrl,
+        };
 
-    const shareData = {
-        title: shareTitle,
-        text: `${shareTitle}\n${shareUrl}`, // WhatsApp prefers text+url in body
-        url: shareUrl,
+        try {
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                setCopied(true);
+                toast.success("Link copiado al portapapeles");
+                setTimeout(() => setCopied(false), 2000);
+            }
+        } catch (err) {
+            console.error('Error sharing:', err);
+        }
     };
 
-    try {
-        if (navigator.share) {
-            await navigator.share(shareData);
-        } else {
-            await navigator.clipboard.writeText(shareUrl);
-            setCopied(true);
-            toast.success("Link copiado al portapapeles");
-            setTimeout(() => setCopied(false), 2000);
-        }
-    } catch (err) {
-        console.error('Error sharing:', err);
+    if (variant === 'player-control') {
+        return (
+            <button
+                onClick={handleShare}
+                className={cn(
+                    "group flex items-center justify-center rounded-full p-6 active:scale-90 transition-all duration-200 border bg-white/10 border-white/30 backdrop-blur-md",
+                    className
+                )}
+            >
+                {copied ? <Check size={36} className="text-green-400" /> : <Share2 size={36} fill="white" />}
+            </button>
+        );
     }
-};
 
-if (variant === 'player-control') {
+    if (variant === 'floating') {
+        return (
+            <button
+                onClick={handleShare}
+                className={cn(
+                    "p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white active:scale-95 transition-all shadow-lg",
+                    className
+                )}
+            >
+                {copied ? <Check size={iconSize} className="text-green-400" /> : <Share2 size={iconSize} />}
+            </button>
+        );
+    }
+
+    // Variant 'simple' (e.g. for Decree Modal or lists)
     return (
         <button
             onClick={handleShare}
             className={cn(
-                "group flex items-center justify-center rounded-full p-6 active:scale-90 transition-all duration-200 border bg-white/10 border-white/30 backdrop-blur-md",
+                "p-2 rounded-full hover:bg-white/10 transition-colors active:scale-95",
                 className
             )}
         >
-            {copied ? <Check size={36} className="text-green-400" /> : <Share2 size={36} fill="white" />}
+            {copied ? <Check size={iconSize} className="text-green-500" /> : <Share2 size={iconSize} />}
         </button>
     );
-}
-
-if (variant === 'floating') {
-    return (
-        <button
-            onClick={handleShare}
-            className={cn(
-                "p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white active:scale-95 transition-all shadow-lg",
-                className
-            )}
-        >
-            {copied ? <Check size={iconSize} className="text-green-400" /> : <Share2 size={iconSize} />}
-        </button>
-    );
-}
-
-// Variant 'simple' (e.g. for Decree Modal or lists)
-return (
-    <button
-        onClick={handleShare}
-        className={cn(
-            "p-2 rounded-full hover:bg-white/10 transition-colors active:scale-95",
-            className
-        )}
-    >
-        {copied ? <Check size={iconSize} className="text-green-500" /> : <Share2 size={iconSize} />}
-    </button>
-);
 };
