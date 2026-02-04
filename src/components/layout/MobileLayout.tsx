@@ -236,8 +236,8 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
       {!isLandscape && (
         <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
-          {/* Ocultar NewsSlider si hay teclado (User Request) */}
-          {!isKeyboardOpen && (
+          {/* Ocultar NewsSlider si hay teclado O si hay búsqueda activa (Prevent Layout Shift & "Resultados" flash) */}
+          {!isKeyboardOpen && !isSearchOpen && (
             <NewsSlider
               newsSlides={newsSlides}
               isDark={isDark}
