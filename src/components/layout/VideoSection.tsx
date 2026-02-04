@@ -252,18 +252,27 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
         />
       </div>
 
-      {/* BOTÓN UNMUTE INICIAL (Solo si no ha interactuado y está mutado) */}
-      <div className={cn(
-        "absolute inset-0 z-[60] flex items-center justify-center pointer-events-none transition-all duration-700 ease-in-out",
-        (isMuted && !hasInteracted && !isIntroVisible) ? "opacity-100 scale-100" : "opacity-0 scale-125"
-      )}>
-        <button onClick={(e) => { e.stopPropagation(); unmute(); }} className="w-28 h-28 bg-red-600/90 text-white rounded-full flex items-center justify-center shadow-[0_0_80px_rgba(220,38,38,0.7)] pointer-events-auto active:scale-90 transition-all duration-300 animate-pulse border-4 border-white/40 backdrop-blur-sm">
-          <VolumeX size={56} strokeWidth={2.5} />
-        </button>
-      </div>
+      {/* BOTÓN UNMUTE INICIAL / ESTADO MUTED (v24.0) */}
+      {/* Lógica: Si está muteado, este botón es lo ÚNICO que se ve. Bloquea el resto. */}
+      {isMuted && (
+        <div className={cn(
+          "absolute inset-0 z-[60] flex items-center justify-center transition-all duration-300",
+          (showControls || !hasInteracted || isMuted) ? "opacity-100" : "opacity-0" // Siempre visible si está muteado y user interactúa o es inicio
+        )}>
+          {/* El botón en sí tiene stopPropagation para que el click no active los controles generales */}
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+            className="w-28 h-28 bg-red-600/90 text-white rounded-full flex items-center justify-center shadow-[0_0_80px_rgba(220,38,38,0.7)] active:scale-90 transition-all duration-300 animate-pulse border-4 border-white/40 backdrop-blur-sm"
+          >
+            <VolumeX size={56} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
 
       {/* SHARE BUTTON FOR ARTICLES (Top Right) */}
-      {isActiveContentArticle && activeContent && (
+      {/* Se oculta si está Muted (req: "mientras video muted nunca aparecera ningun otro control") ?? */}
+      {/* User dijo: "mientras el video este muted nunca aparecera ningun otro control ni linea de tiempo". Asumimos también floating controls. */}
+      {!isMuted && isActiveContentArticle && activeContent && (
         <div className="absolute top-4 right-4 z-[80]">
           <ShareButton
             content={activeContent}
@@ -273,33 +282,60 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
         </div>
       )}
 
-      {/* CONTROLES (Solo Video) */}
-      <div className={cn("absolute inset-x-0 bottom-0 z-50 p-6 pt-12 bg-gradient-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-500", (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0 pointer-events-none")}>
+      {/* CONTROLES (Solo Video - Pausa, Mute, Share, Timeline) */}
+      {/* Se ocultan TOTALMENTE si está Muted */}
+      {!isMuted && (
+        <div className={cn("absolute inset-x-0 bottom-0 z-50 p-6 pt-12 bg-gradient-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-500", (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0 pointer-events-none")}>
 
-        <div className="mb-6 space-y-2">
-          <div className="flex justify-between text-[11px] font-bold text-white/70 tracking-tighter uppercase">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+          <div className="mb-6 space-y-2">
+            <div className="flex justify-between text-[11px] font-bold text-white/70 tracking-tighter uppercase">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+            <div className="relative h-2.5 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
+              <div className="absolute inset-y-0 left-0 bg-red-600 transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(220,38,38,0.8)]" style={{ width: `${progress}%` }} />
+            </div>
           </div>
-          <div className="relative h-2.5 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm">
-            <div className="absolute inset-y-0 left-0 bg-red-600 transition-all duration-300 ease-linear shadow-[0_0_10px_rgba(220,38,38,0.8)]" style={{ width: `${progress}%` }} />
+          <div className="flex items-center justify-center gap-8">
+
+            {/* PLAY / PAUSE */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsUserPlaying(!isUserPlaying); }}
+              className={cn(
+                "group flex items-center justify-center rounded-full border p-6 active:scale-90 transition-all duration-200",
+                !isUserPlaying
+                  ? "bg-red-600 border-white border-2 animate-pulse shadow-[0_0_20px_rgba(220,38,38,0.6)]" // Pausa: Rojo Intermitente (animate-pulse)
+                  : "bg-white/10 border-white/30 backdrop-blur-md"
+              )}
+            >
+              {isUserPlaying ? <Pause size={36} fill="white" className="text-white" /> : <Play size={36} fill="white" className="text-white ml-1" />}
+            </button>
+
+            {/* MUTE TOGGLE (En barra de controles) */}
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+              className={cn(
+                "group flex items-center justify-center rounded-full p-6 active:scale-90 transition-all duration-200 border",
+                isMuted
+                  ? "bg-red-600 border-white border-2" // Muted: Rojo Fijo (sin pulse, aunque acá sería raro ver este botón si ocultamos todo al estar muted, pero lo dejamos por consistencia de estado transition)
+                  : "bg-white/10 border-white/30 backdrop-blur-md"
+              )}
+            >
+              {isMuted ? <VolumeX size={36} fill="white" /> : <Volume2 size={36} fill="white" />}
+            </button>
+
+            {/* SHARE BUTTON (Solo Video - Integrado en controles) */}
+            {!isActiveContentArticle && activeContent && (
+              <ShareButton
+                content={activeContent}
+                variant="player-control"
+              // ShareButton interno ya maneja el check verde (ShareButton.tsx:79 -> text-green-400)
+              />
+            )}
+
           </div>
         </div>
-        <div className="flex items-center justify-center gap-8">
-          <button onClick={(e) => { e.stopPropagation(); setIsUserPlaying(!isUserPlaying); }} className="group flex items-center justify-center rounded-full border border-white/30 bg-white/10 backdrop-blur-md p-6 active:scale-90 transition-all duration-200">
-            {isUserPlaying ? <Pause size={36} fill="white" className="text-white" /> : <Play size={36} fill="white" className="text-white ml-1" />}
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className={cn("group flex items-center justify-center rounded-full p-6 active:scale-90 transition-all duration-200 border", isMuted ? "bg-red-600 border-white border-2" : "bg-white/10 border-white/30 backdrop-blur-md")}>
-            {isMuted ? <VolumeX size={36} fill="white" /> : <Volume2 size={36} fill="white" />}
-          </button>
-
-          {/* SHARE BUTTON (Solo Video - Integrado en controles) */}
-          {!isActiveContentArticle && activeContent && (
-            <ShareButton content={activeContent} variant="player-control" />
-          )}
-
-        </div>
-      </div>
+      )}
 
       {/* ZÓCALO DE CLIMA EXTENDIDO (v5.2) - Superior y Ultra-Fino */}
       <div className={cn(
