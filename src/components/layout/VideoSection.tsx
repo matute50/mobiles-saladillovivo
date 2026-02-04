@@ -179,8 +179,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   return (
     <div ref={containerRef} className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
       <style jsx global>{`
-        .analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } 
-        @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }
+
         /* vShimmer Effect: Flash & Wait + Pulse */
         @keyframes shimmer-interval {
             0% { background-position: 0% 50%; transform: scale(1); }
@@ -245,7 +244,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
         )}
       </div>
 
-      {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
+
 
       {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[999] para supremacía TOTAL (v23.0) */}
       <div className={cn(
@@ -282,9 +281,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
         </div>
       )}
 
-      {/* SHARE BUTTON FOR ARTICLES (Top Right) */}
-      {/* Se oculta si está Muted (req: "mientras video muted nunca aparecera ningun otro control") ?? */}
-      {/* User dijo: "mientras el video este muted nunca aparecera ningun otro control ni linea de tiempo". Asumimos también floating controls. */}
+
 
 
       {/* CONTROLES (Solo Video - Pausa, Mute, Share, Timeline) */}
