@@ -14,7 +14,7 @@ type Props = {
 export async function generateMetadata(): Promise<Metadata> {
   const title = "Saladillo ViVo";
   const description = "Noticias y videos de Saladillo en tiempo real.";
-  const imageUrl = `${SITE_URL}/brand_social.png?v=3`; // v3.0: Full bleed logo (brand_social.png)
+  const imageUrl = `${SITE_URL}/brand_social.png?v=4`; // v4.0: Horizontal layout (Icon Left, Text Right)
 
   return {
     metadataBase: new URL(SITE_URL),
