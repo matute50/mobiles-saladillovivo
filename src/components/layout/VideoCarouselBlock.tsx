@@ -110,7 +110,11 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onV
                     </button>
                 )}
 
-                <h2 className={cn("font-black italic text-xl uppercase tracking-wider text-center flex-1 truncate px-2", themeColorClass)}>
+                <h2 className={cn(
+                    "font-black italic text-xl uppercase tracking-wider text-center flex-1 truncate px-2 transition-all",
+                    themeColorClass,
+                    isDark ? "drop-shadow-[0_0_7px_rgba(255,255,255,0.5)]" : "drop-shadow-[0_0_7px_rgba(0,0,0,0.5)]"
+                )}>
                     {currentCat}
                 </h2>
 

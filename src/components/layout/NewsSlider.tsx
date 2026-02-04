@@ -38,7 +38,10 @@ export const NewsSlider = React.memo(({
                 <button onClick={onPrev} className={isDark ? "text-[#6699ff]" : "text-[#003399]"}>
                     <ChevronLeft size={32} />
                 </button>
-                <h3 className={cn("font-black italic text-xl uppercase text-center flex-1 truncate px-2 mt-1", isDark ? "text-[#6699ff]" : "text-[#003399]")}>
+                <h3 className={cn(
+                    "font-black italic text-xl uppercase text-center flex-1 truncate px-2 mt-1 transition-all",
+                    isDark ? "text-[#6699ff] drop-shadow-[0_0_7px_rgba(255,255,255,0.5)]" : "text-[#003399] drop-shadow-[0_0_7px_rgba(0,0,0,0.5)]"
+                )}>
                     {searchQuery ? "Resultados" : "ÚLTIMAS NOTICIAS"}
                 </h3>
                 <button onClick={onNext} className={isDark ? "text-[#6699ff]" : "text-[#003399]"}>
