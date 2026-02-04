@@ -39,8 +39,10 @@ export const NewsSlider = React.memo(({
                     <ChevronLeft size={32} />
                 </button>
                 <h3 className={cn(
-                    "font-black italic text-xl uppercase text-center flex-1 truncate px-2 mt-1 transition-all",
-                    isDark ? "text-[#6699ff] drop-shadow-[0_0_7px_rgba(255,255,255,0.5)]" : "text-[#003399] drop-shadow-[0_0_7px_rgba(0,0,0,0.5)]"
+                    "font-black italic text-xl uppercase text-center flex-1 truncate px-2 mt-1 transition-all bg-[length:200%_auto] animate-shimmer bg-clip-text text-transparent",
+                    isDark
+                        ? "bg-gradient-to-r from-[#6699ff] via-[#ffffff] to-[#6699ff]"
+                        : "bg-gradient-to-r from-[#003399] via-[#0066cc] to-[#003399]"
                 )}>
                     {searchQuery ? "Resultados" : "ÚLTIMAS NOTICIAS"}
                 </h3>
