@@ -31,40 +31,28 @@ export const ShareButton = ({
         const siteUrl = 'https://m.saladillovivo.com.ar';
         let shareUrl = customUrl || siteUrl;
         let shareTitle = customTitle || "Saladillo ViVo";
-        let shareText = "Mirá esto en Saladillo ViVo";
 
         if (content) {
             if ('url_slide' in content) {
                 // Es Noticia (Article)
                 shareUrl = `${siteUrl}/?id=${content.id}`;
                 shareTitle = content.titulo;
-                shareText = content.bajada || shareTitle;
             } else if ('url' in content) {
                 // Es Video (Video)
                 shareUrl = `${siteUrl}/?v=${content.id}`;
                 shareTitle = content.nombre;
-                shareText = `Mirá el video "${content.nombre}" en Saladillo ViVo`;
             }
         }
 
-        const shareData = {
-            title: shareTitle,
-            text: `${shareTitle}\n${shareUrl}`, // WhatsApp prefers text+url in body
-            url: shareUrl,
-        };
+        // WhatsApp Direct Share
+        const text = `${shareTitle}\n${shareUrl}`;
+        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
 
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData);
-            } else {
-                await navigator.clipboard.writeText(shareUrl);
-                setCopied(true);
-                toast.success("Link copiado al portapapeles");
-                setTimeout(() => setCopied(false), 2000);
-            }
-        } catch (err) {
-            console.error('Error sharing:', err);
-        }
+        window.open(whatsappUrl, '_blank');
+
+        // Feedback visual simple
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     if (variant === 'player-control') {
