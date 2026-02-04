@@ -16,7 +16,7 @@ export async function getPageData(): Promise<PageData> {
         .from('videos')
         .select('*')
         .order('createdAt', { ascending: false })
-        .limit(100), // v61.0: OPTIMIZATION - Reduced from 5000 to 100 for initial load
+        .limit(5000), // v62.0: REVERT - Back to 5000 (User Request: Missing content)
       supabase
         .from('anuncios')
         .select('*')
