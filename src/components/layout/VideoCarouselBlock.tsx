@@ -111,10 +111,10 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onV
                 )}
 
                 <h2 className={cn(
-                    "font-black italic text-xl uppercase tracking-wider text-center flex-1 truncate px-2 transition-all bg-[length:200%_auto] animate-shimmer bg-clip-text text-transparent",
+                    "font-black italic text-xl uppercase tracking-wider text-center flex-1 truncate px-2 transition-all bg-[length:200%_auto] animate-shimmer-cat bg-clip-text text-transparent",
                     isDark
                         ? "bg-gradient-to-r from-[#6699ff] via-[#ffffff] to-[#6699ff]"
-                        : "bg-gradient-to-r from-[#003399] via-[#0066cc] to-[#003399]"
+                        : "bg-gradient-to-r from-[#003399] via-[#000000] to-[#003399]"
                 )}>
                     {currentCat}
                 </h2>

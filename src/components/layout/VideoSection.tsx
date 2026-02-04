@@ -186,8 +186,11 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             0% { background-position: 0% 50%; }
             100% { background-position: 200% 50%; }
         }
-        .animate-shimmer {
-            animation: shimmer 3s linear infinite;
+        .animate-shimmer-news {
+            animation: shimmer 6s linear infinite;
+        }
+        .animate-shimmer-cat {
+            animation: shimmer 7s linear infinite;
         }
       `}</style>
 
