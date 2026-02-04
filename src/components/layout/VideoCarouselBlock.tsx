@@ -15,6 +15,7 @@ interface VideoCarouselBlockProps {
     videos: Video[];
     isDark: boolean;
     searchQuery?: string;
+    onVideoSelect?: () => void;
 }
 
 const getYouTubeThumbnail = (url: string) => {
@@ -28,7 +29,7 @@ const getYouTubeThumbnail = (url: string) => {
 
 import { getDisplayCategory } from '@/lib/categoryMappings';
 
-export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery }: VideoCarouselBlockProps) => {
+export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onVideoSelect }: VideoCarouselBlockProps) => {
     const { playManual } = useMediaPlayer();
     const { unmute } = useVolume();
     const [activeCatIndex, setActiveCatIndex] = useState(0);

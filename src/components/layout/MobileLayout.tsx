@@ -244,7 +244,15 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
           <div className={cn("h-[160px] shrink-0", isKeyboardOpen ? "mt-2" : "-mt-[22px]")}>
             {/* Pasar searchQuery para activar 'TU BUSQUEDA' */}
-            <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} searchQuery={searchQuery} />
+            <VideoCarouselBlock
+              videos={filteredData?.videos?.allVideos || []}
+              isDark={isDark}
+              searchQuery={searchQuery}
+              onVideoSelect={() => {
+                setSearchQuery("");
+                setIsSearchOpen(false);
+              }}
+            />
           </div>
         </div>
       )}
