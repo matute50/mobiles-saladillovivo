@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
 import VideoPlayer from '@/components/player/VideoPlayer';
+import { ShareButton } from '@/components/ui/ShareButton';
 import { cn } from '@/lib/utils';
 import { Play, Pause, Volume2, VolumeX, X, Cloud, Sun as SunIcon, CloudRain, CloudLightning, MapPin } from 'lucide-react';
 import { useWeather } from '@/context/WeatherContext';
@@ -171,6 +172,9 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   // Player A es slotAContent
   const contentA = slotAContent;
   const contentB = slotBContent;
+  const activeContent = activeSlot === 'A' ? contentA : contentB;
+  const isActiveContentArticle = activeContent && ('url_slide' in activeContent || !('url' in activeContent));
+
 
   return (
     <div ref={containerRef} className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
@@ -258,8 +262,20 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
         </button>
       </div>
 
-      {/* CONTROLES */}
+      {/* SHARE BUTTON FOR ARTICLES (Top Right) */}
+      {isActiveContentArticle && activeContent && (
+        <div className="absolute top-4 right-4 z-[80]">
+          <ShareButton
+            content={activeContent}
+            variant="floating"
+            className={cn("transition-opacity duration-300", isExtendedOpen ? "opacity-0 pointer-events-none" : "opacity-100")}
+          />
+        </div>
+      )}
+
+      {/* CONTROLES (Solo Video) */}
       <div className={cn("absolute inset-x-0 bottom-0 z-50 p-6 pt-12 bg-gradient-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-500", (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0 pointer-events-none")}>
+
         <div className="mb-6 space-y-2">
           <div className="flex justify-between text-[11px] font-bold text-white/70 tracking-tighter uppercase">
             <span>{formatTime(currentTime)}</span>
@@ -276,6 +292,12 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
           <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className={cn("group flex items-center justify-center rounded-full p-6 active:scale-90 transition-all duration-200 border", isMuted ? "bg-red-600 border-white border-2" : "bg-white/10 border-white/30 backdrop-blur-md")}>
             {isMuted ? <VolumeX size={36} fill="white" /> : <Volume2 size={36} fill="white" />}
           </button>
+
+          {/* SHARE BUTTON (Solo Video - Integrado en controles) */}
+          {!isActiveContentArticle && activeContent && (
+            <ShareButton content={activeContent} variant="player-control" />
+          )}
+
         </div>
       </div>
 

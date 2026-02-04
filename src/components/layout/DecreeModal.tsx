@@ -5,6 +5,8 @@ import { X, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import { ShareButton } from "@/components/ui/ShareButton";
+
 
 interface DecreeModalProps {
     isOpen: boolean;
@@ -53,7 +55,15 @@ export const DecreeModal = ({ isOpen, onClose, isDark }: DecreeModalProps) => {
                 <div className="shrink-0 flex items-center justify-between px-4 py-1 border-b border-white/10">
                     {/* Botón Volver eliminado */}
                     <div className="flex-1" />
+                    <ShareButton
+                        customTitle="Decreto Municipal - Saladillo Vivo"
+                        customUrl="https://m.saladillovivo.com.ar"
+                        variant="simple"
+                        className={isDark ? "text-white mr-2" : "text-black mr-2"}
+                        iconSize={20}
+                    />
                     <button
+
                         onClick={handleClose}
                         className={cn(
                             "p-1.5 rounded-full transition-colors",
