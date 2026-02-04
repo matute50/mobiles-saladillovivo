@@ -127,7 +127,11 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery, onV
                 {filtered.map((v: Video) => (
                     <SwiperSlide key={v.id}>
                         <div
-                            onClick={() => { unmute(); playManual(v); }}
+                            onClick={() => {
+                                unmute();
+                                playManual(v);
+                                if (onVideoSelect) onVideoSelect();
+                            }}
                             className={cn(
                                 "relative h-full rounded-lg overflow-hidden border",
                                 isDark ? "bg-neutral-800 border-neutral-700/50" : "bg-white border-neutral-200"
