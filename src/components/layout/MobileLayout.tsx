@@ -189,8 +189,15 @@ export default function MobileLayout({ data }: { data: PageData }) {
     };
   }, []);
 
-  if (!mounted) return null;
+  /* -------------------------------------------------------------
+   * HANDLERS
+   * ------------------------------------------------------------- */
+  const handleVideoSelect = React.useCallback(() => {
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  }, []);
 
+  if (!mounted) return null;
 
 
   return (
@@ -247,10 +254,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
               videos={filteredData?.videos?.allVideos || []}
               isDark={isDark}
               searchQuery={searchQuery}
-              onVideoSelect={React.useCallback(() => {
-                setSearchQuery("");
-                setIsSearchOpen(false);
-              }, [])}
+              onVideoSelect={handleVideoSelect}
             />
           </div>
         </div>
