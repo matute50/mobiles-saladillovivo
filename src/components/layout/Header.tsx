@@ -95,10 +95,23 @@ export const Header = React.memo(({
                     {!isSearchOpen && (
                         <>
                             <button
-                                onClick={() => {
-                                    const text = "¡Instala Saladillo Vivo en tu dispositivo para estar siempre informado! 📲";
-                                    const url = "https://saladillovivo.com.ar";
-                                    window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`, '_blank');
+                                onClick={async () => {
+                                    const shareData = {
+                                        title: 'Saladillo Vivo',
+                                        text: 'Sentí el pulso de Saladillo: su historia, el trabajo y el talento que proyecta nuestro futuro. Mucho más que noticias.',
+                                        url: 'https://m.saladillovivo.com.ar'
+                                    };
+
+                                    try {
+                                        if (navigator.share) {
+                                            await navigator.share(shareData);
+                                        } else {
+                                            const message = `${shareData.text} ${shareData.url}`;
+                                            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                                        }
+                                    } catch (err) {
+                                        console.error('Error sharing:', err);
+                                    }
                                 }}
                                 className={isDark ? "text-white" : "text-black"}
                             >
