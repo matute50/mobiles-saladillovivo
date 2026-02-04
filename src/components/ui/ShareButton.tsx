@@ -45,8 +45,9 @@ export const ShareButton = ({
         }
 
         // WhatsApp Direct Share
-        const text = `${shareTitle}\n${shareUrl}`;
-        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        // Solo enviamos la URL. WhatsApp generará la "Rich Preview" (Tarjeta) automáticamente.
+        // Evitamos poner el título en texto plano para que no salga duplicado con el título de la tarjeta.
+        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareUrl)}`;
 
         window.open(whatsappUrl, '_blank');
 
