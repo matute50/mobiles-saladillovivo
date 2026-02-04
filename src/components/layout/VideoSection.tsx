@@ -178,8 +178,61 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
   return (
     <div ref={containerRef} className="w-full h-full bg-black relative overflow-hidden select-none" onClick={handleInteraction}>
-      {/* ANALOG NOISE ELIMINADO (Optimización Final vFinal): Reduce uso de GPU/Batería */}
-      {/* {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />} */}
+      <style jsx global>{`
+        .analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } 
+        @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }
+      `}</style>
+
+      {/* PLAYER A */}
+      <div className={cn(
+        "absolute inset-0 transition-opacity duration-300",
+        // OPTIMIZACIÓN v18.0: Permitir visibilidad lógica (aunque tapada por intro) para que el navegador no pause
+        (activeSlot === 'A') ? "z-10 opacity-100" : "z-0 opacity-100"
+      )}>
+        {contentA && (
+          <VideoPlayer
+            content={contentA}
+            shouldPlay={activeSlot === 'A' ? (shouldPlayContent && (isUserPlaying || isIntroVisible)) : false}
+            // Nota: El 'Background Player' (B si A es activo) debe estar PAUSADO hasta que sea activo? 
+            // NO! Si es Next, debe estar PRELOADED. Pero VideoPlayer no tiene modo 'Preload'.
+            // Sin embargo, si triggerTransition ocurre, Active pasa a ser este slot.
+            // Entonces, si activeSlot === 'A', shouldPlay es TRUE (incluso si isIntroVisible es true).
+            // Si es Next (Inactivo), shouldPlay es FALSE (solo bufferea).
+
+            onEnded={activeSlot === 'A' ? handleContentEnded : () => { }}
+            onNearEnd={activeSlot === 'A' ? () => {
+              const isNews = 'url_slide' in contentA;
+              triggerTransition(isNews ? 300 : 0);
+            } : undefined}
+            onStart={activeSlot === 'A' ? handleStart : undefined}
+            onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
+            muted={activeSlot === 'A' ? (isMuted || isIntroVisible) : true}
+          />
+        )}
+      </div>
+
+      {/* PLAYER B */}
+      <div className={cn(
+        "absolute inset-0 transition-opacity duration-300",
+        (activeSlot === 'B') ? "z-10 opacity-100" : "z-0 opacity-100"
+      )}>
+        {contentB && (
+          <VideoPlayer
+            content={contentB}
+            shouldPlay={activeSlot === 'B' ? (shouldPlayContent && (isUserPlaying || isIntroVisible)) : false}
+            onEnded={activeSlot === 'B' ? handleContentEnded : () => { }}
+            onNearEnd={activeSlot === 'B' ? () => {
+              const isNews = 'url_slide' in contentB;
+              triggerTransition(isNews ? 300 : 0);
+            } : undefined}
+            onStart={activeSlot === 'B' ? handleStart : undefined}
+            onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
+            muted={activeSlot === 'B' ? (isMuted || isIntroVisible) : true}
+          />
+        )}
+      </div>
+
+      {(!isContentStarted || !isUserPlaying) && <div className="absolute inset-0 z-[15] pointer-events-none analog-noise" />}
 
       {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[999] para supremacía TOTAL (v23.0) */}
       <div className={cn(
