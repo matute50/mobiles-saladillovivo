@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 interface DecreeModalProps {
     isOpen: boolean;
@@ -63,95 +64,126 @@ export const DecreeModal = ({ isOpen, onClose, isDark }: DecreeModalProps) => {
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6 p-5">
-
-                    {view === 'decree' ? (
-                        <div className="flex flex-col gap-4">
-                            <h2 className="text-[15px] font-black italic leading-tight text-center uppercase tracking-tighter" style={{ color: mainColor }}>
-                                SALADILLO VIVO declarado de interes cultural y municipal, decreto HCD nro. 37/2022.
-                            </h2>
-
-                            <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-white/5 bg-white">
-                                <Image
-                                    src="/decreto.png"
-                                    alt="Decreto Municipal"
-                                    width={800}
-                                    height={1100}
-                                    className="w-full h-auto object-contain"
-                                    priority
-                                />
-                            </div>
-
-                            <button
-                                onClick={() => setView('author')}
-                                className="mt-2 text-xl font-black italic hover:scale-105 transition-transform text-center uppercase tracking-tighter"
-                                style={{ color: mainColor }}
+                <div className="flex-1 overflow-hidden relative w-full h-full bg-transparent">
+                    {/* ZONA DE ZOOM: WRAPPER COMPARTIDO */}
+                    <TransformWrapper
+                        initialScale={1}
+                        minScale={1}
+                        maxScale={4}
+                        centerOnInit={true}
+                        limitToBounds={true}
+                    >
+                        {({ resetTransform }) => (
+                            <TransformComponent
+                                wrapperClass="w-full h-full !overflow-y-auto custom-scrollbar"
+                                contentClass={cn("w-full min-h-full flex flex-col p-5", view === 'author' ? "items-start" : "items-center")}
                             >
-                                Nota del Autor
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="animate-in slide-in-from-right duration-500">
-                            {/* IMAGEN FLOTANTE CIRCULAR (v9.2) */}
-                            <div
-                                className="float-right ml-4 mb-2 w-[120px] h-[120px] rounded-full overflow-hidden shadow-xl border-2 z-20 relative bg-white"
-                                style={{
-                                    borderColor: `${mainColor}33`,
-                                    shapeOutside: 'circle(50%)'
-                                }}
-                            >
-                                <Image
-                                    src="/maraton.png"
-                                    alt="Matías Vidal"
-                                    width={240}
-                                    height={240}
-                                    className="w-full h-full object-cover scale-110"
-                                />
-                            </div>
+                                {view === 'decree' ? (
+                                    <div className="flex flex-col gap-4 w-full pb-10" onClick={(e) => e.stopPropagation()}>
+                                        <h2 className="text-[15px] font-black italic leading-tight text-center uppercase tracking-tighter" style={{ color: mainColor }}>
+                                            SALADILLO VIVO declarado de interes cultural y municipal, decreto HCD nro. 37/2022.
+                                        </h2>
 
-                            <div className="relative z-10">
-                                <h4 className={cn(
-                                    "text-sm font-black italic tracking-tighter leading-none mb-0.5",
-                                    isDark ? "text-white" : "text-black"
-                                )}>
-                                    Matías Vidal
-                                </h4>
-                                <p className="text-[9px] font-bold tracking-[0.2em] opacity-50 uppercase mb-4">
-                                    CREADOR DE SALADILLO VIVO
-                                </p>
+                                        <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-white/5 bg-white">
+                                            <Image
+                                                src="/decreto.png"
+                                                alt="Decreto Municipal"
+                                                width={800}
+                                                height={1100}
+                                                className="w-full h-auto object-contain"
+                                                priority
+                                            />
+                                        </div>
 
-                                <div className={cn(
-                                    "text-[11.5px] font-bold leading-[1.35] text-pretty text-justify",
-                                    isDark ? "text-white/80" : "text-black/80"
-                                )}>
-                                    <p className="mb-2">
-                                        Soy el creador de SALADILLO VIVO, un medio local hecho desde cero con tecnología propia y una visión muy clara: conectar a los usuarios con contenidos relevantes y cercanos.
-                                    </p>
-                                    <p className="mb-2">
-                                        Desde las apps para TV, web y móviles, el sistema de noticias, todo lo pensé y programé yo. No lo compré, no se lo pedí a nadie, no tercericé tareas: el código, el acopio de contenidos, la cámara, la edición y el streaming, salen de mis propias ideas.
-                                    </p>
-                                    <p className="mb-2">
-                                        Nunca fue mi intención poner a funcionar una plataforma más, sino crear identidad.
-                                    </p>
-                                    <p className="mb-2">
-                                        Quiero mostrar a Saladillo en su diversidad: sus historias, sus voces, su arte, sus frutos, porque soy parte de una red viva llena de talentosos e incansables a los que acompaño desde mi lugar, ofreciendo este medio como espacio para que sus expresiones lleguen más lejos.
-                                    </p>
-                                    <p className="mb-2">
-                                        El motor detrás de todo esto no es una estrategia de negocio sino el amor por mi ciudad y el deseo de hacer mi aporte a nuestro sentido de pertenencia.
-                                    </p>
-                                    <p className="mb-2">
-                                        Hago SALADILLO VIVO con la misma energía que me lleva, cada semana, a correr muchos kilómetros entrenando para una nueva maratón, donde cada paso es constancia, esfuerzo, y visión de llegada.
-                                    </p>
-                                </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Evitar zoom accidental en click
+                                                resetTransform(); // Resetear zoom al cambiar
+                                                setView('author');
+                                            }}
+                                            className="mt-2 text-xl font-black italic hover:scale-105 transition-transform text-center uppercase tracking-tighter w-full"
+                                            style={{ color: mainColor }}
+                                        >
+                                            Nota del Autor
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="animate-in slide-in-from-right duration-500 w-full pb-10" onClick={(e) => e.stopPropagation()}>
+                                        {/* IMAGEN FLOTANTE CIRCULAR (v9.2) */}
+                                        <div
+                                            className="float-right ml-4 mb-2 w-[120px] h-[120px] rounded-full overflow-hidden shadow-xl border-2 z-20 relative bg-white"
+                                            style={{
+                                                borderColor: `${mainColor}33`,
+                                                shapeOutside: 'circle(50%)'
+                                            }}
+                                        >
+                                            <Image
+                                                src="/maraton.png"
+                                                alt="Matías Vidal"
+                                                width={240}
+                                                height={240}
+                                                className="w-full h-full object-cover scale-110"
+                                            />
+                                        </div>
 
-                                <div className="mt-4 pt-3 border-t" style={{ borderColor: `${mainColor}1A` }}>
-                                    <p className="font-black italic text-center text-[12px] leading-tight uppercase tracking-tight" style={{ color: mainColor }}>
-                                        SALADILLO VIVO, lo que somos, lo que hacemos, lo que nos pasa.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                                        <div className="relative z-10 text-left">
+                                            <h4 className={cn(
+                                                "text-sm font-black italic tracking-tighter leading-none mb-0.5",
+                                                isDark ? "text-white" : "text-black"
+                                            )}>
+                                                Matías Vidal
+                                            </h4>
+                                            <p className="text-[9px] font-bold tracking-[0.2em] opacity-50 uppercase mb-4">
+                                                CREADOR DE SALADILLO VIVO
+                                            </p>
+
+                                            <div className={cn(
+                                                "text-[14px] font-bold leading-[1.5] text-pretty text-justify", // Aumentado tamaño fuente
+                                                isDark ? "text-white/90" : "text-black/90"
+                                            )}>
+                                                <p className="mb-3">
+                                                    Soy el creador de SALADILLO VIVO, un medio local hecho desde cero con tecnología propia y una visión muy clara: conectar a los usuarios con contenidos relevantes y cercanos.
+                                                </p>
+                                                <p className="mb-3">
+                                                    Desde las apps para TV, web y móviles, el sistema de noticias, todo lo pensé y programé yo. No lo compré, no se lo pedí a nadie, no tercericé tareas: el código, el acopio de contenidos, la cámara, la edición y el streaming, salen de mis propias ideas.
+                                                </p>
+                                                <p className="mb-3">
+                                                    Nunca fue mi intención poner a funcionar una plataforma más, sino crear identidad.
+                                                </p>
+                                                <p className="mb-3">
+                                                    Quiero mostrar a Saladillo en su diversidad: sus historias, sus voces, su arte, sus frutos, porque soy parte de una red viva llena de talentosos e incansables a los que acompaño desde mi lugar, ofreciendo este medio como espacio para que sus expresiones lleguen más lejos.
+                                                </p>
+                                                <p className="mb-3">
+                                                    El motor detrás de todo esto no es una estrategia de negocio sino el amor por mi ciudad y el deseo de hacer mi aporte a nuestro sentido de pertenencia.
+                                                </p>
+                                                <p className="mb-3">
+                                                    Hago SALADILLO VIVO con la misma energía que me lleva, cada semana, a correr muchos kilómetros entrenando para una nueva maratón, donde cada paso es constancia, esfuerzo, y visión de llegada.
+                                                </p>
+                                            </div>
+
+                                            <div className="mt-6 pt-4 border-t" style={{ borderColor: `${mainColor}1A` }}>
+                                                <p className="font-black italic text-center text-[12px] leading-tight uppercase tracking-tight" style={{ color: mainColor }}>
+                                                    SALADILLO VIVO, lo que somos, lo que hacemos, lo que nos pasa.
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    resetTransform();
+                                                    setView('decree');
+                                                }}
+                                                className="mt-6 text-sm font-bold opacity-50 text-center w-full uppercase"
+                                                style={{ color: mainColor }}
+                                            >
+                                                Volver al Decreto
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </TransformComponent>
+                        )}
+                    </TransformWrapper>
                 </div>
             </div>
         </div>
