@@ -48,8 +48,21 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
             // 2. Calcular categorías únicas basadas en el orden mezclado
             const uniqueCats = Array.from(new Set(mixedVideos.map((v: Video) => getDisplayCategory(v.categoria)))).sort();
 
-            // 3. Elegir categoría inicial al azar
-            const randomCatIndex = Math.floor(Math.random() * uniqueCats.length);
+            // 3. Filtrar candidatos válidos para inicio (Excluir "HCD de Saladillo")
+            const validStartIndices = uniqueCats
+                .map((cat, index) => ({ cat, index }))
+                // Normalización simple para evitar errores de espacios/mayúsculas
+                .filter(item => !item.cat.toLowerCase().includes("hcd de saladillo"))
+                .map(item => item.index);
+
+            // 4. Elegir índice al azar de los válidos, o random total si falla el filtro
+            let randomCatIndex = 0;
+            if (validStartIndices.length > 0) {
+                const randomSelection = Math.floor(Math.random() * validStartIndices.length);
+                randomCatIndex = validStartIndices[randomSelection];
+            } else {
+                randomCatIndex = Math.floor(Math.random() * uniqueCats.length);
+            }
 
             setShuffledVideos(mixedVideos);
             setActiveCatIndex(randomCatIndex);
