@@ -6,6 +6,7 @@ import { Providers } from "@/app/providers"; // Importar el componente Providers
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://m.saladillovivo.com.ar"),
   title: "Saladillo Vivo",
   description: "Televisión en vivo desde Saladillo",
   manifest: "/manifest.json",

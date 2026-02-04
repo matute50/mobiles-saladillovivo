@@ -75,3 +75,47 @@ export async function getPageData(): Promise<PageData> {
     return { articles: { featuredNews: null, secondaryNews: [], otherNews: [] }, videos: { allVideos: [], liveStream: null }, ads: [] };
   }
 }
+
+export async function getArticleById(id: string): Promise<Article | null> {
+  const { data, error } = await supabase
+    .from('articles')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: String(data.id),
+    titulo: (data.titulo || data.title || 'Sin título').replaceAll('|', ' ').trim(),
+    bajada: (data.bajada || data.summary || data.description || '').trim(),
+    imagen: data.imagen || data.image || data.imageUrl || data.image_url || null,
+    categoria: data.categoria || data.category || 'General',
+    autor: data.autor || data.author || 'Redacción',
+    fecha: data.created_at || data.createdAt || data.fecha || new Date().toISOString(),
+    contenido: data.contenido || data.content || data.body || '',
+    etiquetas: data.etiquetas || data.tags || [],
+    url_slide: data.url_slide || data.slide_url || data.slideUrl || null,
+    audio_url: data.audio_url || data.url_audio || data.audioUrl || null,
+    animation_duration: data.animation_duration || data.animationDuration || 45
+  };
+}
+
+export async function getVideoById(id: string): Promise<Video | null> {
+  const { data, error } = await supabase
+    .from('videos')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: String(data.id),
+    nombre: (data.nombre || data.title || data.name || 'Video sin nombre').replaceAll('|', ' ').trim(),
+    url: data.url || data.videoUrl || '',
+    imagen: data.imagen || data.image || data.thumbnail || null,
+    categoria: data.categoria || data.category || 'Varios',
+    fecha: data.createdAt || data.created_at || data.fecha || new Date().toISOString()
+  };
+}

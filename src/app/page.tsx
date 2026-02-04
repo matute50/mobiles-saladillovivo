@@ -1,7 +1,7 @@
 // src/app/page.tsx
 import { Metadata } from 'next';
 import MobileLayout from '@/components/layout/MobileLayout';
-import { getPageData } from '@/lib/data';
+import { getPageData, getArticleById, getVideoById } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +11,32 @@ type Props = {
   searchParams: Promise<{ id?: string; v?: string }>;
 };
 
-export async function generateMetadata(): Promise<Metadata> {
-  const title = "Saladillo ViVo";
-  const description = "Noticias y videos de Saladillo en tiempo real.";
-  const imageUrl = `${SITE_URL}/brand_social.png?v=4`; // v4.0: Horizontal layout (Icon Left, Text Right)
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const { id, v } = await searchParams; // Next.js 15: searchParams is a Promise
+
+  let title = "Saladillo ViVo";
+  let description = "Noticias y videos de Saladillo en tiempo real.";
+  let imageUrl = `${SITE_URL}/brand_social.png?v=4`; // Default brand image (1200x630 optimized)
+
+  try {
+    if (id) {
+      const article = await getArticleById(id);
+      if (article) {
+        title = article.titulo.substring(0, 60); // Optimize for WhatsApp title limit
+        if (article.bajada) description = article.bajada.substring(0, 150);
+        if (article.imagen) imageUrl = article.imagen;
+      }
+    } else if (v) {
+      const video = await getVideoById(v);
+      if (video) {
+        title = video.nombre.substring(0, 60);
+        description = "Mirá este video en Saladillo ViVo";
+        if (video.imagen) imageUrl = video.imagen;
+      }
+    }
+  } catch (e) {
+    console.error("Error generating metadata:", e);
+  }
 
   return {
     metadataBase: new URL(SITE_URL),
@@ -23,16 +45,16 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title,
       description,
-      url: SITE_URL,
+      url: `${SITE_URL}${id ? `/?id=${id}` : (v ? `/?v=${v}` : '')}`,
       siteName: 'Saladillo ViVo',
       images: [{
         url: imageUrl,
         width: 1200,
         height: 630,
-        type: 'image/png',
+        type: 'image/jpeg', // Most common fallback, works for PNGs usually too in readers
       }],
       locale: 'es_AR',
-      type: 'website',
+      type: id ? 'article' : 'website',
     },
     twitter: {
       card: 'summary_large_image',
@@ -41,7 +63,7 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [imageUrl],
     },
     alternates: {
-      canonical: SITE_URL,
+      canonical: `${SITE_URL}${id ? `/?id=${id}` : (v ? `/?v=${v}` : '')}`,
     }
   };
 }
