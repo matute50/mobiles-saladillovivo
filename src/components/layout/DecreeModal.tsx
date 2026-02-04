@@ -55,13 +55,6 @@ export const DecreeModal = ({ isOpen, onClose, isDark }: DecreeModalProps) => {
                 <div className="shrink-0 flex items-center justify-between px-4 py-1 border-b border-white/10">
                     {/* Botón Volver eliminado */}
                     <div className="flex-1" />
-                    <ShareButton
-                        customTitle="Decreto Municipal - Saladillo Vivo"
-                        customUrl="https://m.saladillovivo.com.ar"
-                        variant="simple"
-                        className={isDark ? "text-white mr-2" : "text-black mr-2"}
-                        iconSize={20}
-                    />
                     <button
 
                         onClick={handleClose}
@@ -89,8 +82,8 @@ export const DecreeModal = ({ isOpen, onClose, isDark }: DecreeModalProps) => {
                                 contentClass={cn("w-full min-h-full flex flex-col p-5", view === 'author' ? "items-start" : "items-center")}
                             >
                                 {view === 'decree' ? (
-                                    <div className="flex flex-col gap-4 w-full pb-10" onClick={(e) => e.stopPropagation()}>
-                                        <h2 className="text-[15px] font-black italic leading-tight text-center uppercase tracking-tighter" style={{ color: mainColor }}>
+                                    <div className="flex flex-col gap-4 w-full pb-10 pt-10" onClick={(e) => e.stopPropagation()}>
+                                        <h2 className="text-[15px] font-black italic leading-tight text-center uppercase tracking-tighter mt-4" style={{ color: mainColor }}>
                                             SALADILLO VIVO declarado de interes cultural y municipal, decreto HCD nro. 37/2022.
                                         </h2>
 
@@ -118,7 +111,7 @@ export const DecreeModal = ({ isOpen, onClose, isDark }: DecreeModalProps) => {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="animate-in slide-in-from-right duration-500 w-full pb-10" onClick={(e) => e.stopPropagation()}>
+                                    <div className="animate-in slide-in-from-right duration-500 w-full pb-10 pt-10" onClick={(e) => e.stopPropagation()}>
                                         {/* IMAGEN FLOTANTE CIRCULAR (v9.2) */}
                                         <div
                                             className="float-right ml-4 mb-2 w-[120px] h-[120px] rounded-full overflow-hidden shadow-xl border-2 z-20 relative bg-white"
