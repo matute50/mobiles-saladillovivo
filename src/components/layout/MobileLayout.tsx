@@ -161,6 +161,33 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
   if (!mounted) return null;
 
+  /* -------------------------------------------------------------
+     * KEYBOARD DETECTION (v63.1)
+     * Detectamos si la altura visual es significativamente menor al alto de ventana
+     * y si estamos en modo búsqueda (para mayor precisión).
+     * ------------------------------------------------------------- */
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!window.visualViewport) return;
+
+    const handleResize = () => {
+      const height = window.visualViewport?.height || window.innerHeight;
+      const screenHeight = window.innerHeight;
+      // Si el viewport es menor al 75% de la pantalla, asumimos teclado
+      setIsKeyboardOpen(height < (screenHeight * 0.85) && isSearchOpen);
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize); // A veces el scroll cambia en iOS
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
+    };
+  }, [isSearchOpen]);
+
+
   return (
     <div className={cn("fixed inset-0 flex flex-col w-full h-[100dvh] overflow-hidden", isDark ? "bg-black" : "bg-neutral-50")}>
       {!isLandscape && (
@@ -171,6 +198,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
           setIsSearchOpen={setIsSearchOpen}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          isKeyboardOpen={isKeyboardOpen} // Prop para layout especial
         />
       )}
 
@@ -196,17 +224,21 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
       {!isLandscape && (
         <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
-          <NewsSlider
-            newsSlides={newsSlides}
-            isDark={isDark}
-            searchQuery={searchQuery}
-            onSwiper={setNewsSwiper}
-            onPrev={() => newsSwiper?.slidePrev()}
-            onNext={() => newsSwiper?.slideNext()}
-          />
+          {/* Ocultar NewsSlider si hay teclado (User Request) */}
+          {!isKeyboardOpen && (
+            <NewsSlider
+              newsSlides={newsSlides}
+              isDark={isDark}
+              searchQuery={searchQuery}
+              onSwiper={setNewsSwiper}
+              onPrev={() => newsSwiper?.slidePrev()}
+              onNext={() => newsSwiper?.slideNext()}
+            />
+          )}
 
           <div className="h-[160px] shrink-0 -mt-[22px]">
-            <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} />
+            {/* Pasar searchQuery para activar 'TU BUSQUEDA' */}
+            <VideoCarouselBlock videos={filteredData?.videos?.allVideos || []} isDark={isDark} searchQuery={searchQuery} />
           </div>
         </div>
       )}

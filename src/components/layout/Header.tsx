@@ -26,6 +26,7 @@ interface HeaderProps {
     setIsSearchOpen: (open: boolean) => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    isKeyboardOpen?: boolean;
 }
 
 export const Header = React.memo(({
@@ -35,6 +36,7 @@ export const Header = React.memo(({
     setIsSearchOpen,
     searchQuery,
     setSearchQuery,
+    isKeyboardOpen = false,
 }: HeaderProps) => {
     const { weather, setIsExtendedOpen } = useWeather();
     const { isInstallable, installApp, isInstallModalOpen, setIsInstallModalOpen } = usePWA();
@@ -48,9 +50,10 @@ export const Header = React.memo(({
                     ? "bg-gradient-to-b from-white/30 to-black text-white"
                     : "bg-gradient-to-b from-white to-black/60 text-black border-b"
             )}>
-                {/* LADO IZQUIERDO: LOGO (Restaurado a posición original) */}
-                <div className="flex items-center">
-                    {!isSearchOpen && (
+                {/* LADO IZQUIERDO: LOGO */}
+                {/* Si hay teclado o no hay busqueda -> Mostrar Logo */}
+                {(isKeyboardOpen || !isSearchOpen) && (
+                    <div className="flex items-center shrink-0 mr-2">
                         <div className="relative w-36 h-9 py-1 -mt-[2px]">
                             <Image
                                 src={isDark ? '/FONDO_OSCURO.png' : '/FONDO_CLARO.png'}
@@ -61,12 +64,12 @@ export const Header = React.memo(({
                                 className="object-contain"
                             />
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
 
-                {/* CENTRO: BARRA DE BÚSQUEDA (Si está abierta) */}
+                {/* CENTRO: BARRA DE BÚSQUEDA */}
                 {isSearchOpen && (
-                    <div className="flex-1 h-full flex items-center px-4">
+                    <div className="flex-1 h-full flex items-center px-2">
                         <input
                             type="text"
                             autoFocus
@@ -78,64 +81,77 @@ export const Header = React.memo(({
                     </div>
                 )}
 
-                {/* LADO DERECHO: ACCIONES (MODO > LUPA > COMPARTIR) */}
-                <div className="flex items-center gap-3">
-                    {/* Botón Modo (Ahora a la izquierda de la lupa) */}
-                    <button onClick={() => setIsDark(!isDark)} className="shrink-0 p-1">
-                        {isDark ? <Sun size={20} className="text-white" /> : <Moon size={20} className="text-black" />}
-                    </button>
+                {/* LADO DERECHO: ACCIONES */}
+                <div className="flex items-center gap-3 shrink-0">
 
-                    <button
-                        onClick={() => { setIsSearchOpen(!isSearchOpen); setSearchQuery(""); }}
-                        className={isDark ? "text-neutral-300" : "text-neutral-700"}
-                    >
-                        <Search size={20} strokeWidth={3} />
-                    </button>
-
-                    {!isSearchOpen && (
+                    {/* Si el teclado ESTÁ ABIERTO: Solo mostrar icono Lupa (User Request) */}
+                    {isKeyboardOpen ? (
+                        <button
+                            onClick={() => { setIsSearchOpen(!isSearchOpen); setSearchQuery(""); }}
+                            className={isDark ? "text-neutral-300" : "text-neutral-700"}
+                        >
+                            <Search size={20} strokeWidth={3} />
+                        </button>
+                    ) : (
+                        /* Layout Normal (Teclado Cerrado) */
                         <>
-                            <button
-                                onClick={() => {
-                                    const text = "Sentí el pulso de Saladillo: su historia, el trabajo y el talento que proyecta nuestro futuro. Mucho más que noticias.";
-                                    const url = "https://m.saladillovivo.com.ar";
-                                    const message = `${text} ${url}`;
-                                    // v63.0: Direct WhatsApp share (User Request)
-                                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-                                }}
-                                className={isDark ? "text-white" : "text-black"}
-                            >
-                                <Share2 size={20} />
+                            {/* Botón Modo */}
+                            <button onClick={() => setIsDark(!isDark)} className="shrink-0 p-1">
+                                {isDark ? <Sun size={20} className="text-white" /> : <Moon size={20} className="text-black" />}
                             </button>
 
                             <button
-                                onClick={() => setIsDecreeOpen(true)}
-                                className={isDark ? "text-white" : "text-black/60 hover:text-black"}
+                                onClick={() => { setIsSearchOpen(!isSearchOpen); setSearchQuery(""); }}
+                                className={isDark ? "text-neutral-300" : "text-neutral-700"}
                             >
-                                <HelpCircle size={20} strokeWidth={3} />
+                                <Search size={20} strokeWidth={3} />
                             </button>
 
-                            {/* CLIMA EN EL HEADER */}
-                            {weather && (
-                                <button
-                                    onClick={() => setIsExtendedOpen(true)}
-                                    className="flex items-center gap-1.5 pl-1 border-l border-white/10"
-                                >
-                                    <span className={cn("text-[15px] font-black italic tracking-tighter", isDark ? "text-white" : "text-neutral-900")}>
-                                        {Math.round(weather.currentConditions.temp)}°
-                                    </span>
-                                    {getWeatherIcon(weather.currentConditions.icon, isDark, 20)}
-                                </button>
-                            )}
+                            {!isSearchOpen && (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            const text = "Sentí el pulso de Saladillo: su historia, el trabajo y el talento que proyecta nuestro futuro. Mucho más que noticias.";
+                                            const url = "https://m.saladillovivo.com.ar";
+                                            const message = `${text} ${url}`;
+                                            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                                        }}
+                                        className={isDark ? "text-white" : "text-black"}
+                                    >
+                                        <Share2 size={20} />
+                                    </button>
 
-                            {/* BOTÓN INSTALACIÓN PWA (v5.6) */}
-                            {isInstallable && (
-                                <button
-                                    onClick={installApp}
-                                    className="flex items-center justify-center p-1.5 bg-red-600 text-white rounded-full active:scale-90 transition-all shadow-lg animate-ping-pong"
-                                    title="Instalar Aplicación"
-                                >
-                                    <Download size={16} strokeWidth={3} />
-                                </button>
+                                    <button
+                                        onClick={() => setIsDecreeOpen(true)}
+                                        className={isDark ? "text-white" : "text-black/60 hover:text-black"}
+                                    >
+                                        <HelpCircle size={20} strokeWidth={3} />
+                                    </button>
+
+                                    {/* CLIMA */}
+                                    {weather && (
+                                        <button
+                                            onClick={() => setIsExtendedOpen(true)}
+                                            className="flex items-center gap-1.5 pl-1 border-l border-white/10"
+                                        >
+                                            <span className={cn("text-[15px] font-black italic tracking-tighter", isDark ? "text-white" : "text-neutral-900")}>
+                                                {Math.round(weather.currentConditions.temp)}°
+                                            </span>
+                                            {getWeatherIcon(weather.currentConditions.icon, isDark, 20)}
+                                        </button>
+                                    )}
+
+                                    {/* INSTALL PWA */}
+                                    {isInstallable && (
+                                        <button
+                                            onClick={installApp}
+                                            className="flex items-center justify-center p-1.5 bg-red-600 text-white rounded-full active:scale-90 transition-all shadow-lg animate-ping-pong"
+                                            title="Instalar Aplicación"
+                                        >
+                                            <Download size={16} strokeWidth={3} />
+                                        </button>
+                                    )}
+                                </>
                             )}
                         </>
                     )}

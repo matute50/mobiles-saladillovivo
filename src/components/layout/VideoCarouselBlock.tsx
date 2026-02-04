@@ -14,6 +14,7 @@ import { ShareButton } from '@/components/ui/ShareButton';
 interface VideoCarouselBlockProps {
     videos: Video[];
     isDark: boolean;
+    searchQuery?: string;
 }
 
 const getYouTubeThumbnail = (url: string) => {
@@ -27,7 +28,7 @@ const getYouTubeThumbnail = (url: string) => {
 
 import { getDisplayCategory } from '@/lib/categoryMappings';
 
-export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselBlockProps) => {
+export const VideoCarouselBlock = React.memo(({ videos, isDark, searchQuery }: VideoCarouselBlockProps) => {
     const { playManual } = useMediaPlayer();
     const { unmute } = useVolume();
     const [activeCatIndex, setActiveCatIndex] = useState(0);
@@ -44,7 +45,7 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
         return arr;
     };
 
-    // vShuffle: Randomize once on mount
+    // vShuffle: Randomize once on mount OR when videos change substantially (search)
     React.useEffect(() => {
         if (videos.length > 0) {
             // 1. Barajar videos
@@ -70,21 +71,27 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
             }
 
             setShuffledVideos(mixedVideos);
-            setActiveCatIndex(randomCatIndex);
+
+            // Si hay búsqueda, resetear índice a 0 (aunque no se use multi-cat)
+            setActiveCatIndex(searchQuery ? 0 : randomCatIndex);
+
             setIsRandomized(true);
         }
-    }, [videos]);
+    }, [videos, searchQuery]); // Re-run on search change
 
     const categories = useMemo(() => {
         if (!isRandomized) return [];
         return Array.from(new Set(shuffledVideos.map((v: Video) => getDisplayCategory(v.categoria)))).sort();
     }, [shuffledVideos, isRandomized]);
 
-    const currentCat = (categories[activeCatIndex] as string) || 'VARIOS';
-    // Filtrar sobre los videos mezclados
+    const isSearchMode = !!(searchQuery && searchQuery.trim().length > 0);
+    const currentCat = isSearchMode ? 'TU BUSQUEDA' : ((categories[activeCatIndex] as string) || 'VARIOS');
+
+    // Si es búsqueda, mostrar TODOS los resultados (ya están filtrados por el padre). Si no, filtrar por categoría.
     const filtered = useMemo(() => {
+        if (isSearchMode) return shuffledVideos;
         return shuffledVideos.filter((v: Video) => getDisplayCategory(v.categoria) === currentCat);
-    }, [shuffledVideos, currentCat]);
+    }, [shuffledVideos, currentCat, isSearchMode]);
 
     const themeColorClass = isDark ? "text-[#6699ff]" : "text-[#003399]";
 
@@ -93,21 +100,27 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
     return (
         <div className="flex flex-col h-full w-full pt-1">
             <div className="flex items-center justify-between px-2 py-0.5 shrink-0">
-                <button
-                    onClick={() => setActiveCatIndex(p => p === 0 ? categories.length - 1 : p - 1)}
-                    className={themeColorClass}
-                >
-                    <ChevronLeft size={32} />
-                </button>
+                {!isSearchMode && (
+                    <button
+                        onClick={() => setActiveCatIndex(p => p === 0 ? categories.length - 1 : p - 1)}
+                        className={themeColorClass}
+                    >
+                        <ChevronLeft size={32} />
+                    </button>
+                )}
+
                 <h2 className={cn("font-black italic text-xl uppercase tracking-wider text-center flex-1 truncate px-2", themeColorClass)}>
                     {currentCat}
                 </h2>
-                <button
-                    onClick={() => setActiveCatIndex(p => p === categories.length - 1 ? 0 : p + 1)}
-                    className={themeColorClass}
-                >
-                    <ChevronRight size={32} />
-                </button>
+
+                {!isSearchMode && (
+                    <button
+                        onClick={() => setActiveCatIndex(p => p === categories.length - 1 ? 0 : p + 1)}
+                        className={themeColorClass}
+                    >
+                        <ChevronRight size={32} />
+                    </button>
+                )}
             </div>
             <Swiper slidesPerView={2.2} spaceBetween={10} className="w-full flex-1 px-1 mt-1">
                 {filtered.map((v: Video) => (
