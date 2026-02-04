@@ -14,7 +14,7 @@ type Props = {
 export async function generateMetadata(): Promise<Metadata> {
   const title = "Saladillo ViVo";
   const description = "Noticias y videos de Saladillo en tiempo real.";
-  const imageUrl = `${SITE_URL}/whatsapp_preview.png`; // User Request: Smaller logo with padding
+  const imageUrl = `${SITE_URL}/whatsapp_preview.png?v=2`; // User Request: Cache buster for new size
 
   return {
     metadataBase: new URL(SITE_URL),
