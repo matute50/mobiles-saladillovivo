@@ -125,6 +125,7 @@ export const VideoCarouselBlock = React.memo(({ videos, isDark }: VideoCarouselB
                                 fill
                                 sizes="33vw"
                                 className="object-cover opacity-90"
+                                unoptimized
                             />
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white/10 -mt-8">
