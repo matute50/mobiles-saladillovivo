@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { ShareButton } from '@/components/ui/ShareButton';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 
