@@ -181,11 +181,12 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       <style jsx global>{`
         .analog-noise { background: repeating-radial-gradient(#000 0 0.0001%, #fff 0 0.0002%) 50% 0/2500px 2500px; opacity: 0.12; animation: shift .2s infinite alternate; } 
         @keyframes shift { 100% { background-position: 50% 0, 51% 50%; } }
-        /* vShimmer Effect: Flash & Wait */
+        /* vShimmer Effect: Flash & Wait + Pulse */
         @keyframes shimmer-interval {
-            0% { background-position: 0% 50%; }
-            15% { background-position: 200% 50%; } /* Fast pass (~1.5s) */
-            100% { background-position: 200% 50%; } /* Pause */
+            0% { background-position: 0% 50%; transform: scale(1); }
+            7.5% { transform: scale(1.05); } /* Peak Pulse */
+            15% { background-position: 200% 50%; transform: scale(1); } /* End Flash */
+            100% { background-position: 200% 50%; transform: scale(1); } /* Pause */
         }
         .animate-shimmer-news {
             animation: shimmer-interval 10s linear infinite;
