@@ -2,6 +2,16 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true, // Optimizes React lifecycle checks in dev
+  compress: true, // Ensures Gzip compression
+  poweredByHeader: false, // Removes 'x-powered-by' header (security/bytes)
+
+  experimental: {
+    // Optimiza la importación de librerías grandes (Tree Shaking mejorado)
+    optimizePackageImports: ['lucide-react', 'swiper', 'date-fns', 'lodash'],
+    // serverActions: true, // Default in Next 14+
+  },
+
   eslint: {
     ignoreDuringBuilds: true,
   },
