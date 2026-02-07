@@ -26,20 +26,25 @@ export async function getPageData(): Promise<PageData> {
     if (videosRes.error) throw videosRes.error;
     if (adsRes.error) throw adsRes.error;
 
-    const mappedArticles: Article[] = (articlesRes.data || []).map((item: any) => ({
-      id: String(item.id),
-      titulo: (item.titulo || item.title || 'Sin título').replaceAll('|', ' ').trim(),
-      bajada: (item.bajada || item.summary || item.description || '').trim(),
-      imagen: item.imagen || item.image || item.imageUrl || item.image_url || null,
-      categoria: item.categoria || item.category || 'General',
-      autor: item.autor || item.author || 'Redacción',
-      fecha: item.created_at || item.createdAt || item.fecha || new Date().toISOString(),
-      contenido: item.contenido || item.content || item.body || '',
-      etiquetas: item.etiquetas || item.tags || [],
-      url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
-      audio_url: item.audio_url || item.url_audio || item.audioUrl || null,
-      animation_duration: item.animation_duration || item.animationDuration || 45
-    }));
+    const mappedArticles: Article[] = (articlesRes.data || []).map((item: any) => {
+      // Prioridad de imagen: imagen > image_url > imageUrl > image > image_url_alt > primera de images_urls
+      const backupImage = Array.isArray(item.images_urls) && item.images_urls.length > 0 ? item.images_urls[0] : null;
+
+      return {
+        id: String(item.id),
+        titulo: (item.titulo || item.title || 'Sin título').replaceAll('|', ' ').trim(),
+        bajada: (item.bajada || item.summary || item.description || '').trim(),
+        imagen: item.imagen || item.image_url || item.image || item.imageUrl || item.image_url_alt || backupImage || null,
+        categoria: item.categoria || item.category || 'General',
+        autor: item.autor || item.author || 'Redacción',
+        fecha: item.created_at || item.createdAt || item.fecha || new Date().toISOString(),
+        contenido: item.contenido || item.content || item.body || '',
+        etiquetas: item.etiquetas || item.tags || [],
+        url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
+        audio_url: item.audio_url || item.url_audio || item.audioUrl || null,
+        animation_duration: item.animation_duration || item.animationDuration || 45
+      };
+    });
 
     const mappedVideos: Video[] = (videosRes.data || []).map((item: any) => ({
       id: String(item.id),
@@ -86,11 +91,13 @@ export async function getArticleById(id: string): Promise<Article | null> {
 
   if (error || !data) return null;
 
+  const backupImage = Array.isArray(data.images_urls) && data.images_urls.length > 0 ? data.images_urls[0] : null;
+
   return {
     id: String(data.id),
     titulo: (data.titulo || data.title || 'Sin título').replaceAll('|', ' ').trim(),
     bajada: (data.bajada || data.summary || data.description || '').trim(),
-    imagen: data.imagen || data.image || data.imageUrl || data.image_url || null,
+    imagen: data.imagen || data.image_url || data.image || data.imageUrl || data.image_url_alt || backupImage || null,
     categoria: data.categoria || data.category || 'General',
     autor: data.autor || data.author || 'Redacción',
     fecha: data.created_at || data.createdAt || data.fecha || new Date().toISOString(),

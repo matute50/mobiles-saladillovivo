@@ -24,6 +24,10 @@ const nextConfig = {
         protocol: 'https' as const,
         hostname: '**',
       },
+      {
+        protocol: 'https' as const,
+        hostname: 'media.saladillovivo.com.ar',
+      },
     ],
   },
   async rewrites() {

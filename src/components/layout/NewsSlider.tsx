@@ -72,6 +72,7 @@ export const NewsSlider = React.memo(({
                                                 alt={item.titulo}
                                                 fill
                                                 sizes="50vw"
+                                                priority={idx < 2} // Cargar con prioridad las primeras imágenes
                                                 className="object-cover opacity-90"
                                             />
 
