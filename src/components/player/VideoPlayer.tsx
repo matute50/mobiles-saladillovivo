@@ -120,7 +120,7 @@ export default function VideoPlayer({
           return Math.max(0, prev - 0.08);
         }
       });
-    }, 100);
+    }, 150);
     return () => clearInterval(interval);
   }, [globalVolume, isArticle, isFadingOut, isPlayerReady, muted, shouldPlay, videoData]);
 
@@ -157,10 +157,16 @@ export default function VideoPlayer({
     }
   }, [isArticle, shouldPlay, isFadingOut, articleData, playAudio, pauseAudio, triggerEnd, onNearEnd]);
 
-  // Fetch HTML Slide content
+  // Fetch HTML Slide content (v25.0 - With simple cache)
   const [slideHtml, setSlideHtml] = useState<string | null>(null);
+  const slideCacheRef = useRef<Record<string, string>>({});
+
   useEffect(() => {
     if (articleData?.url_slide) {
+      if (slideCacheRef.current[articleData.url_slide]) {
+        setSlideHtml(slideCacheRef.current[articleData.url_slide]);
+        return;
+      }
       const fetchAndProcess = async () => {
         try {
           const res = await fetch(articleData.url_slide!);
@@ -188,6 +194,8 @@ export default function VideoPlayer({
           const modifiedHtml = originalHtml.includes('</head>')
             ? originalHtml.replace('</head>', `${responsiveStyles}</head>`)
             : responsiveStyles + originalHtml;
+
+          slideCacheRef.current[articleData.url_slide!] = modifiedHtml;
           setSlideHtml(modifiedHtml);
         } catch (err) {
           setSlideHtml(null);

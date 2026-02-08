@@ -16,7 +16,7 @@ export async function getPageData(): Promise<PageData> {
         .from('videos')
         .select('*')
         .order('createdAt', { ascending: false })
-        .limit(5000), // v62.0: REVERT - Back to 5000 (User Request: Missing content)
+        .limit(5000),
       supabase
         .from('anuncios')
         .select('*')
@@ -25,8 +25,6 @@ export async function getPageData(): Promise<PageData> {
     if (articlesRes.error) throw articlesRes.error;
     if (videosRes.error) throw videosRes.error;
     if (adsRes.error) throw adsRes.error;
-
-    console.log('--- DEBUG: raw articles from supabase ---', articlesRes.data?.length);
 
     const mappedArticles: Article[] = (articlesRes.data || []).map((item: any) => {
       // Prioridad de imagen: imagen > image_url > imageUrl > image > image_url_alt > primera de images_urls
@@ -47,8 +45,6 @@ export async function getPageData(): Promise<PageData> {
         animation_duration: item.animation_duration || item.animationDuration || 45
       };
     });
-
-    console.log('--- DEBUG: mapped articles ---', mappedArticles.map(a => ({ id: a.id, title: a.titulo, img: a.imagen })));
 
     const mappedVideos: Video[] = (videosRes.data || []).map((item: any) => ({
       id: String(item.id),

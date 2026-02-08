@@ -77,7 +77,7 @@ export const NewsSlider = React.memo(({
                                                 src={item.imagen || '/placeholder.svg'}
                                                 alt={item.titulo}
                                                 fill
-                                                sizes="50vw"
+                                                sizes="(max-width: 640px) 100vw, 50vw"
                                                 priority={idx < 2} // Cargar con prioridad las primeras imágenes
                                                 className="object-cover opacity-90"
                                                 unoptimized

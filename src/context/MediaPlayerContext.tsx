@@ -112,22 +112,21 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }, 4000);
   }, [handleIntroEnded, getNextIntroUrl, state.introQueue]);
 
+  const candidates = React.useMemo(() => {
+    return videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY && String(v.id) !== BLOCKED_START_ID);
+  }, [videoPool]);
+
   const getNextVideo = useCallback((excludeCategory?: string) => {
-    if (videoPool.length === 0) return null;
+    if (candidates.length === 0) return null;
 
-    let candidates = videoPool.filter(v =>
-      v.categoria !== FORBIDDEN_CATEGORY &&
-      v.categoria !== excludeCategory &&
-      String(v.id) !== BLOCKED_START_ID
-    );
+    let filtered = candidates.filter(v => v.categoria !== excludeCategory);
 
-    if (candidates.length === 0) {
-      candidates = videoPool.filter(v => v.categoria !== FORBIDDEN_CATEGORY);
+    if (filtered.length === 0) {
+      filtered = candidates;
     }
 
-    if (candidates.length === 0) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }, [videoPool]);
+    return filtered[Math.floor(Math.random() * filtered.length)];
+  }, [candidates]);
 
   const prepareNext = useCallback(() => {
     if (state.nextContent) return; // Ya hay uno preparado

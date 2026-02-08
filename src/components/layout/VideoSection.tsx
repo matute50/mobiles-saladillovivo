@@ -248,7 +248,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
       {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[999] para supremacía TOTAL (v23.0) */}
       <div className={cn(
-        "absolute inset-0 z-[999] bg-black transition-opacity duration-300",
+        "absolute inset-0 z-[999] bg-black transition-opacity duration-300 will-change-opacity",
         (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none"
       )}>
         {/* OPTIMIZACIÓN v16.0: Eliminamos 'key' para evitar re-mount. El nodo persiste. */}
