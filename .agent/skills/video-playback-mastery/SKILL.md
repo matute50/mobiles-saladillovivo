@@ -95,5 +95,15 @@ Al seleccionar contenido desde interfaces complejas (Búsquedas, Listas filtrada
     3.  Ejecutar el reset de UI (`setSearchQuery("")`, etc.).
     -   Esto da tiempo al motor de JS para procesar el evento de media antes de calcular el nuevo layout.
 
+## 8. Sincronización de Audio Paralelo (v24.0)
+
+Para eliminar baches de silencio durante las transiciones, el audio de la fuente principal (YouTube) debe ser audible incluso mientras la capa de Intro está activa.
+
+### Principios:
+1.  **Audio Unhidden**: La prop `muted` del `VideoPlayer` NO debe depender de la visibilidad de la intro.
+2.  **Fast Fade-In (0.75s)**: El incremento de volumen debe ser lo suficientemente rápido para establecer la atmósfera antes de que el video intro termine.
+    -   *Cálculo*: Incremento de `0.14` cada `100ms`.
+3.  **Auditabilidad Durante Intro**: La intro visual (`z-index: 999`) actúa como un velo cinematográfico, pero la "voz" de la aplicación es el audio del contenido que está por venir.
+
 ---
-*Estándar actualizado a v23.2 - Saladillo Vivo Mobile*
+*Estándar actualizado a v24.0 - Saladillo Vivo Mobile*

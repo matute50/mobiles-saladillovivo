@@ -218,7 +218,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             } : undefined}
             onStart={activeSlot === 'A' ? handleStart : undefined}
             onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
-            muted={activeSlot === 'A' ? (isMuted || isIntroVisible) : true}
+            muted={activeSlot === 'A' ? isMuted : true}
           />
         )}
       </div>
@@ -239,7 +239,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             } : undefined}
             onStart={activeSlot === 'B' ? handleStart : undefined}
             onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
-            muted={activeSlot === 'B' ? (isMuted || isIntroVisible) : true}
+            muted={activeSlot === 'B' ? isMuted : true}
           />
         )}
       </div>

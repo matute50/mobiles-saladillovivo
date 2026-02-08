@@ -114,7 +114,7 @@ export default function VideoPlayer({
         if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
           const finalGoal = Math.min(1, globalVolume * multiplier);
           if (prev >= finalGoal) return finalGoal;
-          return Math.min(finalGoal, prev + 0.04);
+          return Math.min(finalGoal, prev + 0.14);
         } else {
           if (prev <= 0) return 0;
           return Math.max(0, prev - 0.08);
