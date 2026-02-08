@@ -59,7 +59,13 @@ export const NewsSlider = React.memo(({
                                 {slide.items.map((item: Article) => (
                                     <div
                                         key={item.id}
-                                        onClick={() => { unmute(); playManual(item); }}
+                                        onClick={() => {
+                                            unmute();
+                                            // v24.1: Safety Delay on Play (Skill Rule)
+                                            setTimeout(() => {
+                                                playManual(item);
+                                            }, 500);
+                                        }}
                                         className={cn(
                                             "relative overflow-hidden rounded-xl shadow-sm shrink-0 active:scale-[0.98] transition-transform",
                                             isDark ? "bg-neutral-900 border border-neutral-800" : "bg-white border border-neutral-200",
@@ -68,12 +74,13 @@ export const NewsSlider = React.memo(({
                                     >
                                         <div className="relative w-full h-full">
                                             <Image
-                                                src={item.imagen || '/placeholder.png'}
+                                                src={item.imagen || '/placeholder.svg'}
                                                 alt={item.titulo}
                                                 fill
                                                 sizes="50vw"
                                                 priority={idx < 2} // Cargar con prioridad las primeras imágenes
                                                 className="object-cover opacity-90"
+                                                unoptimized
                                             />
 
                                             {/* Share Button Overlay */}

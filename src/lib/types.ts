@@ -10,8 +10,10 @@ export interface Article {
   contenido: string;
   etiquetas: string[];
   url_slide?: string | null;
-  audio_url?: string | null; // <-- Propiedad añadida para el audio de Google TTS
+  audio_url?: string | null;
   animation_duration?: number;
+  slug?: string;
+  featureStatus?: 'featured' | 'secondary' | 'tertiary' | 'none';
 }
 
 export interface Video {

@@ -46,7 +46,8 @@ export const DecreeModal = ({ isOpen, onClose, isDark }: DecreeModalProps) => {
                             alt="Saladillo Vivo Logo"
                             width={110}
                             height={28}
-                            className="h-7 w-auto object-contain drop-shadow-lg"
+                            style={{ height: '28px', width: 'auto' }}
+                            className="drop-shadow-lg object-contain"
                         />
                     </div>
                 </div>

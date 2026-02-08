@@ -1,32 +1,43 @@
-// src/hooks/useOrientation.ts
 import { useState, useEffect } from 'react';
 
-type Orientation = 'portrait' | 'landscape';
-
-export function useOrientation(): Orientation {
-  const [orientation, setOrientation] = useState<Orientation>('portrait');
+/**
+ * Hook para detectar la orientación del dispositivo y manejar el estado de landscape.
+ */
+export function useOrientation() {
+  const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
-    const updateOrientation = () => {
-      if (window.matchMedia("(orientation: landscape)").matches) {
-        setOrientation('landscape');
-      } else {
-        setOrientation('portrait');
+    const handleOrientationChange = () => {
+      const isLand = window.matchMedia("(orientation: landscape)").matches;
+      // Pequeño workaround para teclados virtuales: verificar que el alto sea razonable
+      const isKeyboardEffect = (window.visualViewport?.height || window.innerHeight) < 300 && !isLand;
+
+      if (!isKeyboardEffect) {
+        setIsLandscape(isLand);
       }
     };
 
-    // Set initial orientation
-    updateOrientation();
+    handleOrientationChange();
 
-    // Listen for changes
-    window.addEventListener('orientationchange', updateOrientation);
-    window.addEventListener('resize', updateOrientation); // For desktop browser resize testing
+    const mediaQuery = window.matchMedia("(orientation: landscape)");
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleOrientationChange);
+    } else {
+      mediaQuery.addListener(handleOrientationChange);
+    }
+
+    window.addEventListener("resize", handleOrientationChange);
 
     return () => {
-      window.removeEventListener('orientationchange', updateOrientation);
-      window.removeEventListener('resize', updateOrientation);
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleOrientationChange);
+      } else {
+        mediaQuery.removeListener(handleOrientationChange);
+      }
+      window.removeEventListener("resize", handleOrientationChange);
     };
   }, []);
 
-  return orientation;
+  return isLandscape;
 }

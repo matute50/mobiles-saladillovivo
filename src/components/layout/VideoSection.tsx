@@ -111,7 +111,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       const playPromise = v.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {
-          console.warn("Intro play failed, skipping");
+          // Silencioso si falla sin interacción, es normal en navegadores
           handleIntroEnded();
         });
       }

@@ -25,22 +25,32 @@ export const WeatherProvider = ({ children }: { children: ReactNode }) => {
                 .catch((err) => setErrorText(err.message));
         };
 
-        // Intentar geolocalización
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    fetchWeather(`${latitude},${longitude}`);
-                },
-                () => {
-                    // Fallback a Saladillo (sin query) si el usuario deniega o hay error
-                    fetchWeather();
-                },
-                { timeout: 5000 }
-            );
-        } else {
+        const tryGeolocation = async () => {
+            if ("geolocation" in navigator && "permissions" in navigator) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'geolocation' });
+                    // Solo pedir si ya tenemos permiso o si no se ha preguntado (para no forzar el gesto)
+                    // En realidad, "granted" es lo único seguro para evitar el violation sin gesto.
+                    if (status.state === 'granted') {
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                                const { latitude, longitude } = position.coords;
+                                fetchWeather(`${latitude},${longitude}`);
+                            },
+                            () => fetchWeather(),
+                            { timeout: 5000 }
+                        );
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Error checking geolocation permission:", e);
+                }
+            }
+            // Fallback por defecto (Saladillo)
             fetchWeather();
-        }
+        };
+
+        tryGeolocation();
     }, []);
 
     return (

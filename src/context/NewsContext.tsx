@@ -1,9 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { getArticlesForHome, getVideosForHome, getTickerTexts, getInterviews, getActiveBanners, getActiveAds, getCalendarEvents, fetchVideosBySearch } from '@/lib/data';
-import { Article, Video, Interview, Banner, Ad, CalendarEvent } from '@/lib/types';
+import { getPageData, fetchVideosBySearch } from '@/lib/data';
+import { Article, Video, Ad } from '@/lib/types';
 import { useToast } from '@/components/ui/use-toast';
+
+// v24.2: Interfaces for unused but existing logic
+interface Interview { id: string;[key: string]: any; }
+interface Banner { id: string;[key: string]: any; }
+interface CalendarEvent { id: string;[key: string]: any; }
 
 interface NewsContextType {
   allNews: Article[];
@@ -50,11 +55,7 @@ export const useNews = () => {
 
 export const NewsProvider = ({ children }: { children: ReactNode }) => {
   const [allNews, setAllNews] = useState<Article[]>([]);
-  const [featuredNews, setFeaturedNews] = useState<Article[]>([]);
-  const [secondaryNews, setSecondaryNews] = useState<Article[]>([]);
-  const [tertiaryNews, setTertiaryNews] = useState<Article[]>([]);
-  const [otherNews, setOtherNews] = useState<Article[]>([]);
-  
+
   const [allTickerTexts, setAllTickerTexts] = useState<string[]>([]);
   const [galleryVideos, setGalleryVideos] = useState<Video[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
@@ -69,9 +70,15 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
   const [adsLoading, setAdsLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  
+
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const { toast } = useToast();
+
+  // --- ESTADO DERIVADO (v24.2 - React Architecture Skill) ---
+  const featuredNews = React.useMemo(() => allNews.filter(n => n.featureStatus === 'featured'), [allNews]);
+  const secondaryNews = React.useMemo(() => allNews.filter(n => n.featureStatus === 'secondary'), [allNews]);
+  const tertiaryNews = React.useMemo(() => allNews.filter(n => n.featureStatus === 'tertiary'), [allNews]);
+  const otherNews = React.useMemo(() => allNews.filter(n => !['featured', 'secondary', 'tertiary'].includes(n.featureStatus || '')), [allNews]);
 
   // --- NUEVO ESTADO PARA BÚSQUEDA ---
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,31 +89,21 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [articlesResult, videosResult, tickerTexts, interviews, banners, ads, events] = await Promise.all([
-          getArticlesForHome(),
-          getVideosForHome(),
-          getTickerTexts(),
-          getInterviews(),
-          getActiveBanners(),
-          getActiveAds(),
-          getCalendarEvents(),
+        const data = await getPageData();
+
+        setAllNews([
+          ...(data.articles.featuredNews ? [data.articles.featuredNews] : []),
+          ...data.articles.secondaryNews,
+          ...data.articles.otherNews
         ]);
+        setGalleryVideos(data.videos.allVideos);
+        setActiveAds(data.ads);
 
-        const safeArticles = articlesResult || { allNews: [] };
-        const safeVideos = videosResult || { allVideos: [] };
-
-        setAllNews(safeArticles.allNews);
-        setFeaturedNews(safeArticles.allNews.filter(n => n.featureStatus === 'featured'));
-        setSecondaryNews(safeArticles.allNews.filter(n => n.featureStatus === 'secondary'));
-        setTertiaryNews(safeArticles.allNews.filter(n => n.featureStatus === 'tertiary'));
-        setOtherNews(safeArticles.allNews.filter(n => !['featured', 'secondary', 'tertiary'].includes(n.featureStatus || '')));
-
-        setAllTickerTexts(tickerTexts);
-        setGalleryVideos(safeVideos.allVideos);
-        setInterviews(interviews);
-        setActiveBanners(banners);
-        setActiveAds(ads);
-        setCalendarEvents(events);
+        // Fallbacks for not implemented in current pageData
+        setAllTickerTexts([]);
+        setInterviews([]);
+        setActiveBanners([]);
+        setCalendarEvents([]);
 
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -168,7 +165,7 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     allNews,
     featuredNews,
-        secondaryNews,
+    secondaryNews,
     tertiaryNews,
     otherNews,
     allTickerTexts,

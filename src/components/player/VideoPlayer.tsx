@@ -18,20 +18,29 @@ interface VideoPlayerProps {
   isSharingAction?: boolean;
 }
 
-export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, onStart, onProgress, muted, isSharingAction }: VideoPlayerProps) {
+export default function VideoPlayer({
+  content,
+  shouldPlay,
+  onEnded,
+  onNearEnd,
+  onStart,
+  onProgress,
+  muted,
+  isSharingAction
+}: VideoPlayerProps) {
   const [targetVolume, setTargetVolume] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const { volume: globalVolume } = useVolume();
+
   const playerRef = useRef<ReactPlayer>(null);
   const internalPlayerRef = useRef<any>(null);
   const fadeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoplayCheckRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  if (!content) return <div className="w-full h-full bg-black" />;
-
-  const isArticle = 'url_slide' in content || !('url' in content);
+  // Determinar tipo de contenido
+  const isArticle = content ? ('url_slide' in content || !('url' in content)) : false;
   const articleData = isArticle ? (content as Article) : null;
   const videoData = !isArticle ? (content as Video) : null;
 
@@ -39,119 +48,98 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
 
   const triggerEnd = useCallback(() => {
     setIsFadingOut(true);
-    setTimeout(() => onEnded(), 200); // 0.2s para fade out (Fast Transition)
+    setTimeout(() => onEnded(), 200);
   }, [onEnded]);
 
+  const handleProgress = useCallback((progress: { playedSeconds: number; loadedSeconds: number }) => {
+    if (playerRef.current) {
+      const duration = playerRef.current.getDuration();
+      if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
+
+      if (!isFadingOut && duration > 0 && (duration - progress.playedSeconds) < 1.5) {
+        setIsFadingOut(true);
+        if (onNearEnd) onNearEnd();
+      }
+    }
+  }, [isFadingOut, onNearEnd, onProgress]);
+
+  const handleReady = useCallback((player: any) => {
+    setIsPlayerReady(true);
+    internalPlayerRef.current = player.getInternalPlayer();
+  }, []);
+
+  // Inicialización en cambio de contenido
   useEffect(() => {
     setIsFadingOut(false);
     setIsPlayerReady(false);
     setTargetVolume(0);
     startTimeRef.current = Date.now();
 
-    if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
+    return () => {
+      if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    };
   }, [content]);
 
-  // REINTENTO AGRESIVO DE AUTOPLAY (Skill Rule)
+  // Autoplay Loop (v24.1)
   useEffect(() => {
-    if (shouldPlay && isPlayerReady && !isArticle && videoData) {
-      autoplayCheckRef.current = setInterval(() => {
-        if (!internalPlayerRef.current) return;
+    if (!shouldPlay || isArticle || !isPlayerReady) return;
 
-        try {
-          const state = internalPlayerRef.current.getPlayerState();
-          const elapsed = (Date.now() - startTimeRef.current) / 1000;
-
-          // PAUSED (2), CUED (5), UNSTARTED (-1) -> Force Play
+    autoplayCheckRef.current = setInterval(() => {
+      if (!internalPlayerRef.current) return;
+      try {
+        const p = internalPlayerRef.current;
+        if (p) {
+          const state = p.getPlayerState();
           if ([2, 5, -1].includes(state)) {
-            internalPlayerRef.current.playVideo();
+            p.playVideo();
           }
+          if (typeof p.setVolume === 'function') p.setVolume(targetVolume * 100);
+          if (muted && typeof p.mute === 'function') p.mute();
+          else if (!muted && typeof p.unMute === 'function') p.unMute();
+        }
+      } catch (e) { }
+    }, 1500);
 
-          // Bloqueador de Pausas en los primeros 10 segundos
-          if (state === 2 && elapsed < 10) {
-            internalPlayerRef.current.playVideo();
-          }
-        } catch (e) { }
-      }, 1000);
-    }
-    return () => { if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current); };
-  }, [shouldPlay, isPlayerReady, isArticle, videoData]);
+    return () => {
+      if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
+    };
+  }, [shouldPlay, isArticle, isPlayerReady, muted, targetVolume]);
 
-  // Gestión de FADE-IN y FADE-OUT de Audio (Ajustado a v4.4: Sin reinicios de efecto)
+  // Volume Loop (v24.1)
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    interval = setInterval(() => {
+    const interval = setInterval(() => {
       setTargetVolume(prev => {
-        // vNormalización: Factor multiplicador desde DB (Default 1)
         const multiplier = (videoData && videoData.volumen_extra) ? videoData.volumen_extra : 1;
-
         if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
-          // Fade In con Multiplicador
-          // El objetivo final no es 'globalVolume', sino 'globalVolume * multiplier' (clamped a 1.0)
           const finalGoal = Math.min(1, globalVolume * multiplier);
-
           if (prev >= finalGoal) return finalGoal;
-          return Math.min(finalGoal, prev + 0.05);
+          return Math.min(finalGoal, prev + 0.04);
         } else {
-          // Fade Out (si está mutado, en fade out, o no debe sonar)
           if (prev <= 0) return 0;
-          return Math.max(0, prev - 0.05);
+          return Math.max(0, prev - 0.08);
         }
       });
-    }, 20);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [globalVolume, isArticle, isFadingOut, isPlayerReady, muted, shouldPlay, videoData]);
 
-    return () => { if (interval) clearInterval(interval); };
-  }, [shouldPlay, muted, isArticle, isPlayerReady, isFadingOut, globalVolume]);
-
-  const handleProgress = (progress: { playedSeconds: number; loadedSeconds: number }) => {
-    if (playerRef.current) {
-      const duration = playerRef.current.getDuration();
-      if (onProgress) onProgress({ playedSeconds: progress.playedSeconds, duration });
-
-      // Regla de Oro v4.2: Detección anticipada robusta (1.5s antes del fin)
-      // Usamos 1.5s como margen de seguridad para asegurar que la intro cubra el final.
-      if (!isFadingOut && duration > 0 && (duration - progress.playedSeconds) < 1.5) {
-        setIsFadingOut(true);
-        if (onNearEnd) onNearEnd();
-      }
-    }
-  };
-
-  const handleReady = (player: any) => {
-    setIsPlayerReady(true);
-    internalPlayerRef.current = player.getInternalPlayer();
-  };
-
-  // Estabilizar valores para el efecto (evitar re-runs por cambios de referencia en articleData)
-  const audioUrl = articleData?.audio_url;
-  const animDuration = articleData?.animation_duration;
-
+  // Audio Side Effect (Articles)
   useEffect(() => {
-    if (isArticle && shouldPlay && !isFadingOut && audioUrl) {
+    if (isArticle && shouldPlay && !isFadingOut && articleData?.audio_url) {
       playAudio();
-      const duration = (animDuration || 45) * 1000;
+      const duration = (articleData.animation_duration || 45) * 1000;
 
-      // SOLO si no hay timer activo (evitar reiniciar el timer si el componente se re-renderiza pero sigue playing)
       if (!fadeTimerRef.current) {
         fadeTimerRef.current = setTimeout(() => triggerEnd(), duration);
       }
 
-      // Timer para Near End (1s antes para Crossfade con Intro)
-      const nearEndDuration = Math.max(0, duration - 1000);
       const nearEndTimer = setTimeout(() => {
         if (onNearEnd) onNearEnd();
-      }, nearEndDuration);
+      }, Math.max(0, duration - 1000));
 
       return () => {
-        // CRITICAL: No pausar ni limpiar timers si solo es un re-render superficial.
-        // Solo limpiar si shouldPlay se vuelve false o el componente se desmonta realemente.
-        // Sin embargo, React cleanup corre siempre antes del nuevo efecto.
-        // La solución real es que ESTE efecto no corra seguido.
-
-        // Limpiamos timers auxiliares pero el principal lo manejamos con cuidado
         clearTimeout(nearEndTimer);
-
-        // Si shouldPlay cambió a false, entonces sí pausamos y limpiamos todo
         if (!shouldPlay) {
           if (fadeTimerRef.current) {
             clearTimeout(fadeTimerRef.current);
@@ -161,17 +149,16 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
         }
       };
     } else {
-      // Si no debe sonar, pausar y limpiar
       pauseAudio();
       if (fadeTimerRef.current) {
         clearTimeout(fadeTimerRef.current);
         fadeTimerRef.current = null;
       }
     }
-  }, [isArticle, shouldPlay, isFadingOut, playAudio, pauseAudio, audioUrl, animDuration, triggerEnd, onNearEnd]);
+  }, [isArticle, shouldPlay, isFadingOut, articleData, playAudio, pauseAudio, triggerEnd, onNearEnd]);
 
+  // Fetch HTML Slide content
   const [slideHtml, setSlideHtml] = useState<string | null>(null);
-
   useEffect(() => {
     if (articleData?.url_slide) {
       const fetchAndProcess = async () => {
@@ -179,26 +166,17 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
           const res = await fetch(articleData.url_slide!);
           if (!res.ok) throw new Error("Failed to load slide");
           const originalHtml = await res.text();
-
           const baseUrl = articleData.url_slide!.substring(0, articleData.url_slide!.lastIndexOf('/') + 1);
-
-          // Inyección inteligente: Base URL + CSS Responsivo
           const responsiveStyles = `
             <base href="${baseUrl}">
             <style>
               @media (orientation: landscape) {
-                /* Solo ajustamos la tipografía y márgenes para seguridad, SIN cambiar el layout general */
                 h1, h2, .titulo, .title, [class*="titulo"], [class*="title"] {
                   font-size: 6vh !important;
                   line-height: 1.1 !important;
-                  /* Asegurar que no se salga del ancho */
                   max-width: 90vw !important;
                   box-sizing: border-box !important;
-                  /* Si el original tiene position absolute, esto ayuda a centrarlo si es left/right 0 */
-                  /* No forzamos position para no romper el flujo original */
                 }
-                
-                /* Ajuste de bajada */
                 p, .bajada, .description {
                   font-size: 3.5vh !important;
                   line-height: 1.3 !important;
@@ -207,29 +185,26 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
               }
             </style>
           `;
-
-          // Insertar antes del cierre de head, o al principio si no hay head
           const modifiedHtml = originalHtml.includes('</head>')
             ? originalHtml.replace('</head>', `${responsiveStyles}</head>`)
             : responsiveStyles + originalHtml;
-
           setSlideHtml(modifiedHtml);
         } catch (err) {
-          console.warn("Could not fetch slide content for styling, falling back to direct iframe", err);
           setSlideHtml(null);
         }
       };
-
       fetchAndProcess();
     }
   }, [articleData?.url_slide]);
 
+  if (!content) return <div className="w-full h-full bg-black" />;
+
+  // RENDER ARTICLE
   if (isArticle && articleData?.url_slide) {
     return (
-      // v20.0: Eliminado fade-out visual (opacity permanece 100). La intro cubre esto.
-      <div className="w-full h-full bg-black opacity-100">
+      <div className="w-full h-full bg-black relative">
         <iframe
-          key={articleData.url_slide} // Force re-render on change
+          key={articleData.url_slide}
           src={!slideHtml ? articleData.url_slide : undefined}
           srcDoc={slideHtml || undefined}
           className="w-full h-full border-0"
@@ -240,14 +215,12 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
         />
         {!isPlayerReady && articleData.imagen && (
           <div className="absolute inset-0 bg-black">
-            {/* Optimización LCP: priority={true} para evitar el warning de Largest Contentful Paint */}
             <img
               src={articleData.imagen}
               alt="Poster"
               className="w-full h-full object-cover opacity-50"
               onLoad={() => setIsPlayerReady(true)}
               loading="eager"
-              {...({ fetchPriority: "high" } as any)}
             />
           </div>
         )}
@@ -255,14 +228,13 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
     );
   }
 
+  // RENDER VIDEO
   if (videoData) {
     return (
-      // v20.0: Eliminado fade-out visual. Opacity fija a 1.
-      <div className="w-full h-full bg-black relative overflow-hidden" style={{ opacity: 1 }}>
-        {/* ANTI-BRANDING 11.0 (Armored Zoom 125% + Heavy Cinema Bars) */}
+      <div className="w-full h-full bg-black relative overflow-hidden">
         <div className={cn(
           "absolute left-0 right-0 bg-black z-50 pointer-events-none transition-all duration-500",
-          isSharingAction ? "h-20" : "h-0", // 80px protection
+          isSharingAction ? "h-20" : "h-0",
           "top-0"
         )} />
         <div className={cn(
@@ -274,9 +246,8 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
         <div
           className={cn(
             "absolute inset-0 w-full h-full left-0 top-0 will-change-transform",
-            isSharingAction ? "transition-none" : "transition-transform duration-500 ease-in-out"
+            isSharingAction ? "transform scale(1.25)" : "transform scale(1.0) transition-transform duration-500 ease-in-out"
           )}
-          style={{ transform: isSharingAction ? 'scale(1.25)' : 'scale(1.0)' }}
         >
           <ReactPlayer
             ref={playerRef}
@@ -290,7 +261,7 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
             onStart={onStart}
             onReady={handleReady}
             onProgress={handleProgress}
-            progressInterval={200} // Mayor precisión de reporte (Skill Rule)
+            progressInterval={200}
             config={{
               youtube: {
                 playerVars: {
@@ -309,8 +280,6 @@ export default function VideoPlayer({ content, shouldPlay, onEnded, onNearEnd, o
             }}
           />
         </div>
-
-        {/* BLOQUEO TOTAL DE INTERACCIÓN NATIVA (Anti-Share, Anti-YouTube branding) */}
         <div className="absolute inset-0 z-20 bg-transparent cursor-default pointer-events-auto" />
       </div>
     );

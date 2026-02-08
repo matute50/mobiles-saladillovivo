@@ -18,47 +18,23 @@ import { VideoCarouselBlock } from './VideoCarouselBlock';
 import { NewsSlider } from './NewsSlider';
 import { InstallModal } from './InstallModal';
 import { usePWA } from '@/context/PWAContext';
+import { useKeyboard } from '@/hooks/useKeyboard';
+import { useOrientation } from '@/hooks/useOrientation';
 
 export default function MobileLayout({ data }: { data: PageData }) {
   const [isDark, setIsDark] = useState(true);
   const [mounted, setMounted] = useState(false);
   const { setVideoPool, playManual } = useMediaPlayer();
   const { isInstallModalOpen, setIsInstallModalOpen } = usePWA();
+  const { hasInteracted } = useVolume();
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
-  /* -------------------------------------------------------------
-    * KEYBOARD DETECTION (v63.1) - MOVIDO AL INICIO PARA EVITAR ERROR #310
-    * Detectamos si la altura visual es significativamente menor al alto de ventana
-    * y si estamos en modo búsqueda (para mayor precisión).
-    * ------------------------------------------------------------- */
-  useEffect(() => {
-    // Check if window is defined (SSR safety)
-    if (typeof window === 'undefined' || !window.visualViewport) return;
-
-    const handleResize = () => {
-      const height = window.visualViewport?.height || window.innerHeight;
-      const screenHeight = window.innerHeight;
-      // Si el viewport es menor al 85% de la pantalla, asumimos teclado
-      setIsKeyboardOpen(height < (screenHeight * 0.85) && isSearchOpen);
-    };
-
-    window.visualViewport.addEventListener('resize', handleResize);
-    window.visualViewport.addEventListener('scroll', handleResize);
-
-    // Initial check
-    handleResize();
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-        window.visualViewport.removeEventListener('scroll', handleResize);
-      }
-    };
-  }, [isSearchOpen]);
+  // Custom Hooks (v24.2 - React Architecture)
+  const isKeyboardOpen = useKeyboard(isSearchOpen);
+  const isLandscape = useOrientation();
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -72,7 +48,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
       ...(data.articles?.otherNews || [])
     ];
 
-    const matchedArticles = articles.filter(a => a.titulo.toLowerCase().includes(q));
+    const matchedArticles = articles.filter(a => (a as any).titulo.toLowerCase().includes(q));
     const matchedVideos = (data.videos?.allVideos || []).filter(v => v.nombre.toLowerCase().includes(q));
 
     return {
@@ -105,8 +81,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
     }
   }, [data, mounted, setVideoPool]);
 
-  // (Removed unused sharing/deep link logic)
-
   const videoContainerRef = React.useRef<HTMLDivElement>(null);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -132,11 +106,9 @@ export default function MobileLayout({ data }: { data: PageData }) {
         }
       }
     } catch (err) {
-      console.warn("Fullscreen API blocked:", err);
+      if (enter) console.warn("Fullscreen toggle ignored (requires interaction or not supported).");
     }
   };
-
-  const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -148,53 +120,27 @@ export default function MobileLayout({ data }: { data: PageData }) {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
-    const handleOrientationChange = () => {
-      const isLand = window.matchMedia("(orientation: landscape)").matches;
-      // Pequeño workaround para teclados virtuales: verificar que el alto sea menor que el ancho
-      const isKeyboardOpen = (window.visualViewport?.height || window.innerHeight) < 300 && !isLand;
-
-      if (!isKeyboardOpen) {
-        setIsLandscape(isLand);
-        toggleFullscreen(isLand);
-      }
-    };
-
-    // Check inicial
-    handleOrientationChange();
-
-    // Listeners
-    const mediaQuery = window.matchMedia("(orientation: landscape)");
-
-    // Modern API
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener("change", handleOrientationChange);
-    } else {
-      // Deprecated API fallback
-      mediaQuery.addListener(handleOrientationChange);
+    // v24.2: Solo intentar fullscreen automático si el usuario ya interactuó
+    if (hasInteracted) {
+      toggleFullscreen(isLandscape);
     }
-
-    // Backup 'resize' para mayor compatibilidad
-    window.addEventListener("resize", handleOrientationChange);
 
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
-
-      if (mediaQuery.removeEventListener) {
-        mediaQuery.removeEventListener("change", handleOrientationChange);
-      } else {
-        mediaQuery.removeListener(handleOrientationChange);
-      }
-      window.removeEventListener("resize", handleOrientationChange);
     };
-  }, []);
+  }, [isLandscape, hasInteracted]);
 
   /* -------------------------------------------------------------
    * HANDLERS
    * ------------------------------------------------------------- */
   const handleVideoSelect = React.useCallback(() => {
-    setSearchQuery("");
-    setIsSearchOpen(false);
+    // v24.1: Safety Delay on Resets (Skill Rule)
+    // Damos tiempo a la interacción de play antes de colapsar la búsqueda o borrar query
+    setTimeout(() => {
+      setSearchQuery("");
+      setIsSearchOpen(false);
+    }, 500);
   }, []);
 
   if (!mounted) return null;

@@ -26,6 +26,8 @@ export async function getPageData(): Promise<PageData> {
     if (videosRes.error) throw videosRes.error;
     if (adsRes.error) throw adsRes.error;
 
+    console.log('--- DEBUG: raw articles from supabase ---', articlesRes.data?.length);
+
     const mappedArticles: Article[] = (articlesRes.data || []).map((item: any) => {
       // Prioridad de imagen: imagen > image_url > imageUrl > image > image_url_alt > primera de images_urls
       const backupImage = Array.isArray(item.images_urls) && item.images_urls.length > 0 ? item.images_urls[0] : null;
@@ -34,17 +36,19 @@ export async function getPageData(): Promise<PageData> {
         id: String(item.id),
         titulo: (item.titulo || item.title || 'Sin título').replaceAll('|', ' ').trim(),
         bajada: (item.bajada || item.summary || item.description || '').trim(),
-        imagen: item.imagen || item.image_url || item.image || item.imageUrl || item.image_url_alt || backupImage || null,
+        imagen: item.image_url || item.imagen || item.image || item.imageUrl || item.image_url_alt || backupImage || null,
         categoria: item.categoria || item.category || 'General',
         autor: item.autor || item.author || 'Redacción',
         fecha: item.created_at || item.createdAt || item.fecha || new Date().toISOString(),
-        contenido: item.contenido || item.content || item.body || '',
+        contenido: item.contenido || item.text || item.content || item.body || '',
         etiquetas: item.etiquetas || item.tags || [],
         url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
         audio_url: item.audio_url || item.url_audio || item.audioUrl || null,
         animation_duration: item.animation_duration || item.animationDuration || 45
       };
     });
+
+    console.log('--- DEBUG: mapped articles ---', mappedArticles.map(a => ({ id: a.id, title: a.titulo, img: a.imagen })));
 
     const mappedVideos: Video[] = (videosRes.data || []).map((item: any) => ({
       id: String(item.id),
@@ -97,11 +101,11 @@ export async function getArticleById(id: string): Promise<Article | null> {
     id: String(data.id),
     titulo: (data.titulo || data.title || 'Sin título').replaceAll('|', ' ').trim(),
     bajada: (data.bajada || data.summary || data.description || '').trim(),
-    imagen: data.imagen || data.image_url || data.image || data.imageUrl || data.image_url_alt || backupImage || null,
+    imagen: data.image_url || data.imagen || data.image || data.imageUrl || data.image_url_alt || backupImage || null,
     categoria: data.categoria || data.category || 'General',
     autor: data.autor || data.author || 'Redacción',
     fecha: data.created_at || data.createdAt || data.fecha || new Date().toISOString(),
-    contenido: data.contenido || data.content || data.body || '',
+    contenido: data.contenido || data.text || data.content || data.body || '',
     etiquetas: data.etiquetas || data.tags || [],
     url_slide: data.url_slide || data.slide_url || data.slideUrl || null,
     audio_url: data.audio_url || data.url_audio || data.audioUrl || null,
@@ -127,4 +131,24 @@ export async function getVideoById(id: string): Promise<Video | null> {
     fecha: data.createdAt || data.created_at || data.fecha || new Date().toISOString(),
     volumen_extra: data.volumen_extra ? Number(data.volumen_extra) : 1
   };
+}
+
+export async function fetchVideosBySearch(query: string): Promise<Video[]> {
+  const { data, error } = await supabase
+    .from('videos')
+    .select('*')
+    .ilike('nombre', `%${query}%`)
+    .limit(50);
+
+  if (error || !data) return [];
+
+  return data.map((item: any) => ({
+    id: String(item.id),
+    nombre: (item.nombre || item.title || item.name || 'Video sin nombre').replaceAll('|', ' ').trim(),
+    url: item.url || item.videoUrl || '',
+    imagen: item.imagen || item.image || item.thumbnail || null,
+    categoria: item.categoria || item.category || 'Varios',
+    fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString(),
+    volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
+  }));
 }
