@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { useNews } from '@/context/NewsContext'; // Importante: Conexión con el contexto
 import { cn } from '@/lib/utils';
@@ -25,8 +25,8 @@ const SearchBar = () => {
   };
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
+    <form
+      onSubmit={handleSubmit}
       className="relative flex items-center w-full max-w-[200px] sm:max-w-[300px]"
     >
       <input
@@ -41,7 +41,7 @@ const SearchBar = () => {
         value={inputValue}
         onChange={(e) => setInputValue(e.target.value)}
       />
-      
+
       <div className="absolute right-2 flex items-center gap-1">
         {/* Botón X para limpiar */}
         {(inputValue || isSearching) && (
@@ -53,10 +53,10 @@ const SearchBar = () => {
             <X size={14} />
           </button>
         )}
-        
+
         {/* Botón Lupa para buscar */}
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="p-1 text-foreground hover:text-primary transition-colors"
         >
           <Search size={16} />

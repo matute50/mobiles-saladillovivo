@@ -36,6 +36,11 @@ body {
   .animate-ping-pong {
     animation: ping-pong 1.5s ease-in-out infinite alternate;
   }
+
+  /* v24.4 - GPU Optimization: Reduce layout recalculation */
+  .contain-layout {
+    contain: layout;
+  }
 }
 
 @keyframes ping-pong {
