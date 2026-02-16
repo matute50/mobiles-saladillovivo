@@ -20,6 +20,7 @@ import { InstallModal } from './InstallModal';
 import { usePWA } from '@/context/PWAContext';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useOrientation } from '@/hooks/useOrientation';
+import { useDeepLink } from '@/hooks/useDeepLink';
 
 export default function MobileLayout({ data }: { data: PageData }) {
   const [isDark, setIsDark] = useState(true);
@@ -35,6 +36,9 @@ export default function MobileLayout({ data }: { data: PageData }) {
   // Custom Hooks (v24.2 - React Architecture)
   const isKeyboardOpen = useKeyboard(isSearchOpen);
   const isLandscape = useOrientation();
+
+  // v24.5: Deep Linking - Auto-play shared content from WhatsApp/etc
+  useDeepLink(data);
 
   useEffect(() => { setMounted(true); }, []);
 
