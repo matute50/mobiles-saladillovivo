@@ -79,8 +79,37 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: Props) {
+  const { id, v } = await searchParams;
   const data = await getPageData();
+
+  // v24.6: Inyección de Deep Link Content
+  // Si venimos de un link, nos aseguramos que ese contenido esté en el pool
+  // incluso si no está en el TOP 20/5000 inicial.
+  if (id) {
+    const allArticles = [
+      ...(data.articles.featuredNews ? [data.articles.featuredNews] : []),
+      ...data.articles.secondaryNews,
+      ...data.articles.otherNews
+    ];
+
+    if (!allArticles.find(a => a.id === id)) {
+      const specificArticle = await getArticleById(id);
+      if (specificArticle) {
+        data.articles.otherNews.push(specificArticle);
+      }
+    }
+  }
+
+  if (v) {
+    if (!data.videos.allVideos.find(vid => vid.id === v)) {
+      const specificVideo = await getVideoById(v);
+      if (specificVideo) {
+        data.videos.allVideos.push(specificVideo);
+      }
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black">
       <MobileLayout data={data as any} />

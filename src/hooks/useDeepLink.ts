@@ -21,53 +21,58 @@ export function useDeepLink(pageData: PageData | undefined): Video | Article | n
     const searchParams = useSearchParams();
     const router = useRouter();
     const hasProcessed = useRef(false);
+    const targetRef = useRef<Video | Article | null>(null);
 
-    // Solo procesar una vez
-    if (hasProcessed.current || !pageData) return null;
+    // Solo procesar una vez para encontrar el target
+    if (!hasProcessed.current && pageData) {
+        const videoId = searchParams.get('v');
+        const articleId = searchParams.get('id');
 
-    const videoId = searchParams.get('v');
-    const articleId = searchParams.get('id');
+        // Deep link para video (?v=123)
+        if (videoId && pageData.videos?.allVideos) {
+            const targetVideo = pageData.videos.allVideos.find(
+                (v: Video) => v.id === videoId
+            );
 
-    // Deep link para video (?v=123)
-    if (videoId && pageData?.videos?.allVideos) {
-        const targetVideo = pageData.videos.allVideos.find(
-            (v: Video) => v.id === videoId
-        );
+            if (targetVideo) {
+                hasProcessed.current = true;
+                targetRef.current = targetVideo;
 
-        if (targetVideo) {
+                // Limpiar URL después de 500ms (esperar mount)
+                setTimeout(() => {
+                    router.replace('/', { scroll: false });
+                }, 500);
+            }
+        }
+
+        // Deep link para artículo (?id=456)
+        if (!targetRef.current && articleId && pageData.articles) {
+            const allArticles: (Article | null)[] = [
+                pageData.articles.featuredNews,
+                ...(pageData.articles.secondaryNews || []),
+                ...(pageData.articles.otherNews || [])
+            ].filter(Boolean);
+
+            const targetArticle = allArticles.find(
+                (a) => a?.id === articleId
+            );
+
+            if (targetArticle) {
+                hasProcessed.current = true;
+                targetRef.current = targetArticle;
+
+                setTimeout(() => {
+                    router.replace('/', { scroll: false });
+                }, 500);
+            }
+        }
+
+        // Si hay parámetros pero no encontramos el contenido, marcamos como procesado
+        // para evitar loops si el contenido no existe.
+        if (!targetRef.current && (videoId || articleId)) {
             hasProcessed.current = true;
-
-            // Limpiar URL después de 500ms (esperar mount)
-            setTimeout(() => {
-                router.replace('/', { scroll: false });
-            }, 500);
-
-            return targetVideo;
         }
     }
 
-    // Deep link para artículo (?id=456)
-    if (articleId && pageData?.articles) {
-        const allArticles: (Article | null)[] = [
-            pageData.articles.featuredNews,
-            ...(pageData.articles.secondaryNews || []),
-            ...(pageData.articles.otherNews || [])
-        ].filter(Boolean);
-
-        const targetArticle = allArticles.find(
-            (a) => a?.id === articleId
-        );
-
-        if (targetArticle) {
-            hasProcessed.current = true;
-
-            setTimeout(() => {
-                router.replace('/', { scroll: false });
-            }, 500);
-
-            return targetArticle;
-        }
-    }
-
-    return null;
+    return targetRef.current;
 }
