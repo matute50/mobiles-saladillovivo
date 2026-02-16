@@ -38,7 +38,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
   const isLandscape = useOrientation();
 
   // v24.5: Deep Linking - Auto-play shared content from WhatsApp/etc
-  useDeepLink(data);
+  const deepLinkTarget = useDeepLink(data);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -81,9 +81,10 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
   useEffect(() => {
     if (data && mounted) {
-      setVideoPool(data.videos?.allVideos || []);
+      // v24.5.1: Pasar deep link target como initialTarget para prevenir sobrescritura
+      setVideoPool(data.videos?.allVideos || [], deepLinkTarget || undefined);
     }
-  }, [data, mounted, setVideoPool]);
+  }, [data, mounted, setVideoPool, deepLinkTarget]);
 
   const videoContainerRef = React.useRef<HTMLDivElement>(null);
 
