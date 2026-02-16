@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
 interface VolumeContextType {
   volume: number;
@@ -14,17 +14,20 @@ interface VolumeContextType {
 const VolumeContext = createContext<VolumeContextType | undefined>(undefined);
 
 export const VolumeProvider = ({ children }: { children: ReactNode }) => {
-  const [volume, setVolumeState] = useState(1);
-  const [isMuted, setIsMuted] = useState(true);
-  const [hasInteracted, setHasInteracted] = useState(false);
-
-  useEffect(() => {
+  // ✅ localStorage Lazy Initialization (react-useeffect skill)
+  // Evita doble ejecución en dev mode y mejora performance
+  const [volume, setVolumeState] = useState(() => {
+    if (typeof window === 'undefined') return 1;
     const savedVolume = localStorage.getItem('playerVolume');
-    if (savedVolume !== null) {
-      setVolumeState(parseFloat(savedVolume));
-      setIsMuted(false);
-    }
-  }, []);
+    return savedVolume !== null ? parseFloat(savedVolume) : 1;
+  });
+
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('playerVolume') === null;
+  });
+
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const setVolume = useCallback((newVolume: number) => {
     const clamped = Math.max(0, Math.min(1, newVolume));

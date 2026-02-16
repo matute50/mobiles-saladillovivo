@@ -129,12 +129,19 @@ export async function getVideoById(id: string): Promise<Video | null> {
   };
 }
 
-export async function fetchVideosBySearch(query: string): Promise<Video[]> {
-  const { data, error } = await supabase
+export async function fetchVideosBySearch(query: string, signal?: AbortSignal): Promise<Video[]> {
+  let queryBuilder = supabase
     .from('videos')
     .select('*')
     .ilike('nombre', `%${query}%`)
     .limit(50);
+
+  // Solo agregar abortSignal si está presente
+  if (signal) {
+    queryBuilder = queryBuilder.abortSignal(signal);
+  }
+
+  const { data, error } = await queryBuilder;
 
   if (error || !data) return [];
 

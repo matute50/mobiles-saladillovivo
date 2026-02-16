@@ -81,10 +81,11 @@ export default function VideoPlayer({
     };
   }, [content]);
 
-  // Autoplay Loop (v24.1)
+  // Autoplay Loop (v24.2 - Optimized interval)
   useEffect(() => {
     if (!shouldPlay || isArticle || !isPlayerReady) return;
 
+    // Reducido CPU usage: 3000ms es suficiente para recovery, reduce wake-ups en 50%
     autoplayCheckRef.current = setInterval(() => {
       if (!internalPlayerRef.current) return;
       try {
@@ -99,29 +100,36 @@ export default function VideoPlayer({
           else if (!muted && typeof p.unMute === 'function') p.unMute();
         }
       } catch (e) { }
-    }, 1500);
+    }, 3000);
 
     return () => {
       if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
     };
   }, [shouldPlay, isArticle, isPlayerReady, muted, targetVolume]);
 
-  // Volume Loop (v24.1)
+  // Volume Loop (v24.2 - RAF Optimization)
+  // ✅ Optimización CPU -> GPU sync
   useEffect(() => {
-    const interval = setInterval(() => {
+    let rafId: number;
+
+    const updateVolume = () => {
       setTargetVolume(prev => {
         const multiplier = (videoData && videoData.volumen_extra) ? videoData.volumen_extra : 1;
         if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
           const finalGoal = Math.min(1, globalVolume * multiplier);
           if (prev >= finalGoal) return finalGoal;
-          return Math.min(finalGoal, prev + 0.14);
+          // Ajustado para 60fps: 0.14 cada ~16ms ≈ mismo rate que 150ms interval
+          return Math.min(finalGoal, prev + 0.00233);
         } else {
           if (prev <= 0) return 0;
-          return Math.max(0, prev - 0.08);
+          return Math.max(0, prev - 0.00133);
         }
       });
-    }, 150);
-    return () => clearInterval(interval);
+      rafId = requestAnimationFrame(updateVolume);
+    };
+
+    rafId = requestAnimationFrame(updateVolume);
+    return () => cancelAnimationFrame(rafId);
   }, [globalVolume, isArticle, isFadingOut, isPlayerReady, muted, shouldPlay, videoData]);
 
   // Audio Side Effect (Articles)

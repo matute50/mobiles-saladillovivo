@@ -141,19 +141,38 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
 
     setIsSearching(true);
     setSearchLoading(true);
+
+    // ✅ Race Condition Fix (react-useeffect skill)
+    // Crear AbortController para cancelar requests obsoletos
+    const controller = new AbortController();
+
     try {
-      const results = await fetchVideosBySearch(query);
-      setSearchResults(results);
+      const results = await fetchVideosBySearch(query, controller.signal);
+
+      // Solo actualizar si no fue cancelado
+      if (!controller.signal.aborted) {
+        setSearchResults(results);
+      }
     } catch (err: unknown) {
+      // Ignorar errores de abort - son esperados
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
+
       console.error("Error during search:", err);
       let errorMessage = "Un error desconocido ocurrió.";
       if (err instanceof Error) {
         errorMessage = err.message;
       }
-      toast({ title: "Error de Búsqueda", description: errorMessage });
-      setSearchResults([]);
+
+      if (!controller.signal.aborted) {
+        toast({ title: "Error de Búsqueda", description: errorMessage });
+        setSearchResults([]);
+      }
     } finally {
-      setSearchLoading(false);
+      if (!controller.signal.aborted) {
+        setSearchLoading(false);
+      }
     }
   }, [toast]);
 
