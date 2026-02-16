@@ -107,13 +107,15 @@ export default function VideoPlayer({
     };
   }, [shouldPlay, isArticle, isPlayerReady, muted, targetVolume]);
 
-  // Volume Loop (v24.2 - RAF Optimization)
+  // Volume Loop (v24.2 - RAF Optimization + Audio Normalization v23.1)
   // ✅ Optimización CPU -> GPU sync
+  // ✅ Audio Normalization: volumen_extra per-video multiplier
   useEffect(() => {
     let rafId: number;
 
     const updateVolume = () => {
       setTargetVolume(prev => {
+        // Audio Normalization (v23.1): Aplica multiplicador por video desde DB
         const multiplier = (videoData && videoData.volumen_extra) ? videoData.volumen_extra : 1;
         if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
           const finalGoal = Math.min(1, globalVolume * multiplier);
