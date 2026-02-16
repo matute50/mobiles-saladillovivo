@@ -31,7 +31,7 @@ export function useDeepLink(pageData: PageData | undefined): Video | Article | n
     // Deep link para video (?v=123)
     if (videoId && pageData?.videos?.allVideos) {
         const targetVideo = pageData.videos.allVideos.find(
-            (v: Video) => v.id === parseInt(videoId, 10)
+            (v: Video) => v.id === videoId
         );
 
         if (targetVideo) {
@@ -55,7 +55,7 @@ export function useDeepLink(pageData: PageData | undefined): Video | Article | n
         ].filter(Boolean);
 
         const targetArticle = allArticles.find(
-            (a) => a?.id === parseInt(articleId, 10)
+            (a) => a?.id === articleId
         );
 
         if (targetArticle) {
