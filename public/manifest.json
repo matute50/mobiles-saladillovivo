@@ -13,6 +13,24 @@
     "news",
     "entertainment"
   ],
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "shortcuts": [
+    {
+      "name": "Ver en Vivo",
+      "short_name": "En Vivo",
+      "description": "Transmisión en vivo de Saladillo",
+      "url": "/?live=true",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",

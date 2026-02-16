@@ -132,7 +132,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
   }, [isLandscape, hasInteracted]);
 
   /* -------------------------------------------------------------
-   * HANDLERS
+   * HANDLERS (v24.3 - Component Memoization)
    * ------------------------------------------------------------- */
   const handleVideoSelect = React.useCallback(() => {
     // v24.1: Safety Delay on Resets (Skill Rule)
@@ -142,6 +142,15 @@ export default function MobileLayout({ data }: { data: PageData }) {
       setIsSearchOpen(false);
     }, 500);
   }, []);
+
+  // v24.3: Memoize NewsSlider callbacks to prevent re-renders
+  const handleNewsPrev = React.useCallback(() => {
+    newsSwiper?.slidePrev();
+  }, [newsSwiper]);
+
+  const handleNewsNext = React.useCallback(() => {
+    newsSwiper?.slideNext();
+  }, [newsSwiper]);
 
   if (!mounted) return null;
 
@@ -189,8 +198,8 @@ export default function MobileLayout({ data }: { data: PageData }) {
               isDark={isDark}
               searchQuery={searchQuery}
               onSwiper={setNewsSwiper}
-              onPrev={() => newsSwiper?.slidePrev()}
-              onNext={() => newsSwiper?.slideNext()}
+              onPrev={handleNewsPrev}
+              onNext={handleNewsNext}
             />
           )}
 

@@ -44,17 +44,55 @@ const nextConfig = {
   },
 };
 
-// Inicializamos el plugin PWA
+// Inicializamos el plugin PWA (v24.3 - Enhanced with Runtime Caching)
 const withPWA = withPWAInit({
   dest: "public", // Donde se creará el service worker
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: false, // Habilitar PWA incluso en desarrollo para probar
+  disable: process.env.NODE_ENV === 'development', // Solo en producción
   workboxOptions: {
     disableDevLogs: true,
     skipWaiting: true,
     clientsClaim: true,
+    runtimeCaching: [
+      {
+        // Cache YouTube thumbnails (CacheFirst - 7 days)
+        urlPattern: /^https:\/\/i\.ytimg\.com\/.*/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'youtube-thumbnails',
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          },
+        },
+      },
+      {
+        // Cache static images (CacheFirst - 30 days)
+        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'static-images',
+          expiration: {
+            maxEntries: 100,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          },
+        },
+      },
+      {
+        // Cache Google Fonts (CacheFirst - 1 year)
+        urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'google-fonts',
+          expiration: {
+            maxEntries: 20,
+            maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+          },
+        },
+      },
+    ],
   },
 });
 
