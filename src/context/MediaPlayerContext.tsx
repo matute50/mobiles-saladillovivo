@@ -4,7 +4,20 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Video, Article } from '@/lib/types';
 
 const INTRO_VIDEOS = ['/videos_intro/intro1.mp4', '/videos_intro/intro2.mp4', '/videos_intro/intro3.mp4', '/videos_intro/intro4.mp4', '/videos_intro/intro5.mp4'];
-const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4';
+const DAILY_SHOW_INTROS = [
+  '/videos_intro/al tanto de todo.mp4',
+  '/videos_intro/bien informado.mp4',
+  '/videos_intro/en 10 minutos.mp4',
+  '/videos_intro/en10minutos.mp4',
+  '/videos_intro/estas son las noticias.mp4',
+  '/videos_intro/estas son.mp4',
+  '/videos_intro/informate mejor.mp4',
+  '/videos_intro/lo que paso hoy.mp4',
+  '/videos_intro/los hechos.mp4',
+  '/videos_intro/rapido.mp4',
+  '/videos_intro/resumen.mp4'
+];
+const NEWS_INTRO_VIDEO = '/videos_intro/noticias.mp4?v=2';
 const FORBIDDEN_CATEGORY = 'HCD DE SALADILLO - Período 2025';
 const BLOCKED_START_ID = '471';
 
@@ -16,6 +29,8 @@ interface MediaPlayerState {
   introId: number;
   isIntroVisible: boolean;
   shouldPlayContent: boolean;
+  dailyShowSequence: any[] | null;
+  currentSequenceIndex: number;
 }
 
 interface MediaPlayerContextType {
@@ -26,6 +41,7 @@ interface MediaPlayerContextType {
   triggerTransition: (delayMs?: number) => void;
   handleIntroEnded: () => void;
   handleContentEnded: () => void;
+  loadDailyShow: (id: string) => Promise<void>;
 }
 
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
@@ -43,6 +59,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     introId: 0,
     isIntroVisible: true,
     shouldPlayContent: false,
+    dailyShowSequence: null,
+    currentSequenceIndex: -1,
   });
 
   const requestWakeLock = useCallback(async () => {
@@ -185,18 +203,52 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [startTransition]);
 
-  const handleContentEnded = useCallback(() => {
+  const handleContentEnded = useCallback(async () => {
+    // Si estamos en un Daily Show, avanzamos al siguiente ítem
+    if (state.dailyShowSequence && state.currentSequenceIndex !== -1 && state.currentSequenceIndex < state.dailyShowSequence.length - 1) {
+      // Si el video de transición no está ya en cola, lo ponemos
+      if (state.currentIntroUrl !== NEWS_INTRO_VIDEO) {
+        setState(prev => ({
+          ...prev,
+          currentIntroUrl: NEWS_INTRO_VIDEO,
+          introId: Date.now(),
+          isIntroVisible: true
+        }));
+
+        // La intro se oculta sola por los timers de VideoSection, aquí no tocamos el content todavía
+        return;
+      }
+
+      // Si ya terminó la transición (o no hubo), pasamos al siguiente contenido real
+      const nextIdx = state.currentSequenceIndex + 1;
+      const nextItem = state.dailyShowSequence[nextIdx];
+
+      setState(prev => ({ ...prev, currentSequenceIndex: nextIdx, isIntroVisible: false }));
+
+      if (nextItem.type === 'noticia') {
+        const { getArticleById } = await import('@/lib/data');
+        const art = await getArticleById(nextItem.id);
+        if (art) {
+          setState(prev => ({ ...prev, currentContent: art }));
+          return;
+        }
+      } else {
+        const { getVideoById } = await import('@/lib/data');
+        const vid = await getVideoById(nextItem.id);
+        if (vid) {
+          setState(prev => ({ ...prev, currentContent: vid }));
+          return;
+        }
+      }
+    }
+
     // Detectamos si lo que terminó fue una Noticia (Article)
     const isNews = state.currentContent && ('url_slide' in state.currentContent || !('url' in state.currentContent));
 
     if (state.nextContent) {
-      // Sivenimos de una Noticia, QUEREMOS la intro y transición suave.
-      // triggerTransition() maneja exactamente: Intro Random + Background Play de nextContent.
       if (isNews) {
         triggerTransition();
       } else {
-        // Comportamiento estándar para Youtube->Youtube (asumiendo que triggerTransition ya corrió en onNearEnd)
-        // Si llegamos aquí sin trigger, hacemos swap directo.
         setState(prev => ({
           ...prev,
           currentContent: prev.nextContent,
@@ -205,9 +257,72 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       }
     } else {
       const next = getNextVideo();
-      if (next) startTransition(next); // startTransition siempre pone intro para videos
+      if (next) startTransition(next);
     }
-  }, [state.currentContent, state.nextContent, getNextVideo, startTransition, triggerTransition]);
+  }, [state.currentContent, state.nextContent, state.currentIntroUrl, getNextVideo, startTransition, triggerTransition, state.dailyShowSequence, state.currentSequenceIndex]);
+
+  const loadDailyShow = useCallback(async (id: string) => {
+    if (state.dailyShowSequence && state.currentSequenceIndex !== -1) {
+      // Ya hay un resumen cargado y activo
+      return;
+    }
+
+    try {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from('resumenes')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) {
+        console.error("Error loading daily show:", error);
+        return;
+      }
+
+      const sequence = data.secuencia;
+      if (!Array.isArray(sequence) || sequence.length === 0) return;
+
+      // Play first item
+      const first = sequence[0];
+      let firstContent = null;
+
+      if (first.type === 'noticia') {
+        const { getArticleById } = await import('@/lib/data');
+        firstContent = await getArticleById(first.id);
+      } else {
+        const { getVideoById } = await import('@/lib/data');
+        firstContent = await getVideoById(first.id);
+      }
+
+      if (firstContent) {
+        const randomIntro = DAILY_SHOW_INTROS[Math.floor(Math.random() * DAILY_SHOW_INTROS.length)];
+
+        isInitialVideoPicked.current = true;
+
+        if (introTimerRef.current) clearTimeout(introTimerRef.current);
+
+        setState(prev => ({
+          ...prev,
+          dailyShowSequence: sequence,
+          currentSequenceIndex: 0,
+          currentContent: firstContent,
+          currentIntroUrl: randomIntro,
+          isIntroVisible: true,
+          shouldPlayContent: true,
+          introId: Date.now()
+        }));
+
+        introTimerRef.current = setTimeout(() => {
+          handleIntroEnded();
+        }, 4000);
+      }
+    } catch (err) {
+      console.error("Exception in loadDailyShow:", err);
+    }
+  }, [handleIntroEnded]);
 
   const playManual = useCallback((item: Video | Article) => {
     isInitialVideoPicked.current = true; // Evitar que el efecto de carga pise la selección manual
@@ -228,7 +343,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     <MediaPlayerContext.Provider value={{
       state, setVideoPool, playManual,
       prepareNext, triggerTransition,
-      handleIntroEnded, handleContentEnded
+      handleIntroEnded, handleContentEnded,
+      loadDailyShow
     }}>
       {children}
     </MediaPlayerContext.Provider>

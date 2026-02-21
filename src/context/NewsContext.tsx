@@ -1,14 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { getPageData, fetchVideosBySearch } from '@/lib/data';
+import { getPageData, fetchVideosBySearch, fetchVideosByCategory, fetchAvailableCategories } from '@/lib/data';
 import { Article, Video, Ad } from '@/lib/types';
 import { useToast } from '@/components/ui/use-toast';
 
-// v24.2: Interfaces for unused but existing logic
-interface Interview { id: string;[key: string]: any; }
-interface Banner { id: string;[key: string]: any; }
-interface CalendarEvent { id: string;[key: string]: any; }
 
 interface NewsContextType {
   allNews: Article[];
@@ -18,21 +14,13 @@ interface NewsContextType {
   otherNews: Article[];
   allTickerTexts: string[];
   galleryVideos: Video[];
-  interviews: Interview[];
-  activeBanners: Banner[];
   activeAds: Ad[];
   isLoading: boolean;
-  isLoadingVideos: boolean;
-  isLoadingInterviews: boolean;
-  isLoadingBanners: boolean;
   adsLoading: boolean;
   getNewsById: (id: string | number) => Article | undefined;
   getNewsBySlug: (slug: string) => Article | undefined;
   getRelatedNews: (currentSlug: string, category: string) => Article[];
   getNewsByCategory: (category: string) => Article[];
-  calendarEvents: CalendarEvent[];
-  eventsLoading: boolean;
-  isLoadingConfig: boolean;
   isDarkTheme: boolean;
   // Nuevos estados y funciones para la búsqueda
   searchQuery: string;
@@ -41,6 +29,12 @@ interface NewsContextType {
   isSearching: boolean;
   searchLoading: boolean;
   handleSearch: (query: string) => Promise<void>;
+  // v22.7 Fetch-On-Demand
+  availableCategories: string[];
+  availableDisplayCategories: string[];
+  videosByCategory: Record<string, Video[]>;
+  isLoadingCategory: boolean;
+  loadCategoryData: (category: string) => Promise<void>;
 }
 
 const NewsContext = createContext<NewsContextType | undefined>(undefined);
@@ -58,18 +52,10 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
 
   const [allTickerTexts, setAllTickerTexts] = useState<string[]>([]);
   const [galleryVideos, setGalleryVideos] = useState<Video[]>([]);
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [activeBanners, setActiveBanners] = useState<Banner[]>([]);
-  const [activeAds, setActiveAds] = useState<Ad[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingVideos, setIsLoadingVideos] = useState(true);
-  const [isLoadingInterviews, setIsLoadingInterviews] = useState(true);
-  const [isLoadingBanners, setIsLoadingBanners] = useState(true);
+  const [activeAds, setActiveAds] = useState<Ad[]>([]);
   const [adsLoading, setAdsLoading] = useState(true);
-  const [eventsLoading, setEventsLoading] = useState(true);
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const { toast } = useToast();
@@ -86,6 +72,12 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  // --- NUEVO ESTADO PARA FETCH-ON-DEMAND (v22.7) ---
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableDisplayCategories, setAvailableDisplayCategories] = useState<string[]>([]);
+  const [videosByCategory, setVideosByCategory] = useState<Record<string, Video[]>>({});
+  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -99,23 +91,21 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
         setGalleryVideos(data.videos.allVideos);
         setActiveAds(data.ads);
 
-        // Fallbacks for not implemented in current pageData
-        setAllTickerTexts([]);
-        setInterviews([]);
-        setActiveBanners([]);
-        setCalendarEvents([]);
+        // v22.7: Cargar las categorías disponibles
+        const cats = await fetchAvailableCategories();
+        setAvailableCategories(cats);
+
+        const { getDisplayCategory } = await import('@/lib/categoryMappings');
+        const displayCats = Array.from(new Set(cats.map(c => getDisplayCategory(c)))).sort();
+        setAvailableDisplayCategories(displayCats);
+
 
       } catch (error) {
         console.error("Error fetching data:", error);
         toast({ title: "Error de Carga", description: "No se pudieron cargar los datos." });
       } finally {
         setIsLoading(false);
-        setIsLoadingVideos(false);
-        setIsLoadingInterviews(false);
-        setIsLoadingBanners(false);
         setAdsLoading(false);
-        setEventsLoading(false);
-        setIsLoadingConfig(false);
       }
     };
 
@@ -176,12 +166,42 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [toast]);
 
+  const loadCategoryData = useCallback(async (displayCategory: string) => {
+    if (!displayCategory || videosByCategory[displayCategory]) return;
+
+    setIsLoadingCategory(true);
+    try {
+      const { categoryMappings } = await import('@/lib/categoryMappings');
+      const mapping = categoryMappings.find(m => m.display === displayCategory);
+
+      let results: Video[] = [];
+
+      if (mapping) {
+        const dbCats = Array.isArray(mapping.dbCategory) ? mapping.dbCategory : [mapping.dbCategory];
+        const resultsArray = await Promise.all(dbCats.map(cat => fetchVideosByCategory(cat)));
+        results = resultsArray.flat();
+      } else {
+        results = await fetchVideosByCategory(displayCategory);
+      }
+
+      setVideosByCategory(prev => ({
+        ...prev,
+        [displayCategory]: results
+      }));
+    } catch (err) {
+      console.error(`Error loading category ${displayCategory}:`, err);
+      toast({ title: "Error de Categoría", description: `No se pudieron cargar videos de ${displayCategory}` });
+    } finally {
+      setIsLoadingCategory(false);
+    }
+  }, [videosByCategory, toast]);
+
   const getNewsBySlug = (slug: string) => allNews.find(item => item.slug === slug);
   const getNewsById = (id: string | number) => allNews.find(item => item.id.toString() === id.toString());
   const getRelatedNews = (currentSlug: string, category: string) => allNews.filter(item => item.slug !== currentSlug && item.categoria === category).slice(0, 3);
   const getNewsByCategory = (category: string) => allNews.filter(item => item.categoria === category);
 
-  const value = {
+  const value = React.useMemo(() => ({
     allNews,
     featuredNews,
     secondaryNews,
@@ -189,21 +209,13 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
     otherNews,
     allTickerTexts,
     galleryVideos,
-    interviews,
-    activeBanners,
     activeAds,
     isLoading,
-    isLoadingVideos,
-    isLoadingInterviews,
-    isLoadingBanners,
     adsLoading,
     getNewsById,
     getNewsBySlug,
     getRelatedNews,
     getNewsByCategory,
-    calendarEvents,
-    eventsLoading,
-    isLoadingConfig,
     isDarkTheme,
     // Exportar nuevos estados y funciones
     searchQuery,
@@ -212,7 +224,20 @@ export const NewsProvider = ({ children }: { children: ReactNode }) => {
     isSearching,
     searchLoading,
     handleSearch,
-  };
+    // Fetch-On-Demand exports
+    availableCategories,
+    availableDisplayCategories,
+    videosByCategory,
+    isLoadingCategory,
+    loadCategoryData,
+  }), [
+    allNews, featuredNews, secondaryNews, tertiaryNews, otherNews,
+    allTickerTexts, galleryVideos, activeAds, isLoading, adsLoading,
+    getNewsById, getNewsBySlug, getRelatedNews, getNewsByCategory,
+    isDarkTheme, searchQuery, searchResults, isSearching, searchLoading,
+    handleSearch, availableCategories, availableDisplayCategories,
+    videosByCategory, isLoadingCategory, loadCategoryData
+  ]);
 
   return <NewsContext.Provider value={value}>{children}</NewsContext.Provider>;
 };

@@ -21,13 +21,15 @@ import { usePWA } from '@/context/PWAContext';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useOrientation } from '@/hooks/useOrientation';
 import { useDeepLink } from '@/hooks/useDeepLink';
+import { useNews } from '@/context/NewsContext';
 
-export default function MobileLayout({ data }: { data: PageData }) {
+export default function MobileLayout({ data, resumenId }: { data: PageData, resumenId?: string }) {
   const [isDark, setIsDark] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const { setVideoPool, playManual } = useMediaPlayer();
+  const { setVideoPool, playManual, loadDailyShow } = useMediaPlayer();
   const { isInstallModalOpen, setIsInstallModalOpen } = usePWA();
   const { hasInteracted } = useVolume();
+  const { handleSearch } = useNews();
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
   const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -79,12 +81,21 @@ export default function MobileLayout({ data }: { data: PageData }) {
   }, [filteredData]);
 
 
+  const hasLoadedResumen = React.useRef<string | null>(null);
+
   useEffect(() => {
     if (data && mounted) {
-      // v24.5.1: Pasar deep link target como initialTarget para prevenir sobrescritura
-      setVideoPool(data.videos?.allVideos || [], deepLinkTarget || undefined);
+      if (resumenId) {
+        if (hasLoadedResumen.current !== resumenId) {
+          hasLoadedResumen.current = resumenId;
+          loadDailyShow(resumenId);
+        }
+      } else {
+        // v24.5.1: Pasar deep link target como initialTarget para prevenir sobrescritura
+        setVideoPool(data.videos?.allVideos || [], deepLinkTarget || undefined);
+      }
     }
-  }, [data, mounted, setVideoPool, deepLinkTarget]);
+  }, [data, mounted, setVideoPool, deepLinkTarget, resumenId, loadDailyShow]);
 
   const videoContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -135,6 +146,11 @@ export default function MobileLayout({ data }: { data: PageData }) {
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
     };
   }, [isLandscape, hasInteracted]);
+
+  // v22.7: Sync local search with NewsContext (Fetch-On-Demand)
+  useEffect(() => {
+    handleSearch(searchQuery);
+  }, [searchQuery, handleSearch]);
 
   /* -------------------------------------------------------------
    * HANDLERS (v24.3 - Component Memoization)
@@ -208,10 +224,9 @@ export default function MobileLayout({ data }: { data: PageData }) {
             />
           )}
 
-          <div className={cn("h-[160px] shrink-0", isKeyboardOpen ? "mt-2" : "-mt-[22px]")}>
+          <div className={cn("h-[160px] shrink-0", isKeyboardOpen ? "mt-2" : "-mt-[23px]")}>
             {/* Pasar searchQuery para activar 'TU BUSQUEDA' */}
             <VideoCarouselBlock
-              videos={filteredData?.videos?.allVideos || []}
               isDark={isDark}
               searchQuery={searchQuery}
               onVideoSelect={handleVideoSelect}

@@ -1,70 +1,73 @@
 // src/lib/data.ts
-import { createClient } from '@/utils/supabase/client';
 import { PageData, Video, Article, Ad } from '@/lib/types';
 
-const supabase = createClient();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function getPageData(): Promise<PageData> {
   try {
-    const [articlesRes, videosRes, adsRes] = await Promise.all([
-      supabase
-        .from('articles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20),
-      supabase
-        .from('videos')
-        .select('*')
-        .order('createdAt', { ascending: false })
-        .limit(5000),
-      supabase
-        .from('anuncios')
-        .select('*')
+    const fetchArticles = async () => {
+      const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration&order=created_at.desc&limit=20`;
+      const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+      return res.json();
+    };
+
+    const fetchVideos = async () => {
+      const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&order=createdAt.desc&limit=500`;
+      const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+      return res.json();
+    };
+
+    const fetchAds = async () => {
+      const url = `${supabaseUrl}/rest/v1/anuncios?select=id,name,imageUrl,linkUrl,isActive,createdAt&isActive=eq.true&order=createdAt.desc`;
+      const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+      return res.json();
+    };
+
+    const [articlesData, videosData, adsData] = await Promise.all([
+      fetchArticles(),
+      fetchVideos(),
+      fetchAds()
     ]);
 
-    if (articlesRes.error) throw articlesRes.error;
-    if (videosRes.error) throw videosRes.error;
-    if (adsRes.error) throw adsRes.error;
-
-    const mappedArticles: Article[] = (articlesRes.data || []).map((item: any) => {
-      // Prioridad de imagen: imagen > image_url > imageUrl > image > image_url_alt > primera de images_urls
+    const mappedArticles: Article[] = (articlesData || []).map((item: any) => {
       const backupImage = Array.isArray(item.images_urls) && item.images_urls.length > 0 ? item.images_urls[0] : null;
 
       return {
         id: String(item.id),
-        titulo: (item.titulo || item.title || 'Sin título').replaceAll('|', ' ').trim(),
-        bajada: (item.bajada || item.summary || item.description || '').trim(),
-        imagen: item.image_url || item.imagen || item.image || item.imageUrl || item.image_url_alt || backupImage || null,
-        categoria: item.categoria || item.category || 'General',
-        autor: item.autor || item.author || 'Redacción',
-        fecha: item.created_at || item.createdAt || item.fecha || new Date().toISOString(),
-        contenido: item.contenido || item.text || item.content || item.body || '',
-        etiquetas: item.etiquetas || item.tags || [],
-        url_slide: item.url_slide || item.slide_url || item.slideUrl || null,
-        audio_url: item.audio_url || item.url_audio || item.audioUrl || null,
-        animation_duration: item.animation_duration || item.animationDuration || 45
+        titulo: (item.title || 'Sin título').replaceAll('|', ' ').trim(),
+        bajada: (item.description || '').trim(),
+        imagen: item.image_url || backupImage || null,
+        categoria: 'General',
+        autor: 'Redacción',
+        fecha: item.created_at || new Date().toISOString(),
+        contenido: item.description || '',
+        etiquetas: [],
+        url_slide: item.url_slide || null,
+        audio_url: item.audio_url || null,
+        animation_duration: item.animation_duration || 45
       };
     });
 
-    const mappedVideos: Video[] = (videosRes.data || []).map((item: any) => ({
+    const mappedVideos: Video[] = (videosData || []).map((item: any) => ({
       id: String(item.id),
-      nombre: (item.nombre || item.title || item.name || 'Video sin nombre').replaceAll('|', ' ').trim(),
-      url: item.url || item.videoUrl || '',
-      imagen: item.imagen || item.image || item.thumbnail || null,
-      categoria: item.categoria || item.category || 'Varios',
-      fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString(),
+      nombre: (item.nombre || 'Video sin nombre').replaceAll('|', ' ').trim(),
+      url: item.url || '',
+      imagen: item.imagen || null,
+      categoria: item.categoria || 'Varios',
+      fecha: item.createdAt || new Date().toISOString(),
       volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
     }));
 
-    const mappedAds: Ad[] = (adsRes.data || []).map((item: any) => ({
+    const mappedAds: Ad[] = (adsData || []).map((item: any) => ({
       id: String(item.id),
-      cliente: item.cliente || item.client || 'Anónimo',
-      imagen_url: item.imagen_url || item.imageUrl || item.image_url || '',
-      url: item.url || item.link || '',
-      tipo: item.tipo || item.type || 'banner',
-      fecha_inicio: item.fecha_inicio || item.startDate || new Date().toISOString(),
-      fecha_fin: item.fecha_fin || item.endDate || new Date().toISOString(),
-      activo: item.activo !== undefined ? item.activo : (item.active !== undefined ? item.active : true)
+      cliente: item.name || 'Anónimo',
+      imagen_url: item.imageUrl || '',
+      url: item.linkUrl || '',
+      tipo: 'banner',
+      fecha_inicio: item.createdAt || new Date().toISOString(),
+      fecha_fin: item.createdAt || new Date().toISOString(),
+      activo: item.isActive !== undefined ? item.isActive : true
     }));
 
     return {
@@ -83,75 +86,117 @@ export async function getPageData(): Promise<PageData> {
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
-  const { data, error } = await supabase
-    .from('articles')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration&id=eq.${id}&maybeSingle=true`;
 
-  if (error || !data) return null;
+  try {
+    const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data) return null;
 
-  const backupImage = Array.isArray(data.images_urls) && data.images_urls.length > 0 ? data.images_urls[0] : null;
+    const backupImage = Array.isArray(data.images_urls) && data.images_urls.length > 0 ? data.images_urls[0] : null;
 
-  return {
-    id: String(data.id),
-    titulo: (data.titulo || data.title || 'Sin título').replaceAll('|', ' ').trim(),
-    bajada: (data.bajada || data.summary || data.description || '').trim(),
-    imagen: data.image_url || data.imagen || data.image || data.imageUrl || data.image_url_alt || backupImage || null,
-    categoria: data.categoria || data.category || 'General',
-    autor: data.autor || data.author || 'Redacción',
-    fecha: data.created_at || data.createdAt || data.fecha || new Date().toISOString(),
-    contenido: data.contenido || data.text || data.content || data.body || '',
-    etiquetas: data.etiquetas || data.tags || [],
-    url_slide: data.url_slide || data.slide_url || data.slideUrl || null,
-    audio_url: data.audio_url || data.url_audio || data.audioUrl || null,
-    animation_duration: data.animation_duration || data.animationDuration || 45
-  };
+    return {
+      id: String(data.id),
+      titulo: (data.title || 'Sin título').replaceAll('|', ' ').trim(),
+      bajada: (data.description || '').trim(),
+      imagen: data.image_url || backupImage || null,
+      categoria: 'General',
+      autor: 'Redacción',
+      fecha: data.created_at || new Date().toISOString(),
+      contenido: data.description || '',
+      etiquetas: [],
+      url_slide: data.url_slide || null,
+      audio_url: data.audio_url || null,
+      animation_duration: data.animation_duration || 45
+    };
+  } catch (err) {
+    console.error('Error in getArticleById:', err);
+    return null;
+  }
 }
 
 export async function getVideoById(id: string): Promise<Video | null> {
-  const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('id', id)
-    .single();
+  const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&id=eq.${id}&maybeSingle=true`;
 
-  if (error || !data) return null;
+  try {
+    const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data) return null;
 
-  return {
-    id: String(data.id),
-    nombre: (data.nombre || data.title || data.name || 'Video sin nombre').replaceAll('|', ' ').trim(),
-    url: data.url || data.videoUrl || '',
-    imagen: data.imagen || data.image || data.thumbnail || null,
-    categoria: data.categoria || data.category || 'Varios',
-    fecha: data.createdAt || data.created_at || data.fecha || new Date().toISOString(),
-    volumen_extra: data.volumen_extra ? Number(data.volumen_extra) : 1
-  };
+    return {
+      id: String(data.id),
+      nombre: (data.nombre || 'Video sin nombre').replaceAll('|', ' ').trim(),
+      url: data.url || '',
+      imagen: data.imagen || null,
+      categoria: data.categoria || 'Varios',
+      fecha: data.createdAt || new Date().toISOString(),
+      volumen_extra: data.volumen_extra ? Number(data.volumen_extra) : 1
+    };
+  } catch (err) {
+    console.error('Error in getVideoById:', err);
+    return null;
+  }
 }
 
-export async function fetchVideosBySearch(query: string, signal?: AbortSignal): Promise<Video[]> {
-  let queryBuilder = supabase
-    .from('videos')
-    .select('*')
-    .ilike('nombre', `%${query}%`)
-    .limit(50);
+export async function fetchVideosByCategory(category: string): Promise<Video[]> {
+  const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&categoria=eq.${encodeURIComponent(category)}&order=createdAt.desc&limit=30`;
 
-  // Solo agregar abortSignal si está presente
-  if (signal) {
-    queryBuilder = queryBuilder.abortSignal(signal);
+  try {
+    const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    return (data || []).map((item: any) => ({
+      id: String(item.id),
+      nombre: (item.nombre || 'Video sin nombre').replaceAll('|', ' ').trim(),
+      url: item.url || '',
+      imagen: item.imagen || null,
+      categoria: item.categoria || 'Varios',
+      fecha: item.createdAt || new Date().toISOString(),
+      volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
+    }));
+  } catch (err) {
+    console.error(`Error fetching videos for category ${category}:`, err);
+    return [];
   }
+}
 
-  const { data, error } = await queryBuilder;
+export async function fetchAvailableCategories(): Promise<string[]> {
+  const url = `${supabaseUrl}/rest/v1/videos?select=categoria`;
 
-  if (error || !data) return [];
+  try {
+    const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const uniqueCategories = Array.from(new Set((data || []).map((v: any) => v.categoria))).filter(Boolean);
+    return uniqueCategories as string[];
+  } catch (err) {
+    console.error("Error fetching available categories:", err);
+    return [];
+  }
+}
 
-  return data.map((item: any) => ({
-    id: String(item.id),
-    nombre: (item.nombre || item.title || item.name || 'Video sin nombre').replaceAll('|', ' ').trim(),
-    url: item.url || item.videoUrl || '',
-    imagen: item.imagen || item.image || item.thumbnail || null,
-    categoria: item.categoria || item.category || 'Varios',
-    fecha: item.createdAt || item.created_at || item.fecha || new Date().toISOString(),
-    volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
-  }));
+export async function fetchVideosBySearch(query: string): Promise<Video[]> {
+  const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&nombre=ilike.*${encodeURIComponent(query)}*&limit=50`;
+
+  try {
+    const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    return (data || []).map((item: any) => ({
+      id: String(item.id),
+      nombre: (item.nombre || 'Video sin nombre').replaceAll('|', ' ').trim(),
+      url: item.url || '',
+      imagen: item.imagen || null,
+      categoria: item.categoria || 'Varios',
+      fecha: item.createdAt || new Date().toISOString(),
+      volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
+    }));
+  } catch (err) {
+    console.error('Error searching videos:', err);
+    return [];
+  }
 }

@@ -39,7 +39,7 @@ export const Header = React.memo(({
     isKeyboardOpen = false,
 }: HeaderProps) => {
     const { weather, setIsExtendedOpen } = useWeather();
-    const { isInstallable, installApp, isInstallModalOpen, setIsInstallModalOpen } = usePWA();
+    const { isInstallable, installApp, isInstallModalOpen, setIsInstallModalOpen, isOnline } = usePWA();
     const [isDecreeOpen, setIsDecreeOpen] = React.useState(false);
 
     return (
@@ -137,7 +137,7 @@ export const Header = React.memo(({
                                             <span className={cn("text-[15px] font-black italic tracking-tighter", isDark ? "text-white" : "text-neutral-900")}>
                                                 {Math.round(weather.currentConditions.temp)}°
                                             </span>
-                                            {getWeatherIcon(weather.currentConditions.icon, isDark, 20)}
+                                            {getWeatherIcon(weather.currentConditions.icon, isDark, 20, !isOnline ? "opacity-30 grayscale" : "")}
                                         </button>
                                     )}
 

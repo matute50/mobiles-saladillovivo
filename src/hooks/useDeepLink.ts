@@ -1,30 +1,27 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { PageData, Video, Article } from '@/lib/types';
 
 /**
  * v24.5 - Deep Linking Hook
- * 
- * Detecta parámetros ?v= o ?id= en la URL y reproduce automáticamente
- * el contenido compartido cuando el usuario llega desde WhatsApp u otra app.
- * 
- * **IMPORTANTE**: Este hook debe ejecutarse ANTES de que MobileLayout llame a setVideoPool,
- * para que el initialTarget sea respetado y no se sobrescriba con un video aleatorio.
- * 
- * @param pageData - Datos de la página con videos y artículos
- * @returns targetContent - El contenido objetivo del deep link (para pasarlo a setVideoPool)
  */
 export function useDeepLink(pageData: PageData | undefined): Video | Article | null {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const pathname = usePathname();
     const hasProcessed = useRef(false);
     const targetRef = useRef<Video | Article | null>(null);
 
     // Solo procesar una vez para encontrar el target
     if (!hasProcessed.current && pageData) {
+        // No procesar deep links si estamos en la ruta de resumen directamente
+        if (pathname.includes('/resumen/')) {
+            hasProcessed.current = true;
+            return null;
+        }
         const videoId = searchParams.get('v');
         const articleId = searchParams.get('id');
 

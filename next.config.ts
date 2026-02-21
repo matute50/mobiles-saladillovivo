@@ -57,6 +57,18 @@ const withPWA = withPWAInit({
     clientsClaim: true,
     runtimeCaching: [
       {
+        // Cache API Weather (StaleWhileRevalidate - 30 mins)
+        urlPattern: /^https:\/\/m\.saladillovivo\.com\.ar\/api\/weather/i,
+        handler: 'StaleWhileRevalidate',
+        options: {
+          cacheName: 'weather-api',
+          expiration: {
+            maxEntries: 10,
+            maxAgeSeconds: 30 * 60, // 30 minutes
+          },
+        },
+      },
+      {
         // Cache YouTube thumbnails (CacheFirst - 7 days)
         urlPattern: /^https:\/\/i\.ytimg\.com\/.*/i,
         handler: 'CacheFirst',
@@ -90,6 +102,14 @@ const withPWA = withPWAInit({
             maxEntries: 20,
             maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
           },
+        },
+      },
+      {
+        // Start URL (NetworkFirst)
+        urlPattern: '/',
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'start-url',
         },
       },
     ],

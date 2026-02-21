@@ -51,7 +51,7 @@ export const NewsSlider = React.memo(({
                 </button>
             </div>
 
-            <div className="w-full aspect-[16/6.4] shrink-0">
+            <div className="w-full aspect-[16/7.2] shrink-0">
                 <Swiper onSwiper={onSwiper} slidesPerView={1} className="h-full">
                     {newsSlides.map((slide, idx) => (
                         <SwiperSlide key={idx}>
@@ -78,7 +78,7 @@ export const NewsSlider = React.memo(({
                                                 alt={item.titulo}
                                                 fill
                                                 sizes="(max-width: 640px) 100vw, 50vw"
-                                                priority={idx < 2} // Cargar con prioridad las primeras imágenes
+                                                priority={idx < 3} // Cargar con prioridad las primeras 3 slides para mejorar LCP
                                                 className="object-cover opacity-90"
                                                 unoptimized
                                             />
@@ -102,10 +102,13 @@ export const NewsSlider = React.memo(({
                                                 )}>
                                                     <Play size={slide.type === 'featured' ? 32 : 24} fill="white" className="ml-1" />
                                                 </div>
-                                                <h3 className={cn(
-                                                    "font-black uppercase tracking-tight leading-[1.1] line-clamp-3 italic",
-                                                    slide.type === 'featured' ? "text-xl" : "text-[13px]"
-                                                )}>
+                                                <h3
+                                                    className={cn(
+                                                        "font-black uppercase tracking-tight leading-[1.1] line-clamp-3 italic",
+                                                        slide.type === 'featured' ? "text-xl" : "text-[13px]"
+                                                    )}
+                                                    style={{ textShadow: '0 0 10px rgba(0,0,0,1), 0 0 5px rgba(0,0,0,1)' }}
+                                                >
                                                     {item.titulo}
                                                 </h3>
                                             </div>

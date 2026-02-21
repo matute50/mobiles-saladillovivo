@@ -65,7 +65,7 @@ export const ShareButton = ({
                     className
                 )}
             >
-                {copied ? <Check size={36} className="text-green-400" /> : <Share2 size={36} fill="white" />}
+                {copied ? <Check size={36} className="text-green-400" /> : <Share2 size={36} stroke="white" strokeWidth={2.5} />}
             </button>
         );
     }

@@ -48,7 +48,7 @@ export const WeatherWidget = React.memo(({ isDark }: WeatherWidgetProps) => {
           </div>
         </div>
         <div className="flex-[1.1] flex justify-between px-4">
-          {weather.days.slice(1, 5).map((day: any) => (
+          {weather.days.slice(1, 6).map((day: any) => (
             <div key={day.datetime} className="flex flex-col items-center gap-2">
               <span className={cn("text-[11px] font-black uppercase italic opacity-60", isDark ? "text-white" : "text-black")}>
                 {new Date(day.datetime + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase()}
