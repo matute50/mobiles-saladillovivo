@@ -127,7 +127,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
     introTimerRef.current = setTimeout(() => {
       handleIntroEnded();
-    }, 4000);
+    }, 10000); // 10s fallback timer to allow buffering
   }, [handleIntroEnded, getNextIntroUrl, state.introQueue]);
 
   const candidates = React.useMemo(() => {
@@ -189,10 +189,10 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       }));
     }, effectiveDelay);
 
-    // FASE 3: Apagar Intro
+    // FASE 3: Apagar Intro (Fallback si falla el onEnded del video real)
     introTimerRef.current = setTimeout(() => {
       handleIntroEnded();
-    }, 4000); // 4s total de intro
+    }, 10000); // 10s fallback timer para permitir buffering
   }, [state.nextContent, state.isIntroVisible, handleIntroEnded, state.introQueue, getNextIntroUrl]);
 
   const setVideoPool = useCallback((videos: Video[], initialTarget?: Video | Article) => {
@@ -317,7 +317,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
         introTimerRef.current = setTimeout(() => {
           handleIntroEnded();
-        }, 4000);
+        }, 10000); // 10s fallback timer
       }
     } catch (err) {
       console.error("Exception in loadDailyShow:", err);
