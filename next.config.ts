@@ -105,6 +105,18 @@ const withPWA = withPWAInit({
         },
       },
       {
+        // Explicitly NetworkFirst for MP4s (like intros) to ensure dynamic fetching
+        urlPattern: /\.(?:mp4|webm)$/i,
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'media-videos',
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 24 * 60 * 60, // 1 day
+          },
+        },
+      },
+      {
         // Start URL (NetworkFirst)
         urlPattern: '/',
         handler: 'NetworkFirst',
