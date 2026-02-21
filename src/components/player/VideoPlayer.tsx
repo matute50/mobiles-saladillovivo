@@ -81,23 +81,20 @@ export default function VideoPlayer({
     };
   }, [content]);
 
-  // Autoplay Loop (v24.2 - Optimized interval)
+  // Autoplay Loop (v24.2.1 - Removed residual volume commands)
   useEffect(() => {
     if (!shouldPlay || isArticle || !isPlayerReady) return;
 
-    // Reducido CPU usage: 3000ms es suficiente para recovery, reduce wake-ups en 50%
+    // Reducido CPU usage: 3000ms es suficiente para recovery state
     autoplayCheckRef.current = setInterval(() => {
       if (!internalPlayerRef.current) return;
       try {
         const p = internalPlayerRef.current;
         if (p) {
-          const state = p.getPlayerState();
+          const state = typeof p.getPlayerState === 'function' ? p.getPlayerState() : -2;
           if ([2, 5, -1].includes(state)) {
             p.playVideo();
           }
-          if (typeof p.setVolume === 'function') p.setVolume(targetVolume * 100);
-          if (muted && typeof p.mute === 'function') p.mute();
-          else if (!muted && typeof p.unMute === 'function') p.unMute();
         }
       } catch (e) { }
     }, 3000);
@@ -105,33 +102,27 @@ export default function VideoPlayer({
     return () => {
       if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
     };
-  }, [shouldPlay, isArticle, isPlayerReady, muted, targetVolume]);
+  }, [shouldPlay, isArticle, isPlayerReady]);
 
-  // Volume Loop (v24.2 - RAF Optimization + Audio Normalization v23.1)
-  // ✅ Optimización CPU -> GPU sync
+  // Volume Loop (v24.3 - CPU Optimization: setInterval instead of rAF)
   // ✅ Audio Normalization: volumen_extra per-video multiplier
   useEffect(() => {
-    let rafId: number;
-
-    const updateVolume = () => {
+    // 100ms interval replaces 60fps rAF, massively reducing React re-renders while keeping fade smooth
+    const intervalId = setInterval(() => {
       setTargetVolume(prev => {
-        // Audio Normalization (v23.1): Aplica multiplicador por video desde DB
         const multiplier = (videoData && videoData.volumen_extra) ? videoData.volumen_extra : 1;
         if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
           const finalGoal = Math.min(1, globalVolume * multiplier);
           if (prev >= finalGoal) return finalGoal;
-          // Ajustado para 60fps: 0.14 cada ~16ms ≈ mismo rate que 150ms interval
-          return Math.min(finalGoal, prev + 0.00233);
+          return Math.min(finalGoal, prev + 0.015);
         } else {
           if (prev <= 0) return 0;
-          return Math.max(0, prev - 0.00133);
+          return Math.max(0, prev - 0.01);
         }
       });
-      rafId = requestAnimationFrame(updateVolume);
-    };
+    }, 100);
 
-    rafId = requestAnimationFrame(updateVolume);
-    return () => cancelAnimationFrame(rafId);
+    return () => clearInterval(intervalId);
   }, [globalVolume, isArticle, isFadingOut, isPlayerReady, muted, shouldPlay, videoData]);
 
   // Audio Side Effect (Articles)

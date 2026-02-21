@@ -206,8 +206,8 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       {/* PLAYER A */}
       <div className={cn(
         "absolute inset-0 transition-opacity duration-300 contain-layout will-change-[transform,opacity]",
-        // OPTIMIZACIÓN: Permitir visibilidad lógica (aunque tapada por intro) para que el navegador no pause
-        (activeSlot === 'A') ? "z-10 opacity-100" : "z-0 opacity-100"
+        // OPTIMIZACIÓN: Ocultar visualmente la instancia inactiva para evitar GPU rendering excesivo
+        (activeSlot === 'A') ? "z-10 opacity-100" : "z-0 opacity-0 pointer-events-none"
       )} style={{ transform: 'translateZ(0)' }}>
         {contentA && (
           <VideoPlayer
@@ -235,7 +235,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       {/* PLAYER B */}
       <div className={cn(
         "absolute inset-0 transition-opacity duration-300 contain-layout will-change-[transform,opacity]",
-        (activeSlot === 'B') ? "z-10 opacity-100" : "z-0 opacity-100"
+        (activeSlot === 'B') ? "z-10 opacity-100" : "z-0 opacity-0 pointer-events-none"
       )} style={{ transform: 'translateZ(0)' }}>
         {contentB && (
           <VideoPlayer

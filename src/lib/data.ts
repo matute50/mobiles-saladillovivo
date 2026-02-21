@@ -13,7 +13,7 @@ export async function getPageData(): Promise<PageData> {
     };
 
     const fetchVideos = async () => {
-      const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&order=createdAt.desc&limit=500`;
+      const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&order=createdAt.desc&limit=150`;
       const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
       return res.json();
     };
@@ -179,7 +179,7 @@ export async function fetchAvailableCategories(): Promise<string[]> {
 }
 
 export async function fetchVideosBySearch(query: string): Promise<Video[]> {
-  const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&nombre=ilike.*${encodeURIComponent(query)}*&limit=50`;
+  const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&nombre=ilike.*${encodeURIComponent(query)}*&limit=20`;
 
   try {
     const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
