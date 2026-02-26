@@ -15,7 +15,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const { id, v } = await searchParams; // Next.js 15: searchParams is a Promise
 
   let title = "Saladillo ViVo";
-  let description = "Noticias y videos de Saladillo en tiempo real.";
+  let description = ""; // Sin description genérica en OG para no contaminar el compartir
   let imageUrl = `${SITE_URL}/brand_social.png?v=4`; // Default brand image (1200x630 optimized)
 
   try {
@@ -23,14 +23,19 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       const article = await getArticleById(id);
       if (article) {
         title = article.titulo.substring(0, 60); // Optimize for WhatsApp title limit
-        if (article.bajada) description = article.bajada.substring(0, 150);
+        if (article.bajada && article.bajada.trim() !== '') {
+          description = article.bajada.substring(0, 150);
+        } else {
+          description = ""; // NO poner texto genérico
+        }
         if (article.imagen) imageUrl = article.imagen;
       }
     } else if (v) {
       const video = await getVideoById(v);
       if (video) {
         title = video.nombre.substring(0, 60);
-        description = "Mirá este video en Saladillo ViVo";
+        // Usamos el nombre como descripción si no hay otra cosa, para que no esté vacío
+        description = video.nombre.substring(0, 150);
 
         // Prioridad 1: Imagen explícita del backend
         if (video.imagen) {
@@ -49,20 +54,22 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     console.error("Error generating metadata:", e);
   }
 
+  const opengraphUrl = id ? `${SITE_URL}/articulo/${id}` : (v ? `${SITE_URL}/video/${v}` : SITE_URL);
+
   return {
     metadataBase: new URL(SITE_URL),
     title,
     description,
     openGraph: {
       title,
-      description,
-      url: `${SITE_URL}${id ? `/?id=${id}` : (v ? `/?v=${v}` : '')}`,
+      description: description || title,
+      url: opengraphUrl,
       siteName: 'Saladillo ViVo',
       images: [{
         url: imageUrl,
         width: 1200,
         height: 630,
-        type: 'image/jpeg', // Most common fallback, works for PNGs usually too in readers
+        type: 'image/jpeg',
       }],
       locale: 'es_AR',
       type: id ? 'article' : 'website',
@@ -70,11 +77,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     twitter: {
       card: 'summary_large_image',
       title,
-      description,
+      description: description || title,
       images: [imageUrl],
     },
     alternates: {
-      canonical: `${SITE_URL}${id ? `/?id=${id}` : (v ? `/?v=${v}` : '')}`,
+      canonical: opengraphUrl,
     }
   };
 }
