@@ -7,7 +7,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export async function getPageData(): Promise<PageData> {
   try {
     const fetchArticles = async () => {
-      const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration&order=created_at.desc&limit=20`;
+      const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration,featureStatus&order=created_at.desc&limit=50`;
       const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
       return res.json();
     };
@@ -45,7 +45,8 @@ export async function getPageData(): Promise<PageData> {
         etiquetas: [],
         url_slide: item.url_slide || null,
         audio_url: item.audio_url || null,
-        animation_duration: item.animation_duration || 45
+        animation_duration: item.animation_duration || 45,
+        featureStatus: item.featureStatus || 'none'
       };
     });
 
@@ -72,9 +73,9 @@ export async function getPageData(): Promise<PageData> {
 
     return {
       articles: {
-        featuredNews: mappedArticles.length > 0 ? mappedArticles[0] : null,
-        secondaryNews: mappedArticles.slice(1, 5),
-        otherNews: mappedArticles.slice(5)
+        featuredNews: mappedArticles.find(a => a.featureStatus === 'featured') || (mappedArticles.length > 0 ? mappedArticles[0] : null),
+        secondaryNews: mappedArticles.filter(a => a.featureStatus === 'secondary'),
+        otherNews: mappedArticles.filter(a => !['featured', 'secondary'].includes(a.featureStatus || ''))
       },
       videos: { allVideos: mappedVideos, liveStream: null },
       ads: mappedAds
@@ -86,11 +87,11 @@ export async function getPageData(): Promise<PageData> {
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
-  const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration&id=eq.${id}&maybeSingle=true`;
+  const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration,featureStatus&id=eq.${id}&maybeSingle=true`;
 
   try {
     const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
-    if (!res.ok) return null;
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText} for article ${id}`);
     const data = await res.json();
     if (!data) return null;
 
@@ -108,11 +109,12 @@ export async function getArticleById(id: string): Promise<Article | null> {
       etiquetas: [],
       url_slide: data.url_slide || null,
       audio_url: data.audio_url || null,
-      animation_duration: data.animation_duration || 45
+      animation_duration: data.animation_duration || 45,
+      featureStatus: data.featureStatus || 'none'
     };
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error in getArticleById:', err);
-    return null;
+    throw new Error(`getArticleById(${id}): ${err.message}`);
   }
 }
 
@@ -121,7 +123,7 @@ export async function getVideoById(id: string): Promise<Video | null> {
 
   try {
     const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
-    if (!res.ok) return null;
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText} for video ${id}`);
     const data = await res.json();
     if (!data) return null;
 
@@ -134,9 +136,9 @@ export async function getVideoById(id: string): Promise<Video | null> {
       fecha: data.createdAt || new Date().toISOString(),
       volumen_extra: data.volumen_extra ? Number(data.volumen_extra) : 1
     };
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error in getVideoById:', err);
-    return null;
+    throw new Error(`getVideoById(${id}): ${err.message}`);
   }
 }
 
@@ -178,11 +180,15 @@ export async function fetchAvailableCategories(): Promise<string[]> {
   }
 }
 
-export async function fetchVideosBySearch(query: string): Promise<Video[]> {
+export async function fetchVideosBySearch(query: string, signal?: AbortSignal): Promise<Video[]> {
   const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&nombre=ilike.*${encodeURIComponent(query)}*&limit=20`;
 
   try {
-    const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
+    const res = await fetch(url, {
+      headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` },
+      next: { revalidate: 60 },
+      signal
+    });
     if (!res.ok) return [];
     const data = await res.json();
 
@@ -196,6 +202,7 @@ export async function fetchVideosBySearch(query: string): Promise<Video[]> {
       volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
     }));
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') throw err;
     console.error('Error searching videos:', err);
     return [];
   }

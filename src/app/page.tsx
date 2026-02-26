@@ -22,37 +22,36 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     if (id) {
       const article = await getArticleById(id);
       if (article) {
-        title = article.titulo.substring(0, 60); // Optimize for WhatsApp title limit
+        title = article.titulo.substring(0, 60);
         if (article.bajada && article.bajada.trim() !== '') {
           description = article.bajada.substring(0, 150);
-        } else {
-          description = ""; // NO poner texto genérico
         }
         if (article.imagen) imageUrl = article.imagen;
+      } else {
+        title = `Not Found: Article ${id}`;
       }
     } else if (v) {
       const video = await getVideoById(v);
       if (video) {
         title = video.nombre.substring(0, 60);
-        // Usamos el nombre como descripción si no hay otra cosa, para que no esté vacío
         description = video.nombre.substring(0, 150);
-
-        // Prioridad 1: Imagen explícita del backend
         if (video.imagen) {
           imageUrl = video.imagen;
         } else if (video.url) {
-          // Prioridad 2: Extracción robusta de YouTube
           const match = video.url.match(/^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/);
-          const id = (match && match[1]) ? match[1] : null;
-          if (id && id.length === 11) {
-            imageUrl = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+          const ytId = (match && match[1]) ? match[1] : null;
+          if (ytId && ytId.length === 11) {
+            imageUrl = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
           }
         }
+      } else {
+        title = `Not Found: Video ${v}`;
       }
     }
   } catch (e: any) {
-    console.error("Error generating metadata:", e);
-    title = `Error: ${e.message || 'Unknown'} - ${id || v || 'no-id'}`;
+    console.error("DEBUG - Metadata Error:", e);
+    // v24.7: Exponemos el error CRÍTICO en el título para el debugger de FB/WhatsApp
+    title = `DEBUG ERROR: ${e.message || 'Unknown'}`;
   }
 
   const opengraphUrl = id ? `${SITE_URL}/articulo/${id}` : (v ? `${SITE_URL}/video/${v}` : SITE_URL);
