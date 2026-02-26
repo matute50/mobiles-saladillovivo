@@ -87,12 +87,13 @@ export async function getPageData(): Promise<PageData> {
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
-  const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration,featureStatus&id=eq.${id}&maybeSingle=true`;
+  const url = `${supabaseUrl}/rest/v1/articles?select=id,title,description,image_url,images_urls,created_at,slug,audio_url,url_slide,animation_duration,featureStatus&id=eq.${id}`;
 
   try {
     const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
     if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText} for article ${id}`);
-    const data = await res.json();
+    const results = await res.json();
+    const data = Array.isArray(results) ? results[0] : results;
     if (!data) return null;
 
     const backupImage = Array.isArray(data.images_urls) && data.images_urls.length > 0 ? data.images_urls[0] : null;
@@ -119,12 +120,13 @@ export async function getArticleById(id: string): Promise<Article | null> {
 }
 
 export async function getVideoById(id: string): Promise<Video | null> {
-  const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&id=eq.${id}&maybeSingle=true`;
+  const url = `${supabaseUrl}/rest/v1/videos?select=id,nombre,url,imagen,categoria,createdAt,volumen_extra&id=eq.${id}`;
 
   try {
     const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
     if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText} for video ${id}`);
-    const data = await res.json();
+    const results = await res.json();
+    const data = Array.isArray(results) ? results[0] : results;
     if (!data) return null;
 
     return {
