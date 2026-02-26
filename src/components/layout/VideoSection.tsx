@@ -44,7 +44,15 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   const [currentTime, setCurrentTime] = useState(0);
   const [maxTimeReached, setMaxTimeReached] = useState(0);
   const [isIntroFadingOut, setIsIntroFadingOut] = useState(false);
+  const [isOverlapping, setIsOverlapping] = useState(false);
+  const [isPreloading, setIsPreloading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const preloadTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sistema Anti-Branding (Cinematic Shields)
+  const [areCinematicBarsActive, setAreCinematicBarsActive] = useState(false);
+  const cinematicTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const { isContentPlaying } = state;
 
   // Sistema de Doble Player (A/B) con Smart Slot Management
   const [slotAContent, setSlotAContent] = useState<any>(null);
@@ -88,11 +96,14 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
   // Efecto de Reset al cambiar de contenido real
   useEffect(() => {
     if (currentContent) {
-      setIsContentStarted(false);
-      setIsUserPlaying(true);
-      setProgress(0);
-      setCurrentTime(0);
-      setMaxTimeReached(0);
+      setDuration(0);
+
+      // Trigger Shield on change
+      setAreCinematicBarsActive(true);
+      if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
+      cinematicTimerRef.current = setTimeout(() => {
+        setAreCinematicBarsActive(false);
+      }, 5000);
     }
   }, [currentContent?.id]); // Solo si cambia el ID
 
@@ -105,10 +116,19 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
     if (isIntroVisible && currentIntroUrl) {
       // OPTIMIZACIÓN: Carga instantánea sobre nodo existente
       setIsIntroFadingOut(false);
+      setIsOverlapping(false);
+      setIsPreloading(false); // Reset antes de nuevo timer
 
-      // Solo asignamos src si cambia para no interrumpir si ya estaba listo (opcional, pero seguro reiniciar en intro)
+      if (preloadTimerRef.current) clearTimeout(preloadTimerRef.current);
+      preloadTimerRef.current = setTimeout(() => {
+        setIsPreloading(true);
+      }, 2000); // v25.7: Retrasado a 2s para asegurar opacidad total del intro
+
+      v.volume = 1; // Resetear volumen al 100% antes de cada intro
+
       v.src = currentIntroUrl;
-      v.muted = !isNewsTransition; // Habilitar audio si es transición de noticias
+      // Habilitar audio solo en la transición de noticias
+      v.muted = !isNewsTransition;
       v.load(); // Forzar buffer refresh
 
       const playPromise = v.play();
@@ -135,26 +155,59 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
   const handleStart = () => {
     setIsContentStarted(true);
+    setIsPreloading(false);
     prepareNext();
   };
+
+  const INTRO_DURATION_S = 8; // Duración efectiva del intro principal
+  const NEWS_DURATION_S = 4; // Duración para transición de noticias
 
   const handleIntroMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
     if (video.duration > 0) {
-      // Regla de Oro: La velocidad se ajusta para que el video dure EXACTAMENTE 4 segundos.
-      video.playbackRate = video.duration / 4;
+      const isNewsTransition = currentIntroUrl?.includes('noticias.mp4');
+      const targetDuration = isNewsTransition ? NEWS_DURATION_S : INTRO_DURATION_S;
+
+      // Ajustar velocidad para que el video dure EXACTAMENTE la duración objetivo.
+      video.playbackRate = video.duration / targetDuration;
+      video.volume = isNewsTransition ? 0 : 1; // Noticias inicia en 0 para fade in
     }
   };
 
   const handleIntroTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
-    // La duración efectiva para el usuario siempre es 4s. 
-    // Calculamos el progreso proporcional al tiempo real vs duración ajustada.
+    const isNewsTransition = currentIntroUrl?.includes('noticias.mp4');
+    const targetDuration = isNewsTransition ? NEWS_DURATION_S : INTRO_DURATION_S;
+
+    // La duración efectiva para el usuario siempre es targetDuration.
     const effectiveTime = video.currentTime / video.playbackRate;
 
-    // Fade out 0.3s antes de los 4s (es decir, a los 3.7s del tiempo efectivo)
-    if (!isIntroFadingOut && effectiveTime >= 3.7) {
-      setIsIntroFadingOut(true);
+    // Fade in en el primer segundo (solo noticias.mp4)
+    if (isNewsTransition) {
+      if (effectiveTime <= 1) {
+        video.volume = Math.max(0, Math.min(1, effectiveTime));
+      } else if (effectiveTime < targetDuration - 1) {
+        video.volume = 1;
+      }
+    }
+
+    // Solapamiento "Regla de Oro": 3 segundos antes del final permitimos que el contenido inferior inicie
+    const OVERLAP_START = targetDuration - 3;
+    if (effectiveTime >= OVERLAP_START) {
+      if (!isOverlapping) setIsOverlapping(true);
+    }
+
+    // Fade out en los últimos 0.75 segundos (Rule of Gold)
+    const FADE_START = targetDuration - 0.75;
+    if (effectiveTime >= FADE_START) {
+      // Progreso del fade: 0 al inicio del fade, 1 al final
+      const fadeProgress = Math.min((effectiveTime - FADE_START) / 0.75, 1);
+      // Fade de audio: volumen cae de 1 a 0
+      video.volume = Math.max(0, 1 - fadeProgress);
+      // Activar fade visual (CSS opacity)
+      if (!isIntroFadingOut) {
+        setIsIntroFadingOut(true);
+      }
     }
   };
 
@@ -212,22 +265,18 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
         {contentA && (
           <VideoPlayer
             content={contentA}
-            // MOD: En Daily Show, NO jugar mientras la intro está visible para evitar desincronización
-            shouldPlay={activeSlot === 'A' ? (shouldPlayContent && (isUserPlaying || (isIntroVisible && !state.dailyShowSequence))) : false}
-            // Nota: El 'Background Player' (B si A es activo) debe estar PAUSADO hasta que sea activo? 
-            // NO! Si es Next, debe estar PRELOADED. Pero VideoPlayer no tiene modo 'Preload'.
-            // Sin embargo, si triggerTransition ocurre, Active pasa a ser este slot.
-            // Entonces, si activeSlot === 'A', shouldPlay es TRUE (incluso si isIntroVisible es true).
-            // Si es Next (Inactivo), shouldPlay es FALSE (solo bufferea).
-
+            shouldPlay={activeSlot === 'A' ? (shouldPlayContent && isUserPlaying && (isContentPlaying || isOverlapping || isPreloading)) : false}
             onEnded={activeSlot === 'A' ? handleContentEnded : () => { }}
             onNearEnd={activeSlot === 'A' ? () => {
-              const isNews = 'url_slide' in contentA;
-              triggerTransition(isNews ? 300 : 0);
+              const isNews = contentA && (!('url' in contentA) || (contentA as any).url_slide);
+              triggerTransition(isNews ? 100 : 300);
             } : undefined}
             onStart={activeSlot === 'A' ? handleStart : undefined}
             onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
-            muted={activeSlot === 'A' ? (isMuted || (isIntroVisible && (currentIntroUrl?.includes('/videos_intro/noticias.mp4') ?? false))) : true}
+            // El mute sigue la misma logica: muteamos si el intro actual es noticias.mp4 (para que suene su foley)
+            // EXCEPCIÓN: Si estamos en modo overlap (3s finales), desmuteamos YouTube para fade-in
+            // v25.5: Forzar mute si esIntroVisible y NO estamos en overlap (evita audio de YouTube durante precarga)
+            muted={activeSlot === 'A' ? (isMuted || (!isOverlapping && isIntroVisible)) : true}
           />
         )}
       </div>
@@ -240,16 +289,16 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
         {contentB && (
           <VideoPlayer
             content={contentB}
-            // MOD: En Daily Show, NO jugar mientras la intro está visible para evitar desincronización
-            shouldPlay={activeSlot === 'B' ? (shouldPlayContent && (isUserPlaying || (isIntroVisible && !state.dailyShowSequence))) : false}
+            shouldPlay={activeSlot === 'B' ? (shouldPlayContent && isUserPlaying && (isContentPlaying || isOverlapping || isPreloading)) : false}
             onEnded={activeSlot === 'B' ? handleContentEnded : () => { }}
             onNearEnd={activeSlot === 'B' ? () => {
-              const isNews = 'url_slide' in contentB;
-              triggerTransition(isNews ? 300 : 0);
+              const isNews = contentB && (!('url' in contentB) || (contentB as any).url_slide);
+              triggerTransition(isNews ? 100 : 300);
             } : undefined}
             onStart={activeSlot === 'B' ? handleStart : undefined}
             onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
-            muted={activeSlot === 'B' ? (isMuted || (isIntroVisible && (currentIntroUrl?.includes('/videos_intro/noticias.mp4') ?? false))) : true}
+            // v25.5: Sincronización de mute para Slot B
+            muted={activeSlot === 'B' ? (isMuted || (!isOverlapping && isIntroVisible)) : true}
           />
         )}
       </div>
@@ -258,7 +307,8 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
       {/* INTRO VIDEO LAYER (CAPA 2) - Elevada a z-[999] para supremacía TOTAL */}
       <div className={cn(
-        "absolute inset-0 z-[999] bg-black transition-opacity duration-300 will-change-[transform,opacity]",
+        "absolute inset-0 z-[999] bg-black transition-opacity will-change-[transform,opacity]",
+        "duration-[750ms]", // Duración del fade out (0.75s)
         (isIntroVisible && !isIntroFadingOut) ? "opacity-100" : "opacity-0 pointer-events-none"
       )} style={{ transform: 'translateZ(0)' }}>
         {/* OPTIMIZACIÓN: Eliminamos 'key' para evitar re-mount. El nodo persiste. */}
@@ -266,19 +316,28 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
           ref={introVideoRef}
           className="w-full h-full object-cover"
           playsInline
-          muted={!(currentIntroUrl?.includes('/videos_intro/noticias.mp4') ?? false)}
-          // No autoPlay here, we control it in useEffect
+          autoPlay
+          muted={!hasInteracted || (!(currentIntroUrl?.includes('/videos_intro/noticias.mp4') ?? false) && !(currentIntroUrl?.includes('/videos_intro/') && !currentIntroUrl.includes('noticias.mp4')))}
           onEnded={handleIntroEnded}
           onLoadedMetadata={handleIntroMetadata}
           onTimeUpdate={handleIntroTimeUpdate}
         />
       </div>
 
+      {/* CINEMATIC BARS (Mobile) - Protección Anti-Branding */}
+      {areCinematicBarsActive && !currentIntroUrl?.includes('noticias.mp4') && (
+        <>
+          <div className="absolute top-0 left-0 right-0 h-[12%] bg-black z-[990] pointer-events-auto transition-opacity duration-300" />
+          <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-black via-black/80 to-transparent z-[989] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-gradient-to-t from-black via-black/80 to-transparent z-[989] pointer-events-none" />
+        </>
+      )}
+
       {/* BOTÓN UNMUTE INICIAL / ESTADO MUTED */}
       {/* Lógica: Si está muteado, este botón es lo ÚNICO que se ve. Bloquea el resto. */}
       {isMuted && (
         <div className={cn(
-          "absolute inset-0 z-[60] flex items-center justify-center transition-all duration-300",
+          "absolute inset-0 z-[1000] flex items-center justify-center transition-all duration-300",
           (showControls || !hasInteracted || isMuted) ? "opacity-100" : "opacity-0" // Siempre visible si está muteado y user interactúa o es inicio
         )}>
           {/* El botón en sí tiene stopPropagation para que el click no active los controles generales */}
@@ -295,7 +354,6 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
 
 
       {/* CONTROLES (Solo Video - Pausa, Mute, Share, Timeline) */}
-      {/* Se ocultan TOTALMENTE si está Muted */}
       {!isMuted && (
         <div className={cn("absolute inset-x-0 bottom-0 z-50 p-6 pt-12 bg-gradient-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-500", (showControls || !isUserPlaying) ? "opacity-100" : "opacity-0 pointer-events-none")}>
 

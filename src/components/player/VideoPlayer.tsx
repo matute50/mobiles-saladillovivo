@@ -114,7 +114,7 @@ export default function VideoPlayer({
         if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
           const finalGoal = Math.min(1, globalVolume * multiplier);
           if (prev >= finalGoal) return finalGoal;
-          return Math.min(finalGoal, prev + 0.015);
+          return Math.min(finalGoal, prev + 0.035);
         } else {
           if (prev <= 0) return 0;
           return Math.max(0, prev - 0.01);
@@ -125,11 +125,14 @@ export default function VideoPlayer({
     return () => clearInterval(intervalId);
   }, [globalVolume, isArticle, isFadingOut, isPlayerReady, muted, shouldPlay, videoData]);
 
-  // Audio Side Effect (Articles)
+  // Audio AND Slide Duration Side Effect (Articles)
   useEffect(() => {
-    if (isArticle && shouldPlay && !isFadingOut && articleData?.audio_url) {
-      playAudio();
-      const duration = (articleData.animation_duration || 45) * 1000;
+    if (isArticle && shouldPlay && !isFadingOut) {
+      if (articleData?.audio_url) {
+        playAudio();
+      }
+
+      const duration = (articleData?.animation_duration || 15) * 1000;
 
       if (!fadeTimerRef.current) {
         fadeTimerRef.current = setTimeout(() => triggerEnd(), duration);
@@ -146,7 +149,7 @@ export default function VideoPlayer({
             clearTimeout(fadeTimerRef.current);
             fadeTimerRef.current = null;
           }
-          pauseAudio();
+          if (articleData?.audio_url) pauseAudio();
         }
       };
     } else {
@@ -254,8 +257,8 @@ export default function VideoPlayer({
 
         <div
           className={cn(
-            "absolute inset-0 w-full h-full left-0 top-0 will-change-transform",
-            isSharingAction ? "transform scale(1.25)" : "transform scale(1.0) transition-transform duration-500 ease-in-out"
+            "absolute inset-0 w-full h-full left-0 top-0 will-change-transform transform-gpu",
+            isSharingAction ? "scale-125" : "scale-100 transition-transform duration-500 ease-in-out"
           )}
         >
           <ReactPlayer

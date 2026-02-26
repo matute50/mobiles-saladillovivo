@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 
 interface WeatherContextType {
     weather: any;
@@ -17,40 +17,61 @@ export const WeatherProvider = ({ children }: { children: ReactNode }) => {
     const [isExtendedOpen, setIsExtendedOpen] = useState(false);
 
     useEffect(() => {
-        const fetchWeather = (query?: string) => {
-            const url = query ? `/api/weather?q=${query}` : '/api/weather';
-            fetch(url)
-                .then(res => res.ok ? res.json() : Promise.reject(new Error(`Error ${res.status}`)))
-                .then(data => setWeather(data))
-                .catch((err) => setErrorText(err.message));
+        let refreshInterval: NodeJS.Timeout;
+
+        const fetchWeather = async (query?: string) => {
+            try {
+                const url = query ? `/api/weather?q=${query}` : '/api/weather';
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) throw new Error(`Weather error: ${res.status}`);
+                const data = await res.json();
+                setWeather(data);
+                setErrorText("");
+            } catch (err: any) {
+                console.error("[WeatherContext] Fetch failed:", err);
+                setErrorText(err.message);
+            }
         };
 
-        const tryGeolocation = async () => {
-            if ("geolocation" in navigator && "permissions" in navigator) {
+        const tryGeolocationAndStartInterval = async () => {
+            let lastQuery: string | undefined;
+
+            // Intento inicial
+            if ("geolocation" in navigator) {
                 try {
+                    // Verificamos si tenemos permiso explícito para no pedirlo de nuevo si ya fue denegado
                     const status = await navigator.permissions.query({ name: 'geolocation' });
-                    // Solo pedir si ya tenemos permiso o si no se ha preguntado (para no forzar el gesto)
-                    // En realidad, "granted" es lo único seguro para evitar el violation sin gesto.
                     if (status.state === 'granted') {
                         navigator.geolocation.getCurrentPosition(
                             (position) => {
                                 const { latitude, longitude } = position.coords;
-                                fetchWeather(`${latitude},${longitude}`);
+                                lastQuery = `${latitude},${longitude}`;
+                                fetchWeather(lastQuery);
                             },
                             () => fetchWeather(),
                             { timeout: 5000 }
                         );
-                        return;
+                    } else {
+                        fetchWeather();
                     }
                 } catch (e) {
-                    console.error("Error checking geolocation permission:", e);
+                    fetchWeather();
                 }
+            } else {
+                fetchWeather();
             }
-            // Fallback por defecto (Saladillo)
-            fetchWeather();
+
+            // v25.3: Actualización automática cada 30 minutos
+            refreshInterval = setInterval(() => {
+                fetchWeather(lastQuery);
+            }, 1800000); // 30 min
         };
 
-        tryGeolocation();
+        tryGeolocationAndStartInterval();
+
+        return () => {
+            if (refreshInterval) clearInterval(refreshInterval);
+        };
     }, []);
 
     return (

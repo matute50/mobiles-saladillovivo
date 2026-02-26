@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
 
 interface VolumeContextType {
   volume: number;
@@ -14,8 +14,6 @@ interface VolumeContextType {
 const VolumeContext = createContext<VolumeContextType | undefined>(undefined);
 
 export const VolumeProvider = ({ children }: { children: ReactNode }) => {
-  // ✅ localStorage Lazy Initialization (react-useeffect skill)
-  // Evita doble ejecución en dev mode y mejora performance
   const [volume, setVolumeState] = useState(() => {
     if (typeof window === 'undefined') return 1;
     const savedVolume = localStorage.getItem('playerVolume');
@@ -41,20 +39,33 @@ export const VolumeProvider = ({ children }: { children: ReactNode }) => {
     setIsMuted(prev => {
       const next = !prev;
       if (!next && volume <= 0.05) {
-        setVolume(1.0);
+        setVolumeState(1.0);
+        localStorage.setItem('playerVolume', '1');
       }
       return next;
     });
-  }, [volume, setVolume]);
+  }, [volume]);
 
   const unmute = useCallback(() => {
     setHasInteracted(true);
     setIsMuted(false);
-    if (volume <= 0.05) setVolume(1.0);
-  }, [volume, setVolume]);
+    if (volume <= 0.05) {
+      setVolumeState(1.0);
+      localStorage.setItem('playerVolume', '1');
+    }
+  }, [volume]);
+
+  const contextValue = useMemo(() => ({
+    volume,
+    setVolume,
+    isMuted,
+    hasInteracted,
+    toggleMute,
+    unmute
+  }), [volume, setVolume, isMuted, hasInteracted, toggleMute, unmute]);
 
   return (
-    <VolumeContext.Provider value={{ volume, setVolume, isMuted, hasInteracted, toggleMute, unmute }}>
+    <VolumeContext.Provider value={contextValue}>
       {children}
     </VolumeContext.Provider>
   );

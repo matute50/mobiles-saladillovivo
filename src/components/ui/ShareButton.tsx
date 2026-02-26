@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Share2, Check, ExternalLink } from 'lucide-react';
+import { Share2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Video, Article } from '@/lib/types';
 import { toast } from 'sonner';
@@ -35,18 +35,15 @@ export const ShareButton = ({
         if (content) {
             if ('url_slide' in content) {
                 // Es Noticia (Article)
-                shareUrl = `${siteUrl}/?id=${content.id}`;
-                shareTitle = content.titulo;
+                shareUrl = `${siteUrl}/articulo/${content.id}`;
             } else if ('url' in content) {
                 // Es Video (Video)
-                shareUrl = `${siteUrl}/?v=${content.id}`;
-                shareTitle = content.nombre;
+                shareUrl = `${siteUrl}/video/${content.id}`;
             }
         }
 
         // WhatsApp Direct Share
-        // Solo enviamos la URL. WhatsApp generará la "Rich Preview" (Tarjeta) automáticamente.
-        // Evitamos poner el título en texto plano para que no salga duplicado con el título de la tarjeta.
+        // Enviamos SOLO la URL. WhatsApp generará la tarjeta (Miniatura + Título) basada en las etiquetas OpenGraph.
         const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareUrl)}`;
 
         window.open(whatsappUrl, '_blank');

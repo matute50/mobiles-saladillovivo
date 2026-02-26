@@ -49,9 +49,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       }
     }
   } catch (e: any) {
-    console.error("DEBUG - Metadata Error:", e);
-    // v24.7: Exponemos el error CRÍTICO en el título para el debugger de FB/WhatsApp
-    title = `DEBUG ERROR: ${e.message || 'Unknown'}`;
+    console.error("Metadata Error:", e);
   }
 
   const opengraphUrl = id ? `${SITE_URL}/articulo/${id}` : (v ? `${SITE_URL}/video/${v}` : SITE_URL);

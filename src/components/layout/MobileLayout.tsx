@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useMediaPlayer } from '@/context/MediaPlayerContext';
 import { useVolume } from '@/context/VolumeContext';
 import VideoSection from './VideoSection';
 import { PageData, Video, Article } from '@/lib/types';
-import { useSearchParams } from 'next/navigation';
 import type { Swiper as SwiperClass } from 'swiper';
 import { cn } from '@/lib/utils';
 import 'swiper/css';
@@ -23,15 +22,14 @@ import { useOrientation } from '@/hooks/useOrientation';
 import { useDeepLink } from '@/hooks/useDeepLink';
 import { useNews } from '@/context/NewsContext';
 
-export default function MobileLayout({ data, resumenId }: { data: PageData, resumenId?: string }) {
+export default function MobileLayout({ data }: { data: PageData }) {
   const [isDark, setIsDark] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const { setVideoPool, playManual, loadDailyShow } = useMediaPlayer();
+  const { setVideoPool, playManual } = useMediaPlayer();
   const { isInstallModalOpen, setIsInstallModalOpen } = usePWA();
   const { hasInteracted } = useVolume();
   const { handleSearch } = useNews();
   const [newsSwiper, setNewsSwiper] = useState<SwiperClass | null>(null);
-  const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -81,21 +79,14 @@ export default function MobileLayout({ data, resumenId }: { data: PageData, resu
   }, [filteredData]);
 
 
-  const hasLoadedResumen = React.useRef<string | null>(null);
+  const firstLoadDone = useRef(false);
 
   useEffect(() => {
-    if (data && mounted) {
-      if (resumenId) {
-        if (hasLoadedResumen.current !== resumenId) {
-          hasLoadedResumen.current = resumenId;
-          loadDailyShow(resumenId);
-        }
-      } else {
-        // v24.5.1: Pasar deep link target como initialTarget para prevenir sobrescritura
-        setVideoPool(data.videos?.allVideos || [], deepLinkTarget || undefined);
-      }
+    if (data && mounted && !firstLoadDone.current) {
+      firstLoadDone.current = true;
+      setVideoPool(data.videos?.allVideos || [], deepLinkTarget || undefined);
     }
-  }, [data, mounted, setVideoPool, deepLinkTarget, resumenId, loadDailyShow]);
+  }, [data, mounted, setVideoPool, deepLinkTarget]);
 
   const videoContainerRef = React.useRef<HTMLDivElement>(null);
 
