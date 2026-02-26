@@ -50,8 +50,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         }
       }
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error("Error generating metadata:", e);
+    title = `Error: ${e.message || 'Unknown'} - ${id || v || 'no-id'}`;
   }
 
   const opengraphUrl = id ? `${SITE_URL}/articulo/${id}` : (v ? `${SITE_URL}/video/${v}` : SITE_URL);
