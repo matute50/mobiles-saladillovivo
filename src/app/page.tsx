@@ -28,7 +28,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         }
         if (article.imagen) imageUrl = article.imagen;
       } else {
-        title = `Not Found: Article ${id}`;
+        title = `Not Found: Article ${id} (v=${v})`;
       }
     } else if (v) {
       const video = await getVideoById(v);
@@ -45,10 +45,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
           }
         }
       } else {
-        title = `Not Found: Video ${v}`;
+        title = `Not Found: Video ${v} (id=${id})`;
       }
     }
   } catch (e: any) {
+    title = `Error: ${e.message}`;
     console.error("Metadata Error:", e);
   }
 
