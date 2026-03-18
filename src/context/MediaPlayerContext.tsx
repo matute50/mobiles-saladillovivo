@@ -101,15 +101,22 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   // Forzar Volumen e interrupción de Intro al entrar a Live Stream (solo una vez)
+  const prevLiveActive = useRef(state.isLiveActive);
+
   useEffect(() => {
-    if (state.isLiveActive) {
+    if (state.isLiveActive && !prevLiveActive.current) {
       // Usar store o estado actual sin ponerlo en las deps para que no re-triggeree
       if (volume < 0.4 || isMuted) {
         setVolume(0.4);
         unmute();
       }
       setState(prev => ({ ...prev, isIntroVisible: false, isContentPlaying: true }));
+    } else if (!state.isLiveActive && prevLiveActive.current) {
+      // Al dejar de recibir streaming, pasar inmediatamente a reproducción automática
+      const next = getNextVideo(state.currentContent?.categoria);
+      if (next) startTransition(next);
     }
+    prevLiveActive.current = state.isLiveActive;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isLiveActive]);
 

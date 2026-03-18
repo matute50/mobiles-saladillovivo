@@ -219,27 +219,36 @@ export default function VideoPlayer({
       : streamingUrl;
 
     return (
-      <div className="w-full h-full bg-black relative">
-        <ReactPlayer
-          ref={playerRef}
-          url={finalUrl}
-          width="100%"
-          height="100%"
-          playing={true} // Forzar reproducción en directo
-          volume={targetVolume || 0.5} // Asegurar volumen si el fade no inició
-          muted={muted}
-          onReady={handleReady}
-          config={{
-            youtube: {
-                playerVars: {
-                  modestbranding: 1,
-                  controls: 0,
-                  showinfo: 0,
-                  rel: 0
-                }
-            }
-          }}
-        />
+      <div className="w-full h-full bg-black relative overflow-hidden">
+        <div className="absolute inset-0 w-full h-full scale-[1.35] sm:scale-125 transform-gpu pointer-events-none">
+          <ReactPlayer
+            ref={playerRef}
+            url={finalUrl}
+            width="100%"
+            height="100%"
+            playing={true} // Forzar reproducción en directo
+            volume={targetVolume || 0.5} // Asegurar volumen si el fade no inició
+            muted={muted}
+            onReady={handleReady}
+            config={{
+              youtube: {
+                  playerVars: {
+                    autoplay: 1,
+                    modestbranding: 1,
+                    controls: 0,
+                    showinfo: 0,
+                    rel: 0,
+                    iv_load_policy: 3,
+                    disablekb: 1,
+                    fs: 0,
+                    autohide: 1,
+                    enablejsapi: 1
+                  }
+              }
+            }}
+          />
+        </div>
+        <div className="absolute inset-0 z-20 bg-transparent cursor-default pointer-events-auto" />
         <div className="absolute top-4 left-4 z-50 flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg shadow-2xl animate-pulse pointer-events-none">
             <div className="w-3 h-3 rounded-full bg-white shadow-[0_0_8px_white]"></div>
             <span className="text-xs font-black uppercase tracking-widest">EN VIVO</span>
@@ -296,8 +305,8 @@ export default function VideoPlayer({
 
         <div
           className={cn(
-            "absolute inset-0 w-full h-full left-0 top-0 will-change-transform transform-gpu",
-            isSharingAction ? "scale-125" : "scale-100 transition-transform duration-500 ease-in-out"
+            "absolute inset-0 w-full h-full left-0 top-0 will-change-transform transform-gpu pointer-events-none",
+            isSharingAction ? "scale-[1.45]" : "scale-[1.35] sm:scale-125 transition-transform duration-500 ease-in-out"
           )}
         >
           <ReactPlayer
@@ -316,6 +325,7 @@ export default function VideoPlayer({
             config={{
               youtube: {
                 playerVars: {
+                  autoplay: 1,
                   modestbranding: 1,
                   controls: 0,
                   showinfo: 0,
