@@ -90,28 +90,30 @@ export default function VideoPlayer({
     };
   }, [content, isLiveActive]);
 
-  // Autoplay Loop (v25.8 - Decoupled from shouldPlay to allow background buffer/kickstart)
+  // Autoplay Loop (v26.0 - Fully persistent recovery loop)
+  // Eliminamos shouldPlay de las dependencias para que el intervalo persista durante la precarga
   useEffect(() => {
     if ((isArticle && !isLiveActive) || !isPlayerReady) return;
 
     // Reducido CPU usage: 3000ms es suficiente para recovery state
-    autoplayCheckRef.current = setInterval(() => {
+    const intervalId = setInterval(() => {
       if (!internalPlayerRef.current) return;
       try {
         const p = internalPlayerRef.current;
         if (p) {
-          const state = typeof p.getPlayerState === 'function' ? p.getPlayerState() : -2;
-          if ([2, 5, -1].includes(state)) {
+          const s = typeof p.getPlayerState === 'function' ? p.getPlayerState() : -2;
+          // Si el video está pausado (2), en buffer (3) o cued (5), forzamos playVideo()
+          if ([2, 3, 5, -1].includes(s)) {
             p.playVideo();
           }
         }
       } catch (e) { }
-    }, 3000);
+    }, 1500); // v26.0: Más agresivo (1.5s) para mobile
 
     return () => {
-      if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
+      clearInterval(intervalId);
     };
-  }, [shouldPlay, isArticle, isPlayerReady, isLiveActive]);
+  }, [isArticle, isPlayerReady, isLiveActive]);
 
   // Volume Loop (v24.3 - CPU Optimization: setInterval instead of rAF)
   // ✅ Audio Normalization: volumen_extra per-video multiplier
@@ -250,7 +252,8 @@ export default function VideoPlayer({
                     fs: 0,
                     autohide: 1,
                     enablejsapi: 1,
-                    playsinline: 1
+                    playsinline: 1,
+                    origin: typeof window !== 'undefined' ? window.location.origin : ''
                   }
               }
             }}
@@ -344,7 +347,8 @@ export default function VideoPlayer({
                   fs: 0,
                   autohide: 1,
                   enablejsapi: 1,
-                  playsinline: 1
+                  playsinline: 1,
+                  origin: typeof window !== 'undefined' ? window.location.origin : ''
                 }
               }
             }}
