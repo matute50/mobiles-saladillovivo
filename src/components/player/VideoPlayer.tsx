@@ -234,6 +234,7 @@ export default function VideoPlayer({
               youtube: {
                   playerVars: {
                     autoplay: 1,
+                    mute: 1,
                     modestbranding: 1,
                     controls: 0,
                     showinfo: 0,
@@ -314,7 +315,7 @@ export default function VideoPlayer({
             url={videoData.url}
             width="100%"
             height="100%"
-            playing={shouldPlay}
+            playing={true} // Forzar autoplay incondicional
             volume={targetVolume}
             muted={muted}
             onEnded={triggerEnd}
@@ -326,6 +327,7 @@ export default function VideoPlayer({
               youtube: {
                 playerVars: {
                   autoplay: 1,
+                  mute: 1, // Vital para autoplay en mobile (iOS safari)
                   modestbranding: 1,
                   controls: 0,
                   showinfo: 0,
