@@ -30,18 +30,6 @@ const nextConfig = {
       },
     ],
   },
-  async rewrites() {
-    return [
-      {
-        source: '/articulo/:id',
-        destination: '/?id=:id',
-      },
-      {
-        source: '/video/:id',
-        destination: '/?v=:id',
-      },
-    ];
-  },
 };
 
 // Inicializamos el plugin PWA (v24.3 - Enhanced with Runtime Caching)

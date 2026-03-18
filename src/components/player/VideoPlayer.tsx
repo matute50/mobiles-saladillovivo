@@ -6,6 +6,7 @@ import { Video, Article } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { useVolume } from '@/context/VolumeContext';
+import { useMediaPlayer } from '@/context/MediaPlayerContext';
 
 interface VideoPlayerProps {
   content: Video | Article | null;
@@ -28,6 +29,8 @@ export default function VideoPlayer({
   muted,
   isSharingAction
 }: VideoPlayerProps) {
+  const { state } = useMediaPlayer();
+  const { isLiveActive, streamingUrl } = state;
   const [targetVolume, setTargetVolume] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -79,11 +82,11 @@ export default function VideoPlayer({
       if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     };
-  }, [content]);
+  }, [content, isLiveActive]);
 
   // Autoplay Loop (v24.2.1 - Removed residual volume commands)
   useEffect(() => {
-    if (!shouldPlay || isArticle || !isPlayerReady) return;
+    if (!shouldPlay || (isArticle && !isLiveActive) || !isPlayerReady) return;
 
     // Reducido CPU usage: 3000ms es suficiente para recovery state
     autoplayCheckRef.current = setInterval(() => {
@@ -102,7 +105,7 @@ export default function VideoPlayer({
     return () => {
       if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
     };
-  }, [shouldPlay, isArticle, isPlayerReady]);
+  }, [shouldPlay, isArticle, isPlayerReady, isLiveActive]);
 
   // Volume Loop (v24.3 - CPU Optimization: setInterval instead of rAF)
   // ✅ Audio Normalization: volumen_extra per-video multiplier
@@ -111,7 +114,7 @@ export default function VideoPlayer({
     const intervalId = setInterval(() => {
       setTargetVolume(prev => {
         const multiplier = (videoData && videoData.volumen_extra) ? videoData.volumen_extra : 1;
-        if (shouldPlay && !muted && !isArticle && isPlayerReady && !isFadingOut) {
+        if (shouldPlay && !muted && (!isArticle || isLiveActive) && isPlayerReady && !isFadingOut) {
           const finalGoal = Math.min(1, globalVolume * multiplier);
           if (prev >= finalGoal) return finalGoal;
           return Math.min(finalGoal, prev + 0.035);
@@ -123,11 +126,11 @@ export default function VideoPlayer({
     }, 100);
 
     return () => clearInterval(intervalId);
-  }, [globalVolume, isArticle, isFadingOut, isPlayerReady, muted, shouldPlay, videoData]);
+  }, [globalVolume, isArticle, isFadingOut, isPlayerReady, muted, shouldPlay, videoData, isLiveActive]);
 
   // Audio AND Slide Duration Side Effect (Articles)
   useEffect(() => {
-    if (isArticle && shouldPlay && !isFadingOut) {
+    if (isArticle && !isLiveActive && shouldPlay && !isFadingOut) {
       if (articleData?.audio_url) {
         playAudio();
       }
@@ -159,7 +162,7 @@ export default function VideoPlayer({
         fadeTimerRef.current = null;
       }
     }
-  }, [isArticle, shouldPlay, isFadingOut, articleData, playAudio, pauseAudio, triggerEnd, onNearEnd]);
+  }, [isArticle, shouldPlay, isFadingOut, articleData, playAudio, pauseAudio, triggerEnd, onNearEnd, isLiveActive]);
 
   // Fetch HTML Slide content (v25.0 - With simple cache)
   const [slideHtml, setSlideHtml] = useState<string | null>(null);
@@ -208,6 +211,42 @@ export default function VideoPlayer({
       fetchAndProcess();
     }
   }, [articleData?.url_slide]);
+
+  // --- MODO LIVE (PRIORIDAD ABSOLUTA) ---
+  if (isLiveActive && streamingUrl) {
+    const finalUrl = streamingUrl.includes('/live/') 
+      ? `https://www.youtube.com/watch?v=${streamingUrl.split('/live/')[1].split('?')[0]}` 
+      : streamingUrl;
+
+    return (
+      <div className="w-full h-full bg-black relative">
+        <ReactPlayer
+          ref={playerRef}
+          url={finalUrl}
+          width="100%"
+          height="100%"
+          playing={true} // Forzar reproducción en directo
+          volume={targetVolume || 0.5} // Asegurar volumen si el fade no inició
+          muted={muted}
+          onReady={handleReady}
+          config={{
+            youtube: {
+                playerVars: {
+                  modestbranding: 1,
+                  controls: 0,
+                  showinfo: 0,
+                  rel: 0
+                }
+            }
+          }}
+        />
+        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg shadow-2xl animate-pulse pointer-events-none">
+            <div className="w-3 h-3 rounded-full bg-white shadow-[0_0_8px_white]"></div>
+            <span className="text-xs font-black uppercase tracking-widest">EN VIVO</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!content) return <div className="w-full h-full bg-black" />;
 
@@ -285,8 +324,7 @@ export default function VideoPlayer({
                   disablekb: 1,
                   fs: 0,
                   autohide: 1,
-                  enablejsapi: 1,
-                  origin: typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : ''
+                  enablejsapi: 1
                 }
               }
             }}

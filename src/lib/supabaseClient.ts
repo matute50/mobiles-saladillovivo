@@ -1,11 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_URL = 'https://otwvfihzaznyjvjtkvvd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90d3ZmaWh6YXpueWp2anRrdnZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUxMDQ3OTAsImV4cCI6MjA2MDY4MDc5MH0.YbKdivZM6gJCdXAf51Xctn8IpKhQCrMch89NoHwP0Z4';
 
-// Si no hay URL, lanzará el error que estás viendo.
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Faltan las variables de entorno de Supabase');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

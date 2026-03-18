@@ -17,6 +17,8 @@ interface MediaPlayerState {
   isIntroVisible: boolean;
   shouldPlayContent: boolean;
   isContentPlaying: boolean;
+  isLiveActive: boolean;
+  streamingUrl: string | null;
 }
 
 interface MediaPlayerContextType {
@@ -31,10 +33,15 @@ interface MediaPlayerContextType {
 
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
 
+import { supabase } from '@/lib/supabaseClient';
+import { useVolume } from './VolumeContext';
+
 export function MediaPlayerProvider({ children }: { children: React.ReactNode }) {
   const [videoPool, setVideoPoolState] = useState<Video[]>([]);
   const isInitialVideoPicked = useRef(false);
   const wakeLockRef = useRef<any>(null);
+  
+  const { volume, isMuted, setVolume, unmute } = useVolume();
 
   const [state, setState] = useState<MediaPlayerState>({
     currentContent: null,
@@ -45,7 +52,66 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     isIntroVisible: true,
     shouldPlayContent: false,
     isContentPlaying: false,
+    isLiveActive: false,
+    streamingUrl: null,
   });
+
+  // 1. Detección de Streaming (Realtime)
+  useEffect(() => {
+    const fetchInitial = async () => {
+      try {
+        const { data } = await supabase.from('streaming').select('*').eq('id', 25).single();
+        if (data) processData(data);
+      } catch (err) {}
+    };
+
+    const processData = (data: any) => {
+      const isActive = data.isActive;
+      const rawUrl = data.url;
+      const normalizedUrl = (rawUrl && rawUrl.includes('/live/')) 
+        ? `https://www.youtube.com/watch?v=${rawUrl.split('/live/')[1].split('?')[0]}` 
+        : rawUrl;
+
+      setState(prev => ({
+        ...prev,
+        isLiveActive: isActive,
+        streamingUrl: isActive ? normalizedUrl : null
+      }));
+    };
+
+    fetchInitial();
+
+    const channel = supabase
+      .channel('streaming-mobile-realtime')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'streaming', filter: 'id=eq.25' },
+        (payload) => {
+          console.log('[Realtime Mobile] Update detected:', payload.new);
+          processData(payload.new);
+        }
+      )
+      .subscribe();
+
+    const backup = setInterval(fetchInitial, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(backup);
+    };
+  }, []);
+
+  // Forzar Volumen e interrupción de Intro al entrar a Live Stream (solo una vez)
+  useEffect(() => {
+    if (state.isLiveActive) {
+      // Usar store o estado actual sin ponerlo en las deps para que no re-triggeree
+      if (volume < 0.4 || isMuted) {
+        setVolume(0.4);
+        unmute();
+      }
+      setState(prev => ({ ...prev, isIntroVisible: false, isContentPlaying: true }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isLiveActive]);
 
   const requestWakeLock = async () => {
     if ('wakeLock' in navigator && !wakeLockRef.current) {

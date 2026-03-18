@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { getVideoById } from '@/lib/data';
 
 interface Props {
@@ -11,7 +10,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const video = await getVideoById(id);
 
     const title = video?.nombre ?? 'Video - Saladillo Vivo';
-    const image = video?.imagen ?? 'https://m.saladillovivo.com.ar/icon-512.png';
+    let image = video?.imagen;
+
+    if (!image && video?.url) {
+        const match = video.url.match(/^.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*/);
+        const ytId = (match && match[1]) ? match[1] : null;
+        if (ytId && ytId.length === 11) {
+            image = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+        }
+    }
+
+    if (!image) {
+        image = 'https://m.saladillovivo.com.ar/icon-512.png';
+    }
+
     const url = `https://m.saladillovivo.com.ar/video/${id}`;
     const description = video?.nombre ? `${video.nombre}` : 'Video de Saladillo Vivo';
 
@@ -37,5 +49,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function VideoPage({ params }: Props) {
     const { id } = await params;
-    redirect(`/?v=${id}`);
+    
+    // Devolvemos 200 OK en lugar de 307 Redirect para que WhatsApp lea los metadatos correctamente.
+    return (
+        <main style={{ backgroundColor: '#000', color: '#fff', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+            <p>Sintonizando Saladillo Vivo...</p>
+            <script dangerouslySetInnerHTML={{ __html: `window.location.replace('/?v=${id}');` }} />
+        </main>
+    );
 }

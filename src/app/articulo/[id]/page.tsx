@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { getArticleById } from '@/lib/data';
 
 interface Props {
@@ -37,5 +36,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArticuloPage({ params }: Props) {
     const { id } = await params;
-    redirect(`/?id=${id}`);
+    
+    // Devolvemos 200 OK en lugar de 307 Redirect para que WhatsApp lea los metadatos correctamente.
+    return (
+        <main style={{ backgroundColor: '#000', color: '#fff', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui, sans-serif' }}>
+            <p>Sintonizando Saladillo Vivo...</p>
+            <script dangerouslySetInnerHTML={{ __html: `window.location.replace('/?id=${id}');` }} />
+        </main>
+    );
 }
