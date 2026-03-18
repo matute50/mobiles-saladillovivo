@@ -84,9 +84,9 @@ export default function VideoPlayer({
     };
   }, [content, isLiveActive]);
 
-  // Autoplay Loop (v24.2.1 - Removed residual volume commands)
+  // Autoplay Loop (v25.8 - Decoupled from shouldPlay to allow background buffer/kickstart)
   useEffect(() => {
-    if (!shouldPlay || (isArticle && !isLiveActive) || !isPlayerReady) return;
+    if ((isArticle && !isLiveActive) || !isPlayerReady) return;
 
     // Reducido CPU usage: 3000ms es suficiente para recovery state
     autoplayCheckRef.current = setInterval(() => {
