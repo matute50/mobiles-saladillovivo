@@ -69,6 +69,12 @@ export default function VideoPlayer({
   const handleReady = useCallback((player: any) => {
     setIsPlayerReady(true);
     internalPlayerRef.current = player.getInternalPlayer();
+    // Kickstart inmediato (Regla de Oro v25.9)
+    try {
+      if (internalPlayerRef.current && typeof internalPlayerRef.current.playVideo === 'function') {
+        internalPlayerRef.current.playVideo();
+      }
+    } catch (e) { }
   }, []);
 
   // Inicialización en cambio de contenido
@@ -243,7 +249,8 @@ export default function VideoPlayer({
                     disablekb: 1,
                     fs: 0,
                     autohide: 1,
-                    enablejsapi: 1
+                    enablejsapi: 1,
+                    playsinline: 1
                   }
               }
             }}
@@ -336,7 +343,8 @@ export default function VideoPlayer({
                   disablekb: 1,
                   fs: 0,
                   autohide: 1,
-                  enablejsapi: 1
+                  enablejsapi: 1,
+                  playsinline: 1
                 }
               }
             }}
