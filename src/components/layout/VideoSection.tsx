@@ -273,10 +273,8 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             } : undefined}
             onStart={activeSlot === 'A' ? handleStart : undefined}
             onProgress={activeSlot === 'A' ? onPlayerProgress : undefined}
-            // El mute sigue la misma logica: muteamos si el intro actual es noticias.mp4 (para que suene su foley)
-            // EXCEPCIÓN: Si estamos en modo overlap (3s finales), desmuteamos YouTube para fade-in
-            // v25.5: Forzar mute si esIntroVisible y NO estamos en overlap (evita audio de YouTube durante precarga)
-            muted={activeSlot === 'A' ? (isMuted || (!isOverlapping && isIntroVisible)) : true}
+            // v26.3: El video debe permanecer MUTED durante TODO el intro visible para que el browser no lo pause al intentar desmutearlo sin gesto.
+            muted={activeSlot === 'A' ? (isMuted || isIntroVisible) : true}
           />
         )}
       </div>
@@ -297,8 +295,8 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
             } : undefined}
             onStart={activeSlot === 'B' ? handleStart : undefined}
             onProgress={activeSlot === 'B' ? onPlayerProgress : undefined}
-            // v25.5: Sincronización de mute para Slot B
-            muted={activeSlot === 'B' ? (isMuted || (!isOverlapping && isIntroVisible)) : true}
+            // v26.3: Sincronización de mute para Slot B (Permanecer muted durante Intro)
+            muted={activeSlot === 'B' ? (isMuted || isIntroVisible) : true}
           />
         )}
       </div>
