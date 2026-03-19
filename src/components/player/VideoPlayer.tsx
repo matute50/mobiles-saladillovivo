@@ -34,6 +34,7 @@ export default function VideoPlayer({
   const [targetVolume, setTargetVolume] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [isInitialZoomActive, setIsInitialZoomActive] = useState(true);
   const { volume: globalVolume } = useVolume();
 
   const playerRef = useRef<ReactPlayer>(null);
@@ -83,10 +84,13 @@ export default function VideoPlayer({
     setIsPlayerReady(false);
     setTargetVolume(0);
     startTimeRef.current = Date.now();
+    setIsInitialZoomActive(true);
+    const zoomTimer = setTimeout(() => setIsInitialZoomActive(false), 2000);
 
     return () => {
       if (autoplayCheckRef.current) clearInterval(autoplayCheckRef.current);
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+      clearTimeout(zoomTimer);
     };
   }, [content, isLiveActive]);
 
@@ -227,7 +231,10 @@ export default function VideoPlayer({
 
     return (
       <div className="w-full h-full bg-black relative overflow-hidden">
-        <div className="absolute inset-0 w-full h-full scale-[1.35] sm:scale-125 transform-gpu pointer-events-none">
+        <div className={cn(
+          "absolute inset-0 w-full h-full transform-gpu pointer-events-none transition-transform duration-[2000ms] ease-in-out",
+          isInitialZoomActive ? "scale-[1.35] sm:scale-125" : "scale-100"
+        )}>
           <ReactPlayer
             ref={playerRef}
             url={finalUrl}
@@ -315,8 +322,8 @@ export default function VideoPlayer({
 
         <div
           className={cn(
-            "absolute inset-0 w-full h-full left-0 top-0 will-change-transform transform-gpu pointer-events-none",
-            isSharingAction ? "scale-[1.45]" : "scale-[1.35] sm:scale-125 transition-transform duration-500 ease-in-out"
+            "absolute inset-0 w-full h-full left-0 top-0 will-change-transform transform-gpu pointer-events-none transition-transform duration-[2000ms] ease-in-out",
+            isSharingAction ? "scale-[1.45]" : (isInitialZoomActive ? "scale-[1.35] sm:scale-125" : "scale-100")
           )}
         >
           <ReactPlayer
