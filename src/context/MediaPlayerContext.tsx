@@ -105,11 +105,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (state.isLiveActive && !prevLiveActive.current) {
-      // Usar store o estado actual sin ponerlo en las deps para que no re-triggeree
-      if (volume < 0.4 || isMuted) {
-        setVolume(0.4);
-        unmute();
-      }
+      // Entrar a vivo interrumpiendo intro, pero RESPETANDO estado de mute para evitar pausa forzada por browser
       setState(prev => ({ ...prev, isIntroVisible: false, isContentPlaying: true }));
     } else if (!state.isLiveActive && prevLiveActive.current) {
       // Al dejar de recibir streaming, pasar inmediatamente a reproducción automática

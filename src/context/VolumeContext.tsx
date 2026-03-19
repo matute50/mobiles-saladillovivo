@@ -20,10 +20,7 @@ export const VolumeProvider = ({ children }: { children: ReactNode }) => {
     return savedVolume !== null ? parseFloat(savedVolume) : 1;
   });
 
-  const [isMuted, setIsMuted] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return localStorage.getItem('playerVolume') === null;
-  });
+  const [isMuted, setIsMuted] = useState(true); // v26.4: Siempre inicia muteado para garantizar autoplay en mobile y mostrar botón rojo.
 
   const [hasInteracted, setHasInteracted] = useState(false);
 
