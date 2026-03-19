@@ -90,30 +90,29 @@ export default function VideoPlayer({
     };
   }, [content, isLiveActive]);
 
-  // Autoplay Loop (v26.0 - Fully persistent recovery loop)
-  // Eliminamos shouldPlay de las dependencias para que el intervalo persista durante la precarga
+  // Autoplay Loop (v26.2 - NUCLEAR RECOVERY)
+  // Eliminamos isPlayerReady de las dependencias para que el bucle intente "patear" el player
+  // incluso si el onReady inicial se quedó trabado por bloqueo del navegador.
   useEffect(() => {
-    if ((isArticle && !isLiveActive) || !isPlayerReady) return;
+    if ((isArticle && !isLiveActive)) return; 
 
-    // Reducido CPU usage: 3000ms es suficiente para recovery state
     const intervalId = setInterval(() => {
-      if (!internalPlayerRef.current) return;
+      // Intentamos recuperar el player interno de múltiples formas
+      const p = internalPlayerRef.current || (playerRef.current ? (playerRef.current as any).getInternalPlayer() : null);
+      if (!p) return;
+
       try {
-        const p = internalPlayerRef.current;
-        if (p) {
-          const s = typeof p.getPlayerState === 'function' ? p.getPlayerState() : -2;
-          // Si el video está pausado (2), en buffer (3) o cued (5), forzamos playVideo()
-          if ([2, 3, 5, -1].includes(s)) {
-            p.playVideo();
-          }
+        const s = typeof p.getPlayerState === 'function' ? p.getPlayerState() : -2;
+        // 2=Paused, 3=Buffering, 5=Cued, -1=Unstarted. 
+        // Si no está en estado 1 (Playing), lo forzamos.
+        if (s !== 1) {
+          if (typeof p.playVideo === 'function') p.playVideo();
         }
       } catch (e) { }
-    }, 1500); // v26.0: Más agresivo (1.5s) para mobile
+    }, 1000); // v26.2: Máxima agresividad (1s)
 
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [isArticle, isPlayerReady, isLiveActive]);
+    return () => clearInterval(intervalId);
+  }, [isArticle, isLiveActive]);
 
   // Volume Loop (v24.3 - CPU Optimization: setInterval instead of rAF)
   // ✅ Audio Normalization: volumen_extra per-video multiplier

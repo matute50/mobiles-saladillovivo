@@ -122,7 +122,7 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       if (preloadTimerRef.current) clearTimeout(preloadTimerRef.current);
       preloadTimerRef.current = setTimeout(() => {
         setIsPreloading(true);
-      }, 2000); // v25.7: Retrasado a 2s para asegurar opacidad total del intro
+      }, 500); // v26.1: Reducido a 500ms para que YouTube cargue e inicie buffering/autoplay casi de inmediato
 
       v.volume = 1; // Resetear volumen al 100% antes de cada intro
 
@@ -191,8 +191,8 @@ export default function VideoSection({ isMobile, isDark = true }: { isMobile?: b
       }
     }
 
-    // Solapamiento "Regla de Oro": 3 segundos antes del final permitimos que el contenido inferior inicie
-    const OVERLAP_START = targetDuration - 3;
+    // Solapamiento "Regla de Oro": 2 segundos antes del final permitimos que el contenido inferior inicie (como pidió el user)
+    const OVERLAP_START = targetDuration - 2;
     if (effectiveTime >= OVERLAP_START) {
       if (!isOverlapping) setIsOverlapping(true);
     }
