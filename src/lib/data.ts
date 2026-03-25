@@ -71,11 +71,39 @@ export async function getPageData(): Promise<PageData> {
       activo: item.isActive !== undefined ? item.isActive : true
     }));
 
+    const now = new Date();
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    // 1. Identificar la noticia destacada
+    // Se busca primero una marcada explícitamente como 'featured'.
+    // Si no hay, se toma la más reciente.
+    // La noticia destacada es la UNICA que puede tener más de 48h según la excepción solicitada.
+    const featuredNews = mappedArticles.find(a => a.featureStatus === 'featured') || 
+                        (mappedArticles.length > 0 ? mappedArticles[0] : null);
+
+    // 2. Filtrar el resto de las noticias (deben tener menos de 48h)
+    // La noticia destacada se mantiene siempre.
+    const filteredArticles = mappedArticles.filter(a => {
+      if (a.id === featuredNews?.id) return true;
+      const articleDate = new Date(a.fecha);
+      return articleDate > fortyEightHoursAgo;
+    });
+
+    // 3. Agrupar y ordenar por fecha (menor antigüedad primero -> descendente)
+    // Nota: El fetch ya trae orden desc, pero lo reforzamos para noticias de "igual jerarquía".
+    const secondaryNews = filteredArticles
+      .filter(a => a.featureStatus === 'secondary' && a.id !== featuredNews?.id)
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
+    const otherNews = filteredArticles
+      .filter(a => !['featured', 'secondary'].includes(a.featureStatus || '') && a.id !== featuredNews?.id)
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
     return {
       articles: {
-        featuredNews: mappedArticles.find(a => a.featureStatus === 'featured') || (mappedArticles.length > 0 ? mappedArticles[0] : null),
-        secondaryNews: mappedArticles.filter(a => a.featureStatus === 'secondary'),
-        otherNews: mappedArticles.filter(a => !['featured', 'secondary'].includes(a.featureStatus || ''))
+        featuredNews,
+        secondaryNews,
+        otherNews
       },
       videos: { allVideos: mappedVideos, liveStream: null },
       ads: mappedAds
