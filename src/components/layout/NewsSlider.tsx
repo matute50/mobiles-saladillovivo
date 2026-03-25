@@ -107,7 +107,7 @@ export const NewsSlider = React.memo(({
                                                         "font-black uppercase tracking-tight italic",
                                                         slide.type === 'featured' 
                                                             ? "text-xl leading-[1.1] line-clamp-3" 
-                                                            : "text-[13px] leading-[1] line-clamp-4"
+                                                            : "text-[14px] leading-[1] line-clamp-4"
                                                     )}
                                                     style={{ textShadow: '0 0 10px rgba(0,0,0,1), 0 0 5px rgba(0,0,0,1)' }}
                                                 >
