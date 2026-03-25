@@ -93,8 +93,7 @@ export const NewsSlider = React.memo(({
                                                     content={item}
                                                     variant="simple"
                                                     className={cn(
-                                                        "backdrop-blur-sm text-white p-1 border border-white",
-                                                        isDark ? "bg-[#6699ff]/50 hover:bg-[#6699ff]/70" : "bg-[#003399]/50 hover:bg-[#003399]/70"
+                                                        "backdrop-blur-sm text-white p-1 border border-white bg-black/50 hover:bg-black/70"
                                                     )}
                                                     iconSize={15}
                                                 />
