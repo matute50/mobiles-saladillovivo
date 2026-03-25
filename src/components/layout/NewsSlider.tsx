@@ -93,7 +93,9 @@ export const NewsSlider = React.memo(({
                                                 />
                                             </div>
 
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-10" />
+                                            {/* Top and Bottom Vignette with Blur */}
+                                            <div className="absolute top-0 left-0 right-0 h-1/4 bg-gradient-to-b from-black/80 via-black/20 to-transparent z-10 backdrop-blur-[1px]" />
+                                            <div className="absolute bottom-0 left-0 right-0 h-3/5 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 backdrop-blur-[1px]" />
 
                                             <div className="absolute inset-0 z-20 flex flex-col justify-center items-center p-3 text-center text-white">
                                                 <div className={cn(
