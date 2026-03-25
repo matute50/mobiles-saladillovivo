@@ -87,6 +87,16 @@ export const NewsSlider = React.memo(({
                                                 unoptimized
                                             />
 
+                                            {/* Date Overlay */}
+                                            <div className="absolute top-1.5 left-1.5 z-30 bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white font-medium border border-white/10 uppercase italic">
+                                                {new Date(item.fecha).toLocaleString('es-AR', { 
+                                                    day: '2-digit', 
+                                                    month: '2-digit', 
+                                                    hour: '2-digit', 
+                                                    minute: '2-digit' 
+                                                })}
+                                            </div>
+
                                             {/* Share Button Overlay */}
                                             <div className="absolute top-2 right-2 z-30">
                                                 <ShareButton
