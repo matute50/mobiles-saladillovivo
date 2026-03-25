@@ -32,6 +32,10 @@ export const NewsSlider = React.memo(({
     const { playManual } = useMediaPlayer();
     const { unmute } = useVolume();
 
+    const totalArticles = React.useMemo(() => 
+        newsSlides.reduce((acc, slide) => acc + slide.items.length, 0),
+    [newsSlides]);
+
     return (
         <div className="flex flex-col gap-2 pt-1 pb-4">
             <div className="flex items-center justify-between px-2 shrink-0">
@@ -44,7 +48,7 @@ export const NewsSlider = React.memo(({
                         ? "bg-gradient-to-r from-[#6699ff] via-[#ffffff] to-[#6699ff]"
                         : "bg-gradient-to-r from-[#003399] via-[#000000] to-[#003399]"
                 )}>
-                    {searchQuery ? "Resultados" : "ÚLTIMAS NOTICIAS"}
+                    {searchQuery ? "Resultados" : `${totalArticles} ÚLTIMAS NOTICIAS`}
                 </h3>
                 <button onClick={onNext} className={isDark ? "text-[#6699ff]" : "text-[#003399]"}>
                     <ChevronRight size={32} />
