@@ -169,7 +169,10 @@ export const VideoCarouselBlock = React.memo(({ isDark, searchQuery, onVideoSele
                                     unoptimized
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="bg-[#003399]/50 p-1.5 rounded-full border border-white -mt-8">
+                                    <div className={cn(
+                                        "backdrop-blur-sm p-1.5 rounded-full border border-white -mt-8",
+                                        isDark ? "bg-[#6699ff]/50" : "bg-[#003399]/50"
+                                    )}>
                                         <Play size={21} fill="white" />
                                     </div>
                                 </div>
@@ -188,7 +191,10 @@ export const VideoCarouselBlock = React.memo(({ isDark, searchQuery, onVideoSele
                                     <ShareButton
                                         content={v}
                                         variant="simple"
-                                        className="bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 p-1.5 border border-black"
+                                        className={cn(
+                                            "backdrop-blur-sm text-white p-1.5 border border-white",
+                                            isDark ? "bg-[#6699ff]/50 hover:bg-[#6699ff]/70" : "bg-[#003399]/50 hover:bg-[#003399]/70"
+                                        )}
                                         iconSize={16}
                                     />
                                 </div>

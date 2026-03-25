@@ -92,7 +92,10 @@ export const NewsSlider = React.memo(({
                                                 <ShareButton
                                                     content={item}
                                                     variant="simple"
-                                                    className="bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 p-1.5 border border-black"
+                                                    className={cn(
+                                                        "backdrop-blur-sm text-white p-1.5 border border-white",
+                                                        isDark ? "bg-[#6699ff]/50 hover:bg-[#6699ff]/70" : "bg-[#003399]/50 hover:bg-[#003399]/70"
+                                                    )}
                                                     iconSize={18}
                                                 />
                                             </div>
