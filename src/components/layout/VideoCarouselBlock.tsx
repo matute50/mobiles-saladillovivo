@@ -192,7 +192,7 @@ export const VideoCarouselBlock = React.memo(({ isDark, searchQuery, onVideoSele
                                         content={v}
                                         variant="simple"
                                         className={cn(
-                                            "backdrop-blur-sm text-white p-1 border border-white bg-black/50 hover:bg-black/70"
+                                            "backdrop-blur-sm text-white p-1 bg-black/50 hover:bg-black/70"
                                         )}
                                         iconSize={14}
                                     />
