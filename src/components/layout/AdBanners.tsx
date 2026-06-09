@@ -13,7 +13,7 @@ export function AdBanners({ ads, isDark = true }: AdBannersProps) {
     if (!ads || ads.length === 0) return null;
 
     return (
-        <div className="flex w-full justify-between items-center gap-2 py-1 shrink-0 px-2">
+        <div className="grid grid-cols-3 w-full gap-2 py-1 shrink-0 px-2">
             {ads.map((ad, i) => (
                 <a 
                     key={`${ad.id}-${i}`} 

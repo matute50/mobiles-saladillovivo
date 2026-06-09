@@ -79,38 +79,15 @@ export default function MobileLayout({ data }: { data: PageData }) {
     return slides;
   }, [filteredData]);
 
-  // v24.7: Calcular banners asegurando 6 slots (3 arriba, 3 abajo) sin repetir "cestel"
+  // v24.7: Calcular banners asegurando que ningún banner se repita en absoluto
   const { topAds, bottomAds } = useMemo(() => {
     const activeAds = data.ads?.filter(ad => ad.activo) || [];
     if (activeAds.length === 0) return { topAds: [], bottomAds: [] };
 
-    const slots = [];
-    let cestelCount = 0;
-    
-    let currentIndex = 0;
-    // Evitar bucle infinito si por error solo hay banners de Cestel
-    const hasOnlyCestel = activeAds.every(ad => ad.cliente.toLowerCase().includes('cestel'));
-
-    // Llenar exactamente 6 espacios (índices 0..2 arriba, 3..5 abajo)
-    while(slots.length < 6) {
-       const ad = activeAds[currentIndex % activeAds.length];
-       const isCestel = ad.cliente.toLowerCase().includes('cestel');
-       
-       if (isCestel && cestelCount >= 1 && !hasOnlyCestel) {
-           // Si ya apareció una vez, lo saltamos en los siguientes slots
-           currentIndex++;
-           continue;
-       }
-       
-       if (isCestel) cestelCount++;
-       
-       slots.push(ad);
-       currentIndex++;
-    }
-
+    // Simplemente tomamos los primeros 6 anuncios únicos
     return {
-        topAds: slots.slice(0, 3),
-        bottomAds: slots.slice(3, 6)
+        topAds: activeAds.slice(0, 3),
+        bottomAds: activeAds.slice(3, 6)
     };
   }, [data.ads]);
 
@@ -243,7 +220,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
           {/* Ocultar NewsSlider si hay teclado O si hay búsqueda activa (Prevent Layout Shift & "Resultados" flash) */}
           {!isKeyboardOpen && !isSearchOpen && (
-            <>
               <NewsSlider
                 newsSlides={newsSlides}
                 isDark={isDark}
@@ -252,10 +228,6 @@ export default function MobileLayout({ data }: { data: PageData }) {
                 onPrev={handleNewsPrev}
                 onNext={handleNewsNext}
               />
-              
-              {/* Espacio para banners debajo del primer articulo */}
-              <AdBanners ads={bottomAds} isDark={isDark} />
-            </>
           )}
 
           <div className={cn("h-[160px] shrink-0", isKeyboardOpen ? "mt-2" : "-mt-[23px]")}>
@@ -266,6 +238,9 @@ export default function MobileLayout({ data }: { data: PageData }) {
               onVideoSelect={handleVideoSelect}
             />
           </div>
+
+          {/* Espacio para banners debajo del carrusel de videos */}
+          <AdBanners ads={bottomAds} isDark={isDark} />
         </div>
       )}
     </div>
