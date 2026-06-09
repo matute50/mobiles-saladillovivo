@@ -15,6 +15,7 @@ import { Maximize } from 'lucide-react';
 import { Header } from './Header';
 import { VideoCarouselBlock } from './VideoCarouselBlock';
 import { NewsSlider } from './NewsSlider';
+import { AdBanners } from './AdBanners';
 import { InstallModal } from './InstallModal';
 import { usePWA } from '@/context/PWAContext';
 import { useKeyboard } from '@/hooks/useKeyboard';
@@ -203,16 +204,24 @@ export default function MobileLayout({ data }: { data: PageData }) {
 
       {!isLandscape && (
         <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
+          {/* Espacio para banners entre el reproductor multimedia y el primer articulo */}
+          <AdBanners ads={data.ads || []} isDark={isDark} startIndex={0} />
+
           {/* Ocultar NewsSlider si hay teclado O si hay búsqueda activa (Prevent Layout Shift & "Resultados" flash) */}
           {!isKeyboardOpen && !isSearchOpen && (
-            <NewsSlider
-              newsSlides={newsSlides}
-              isDark={isDark}
-              searchQuery={searchQuery}
-              onSwiper={setNewsSwiper}
-              onPrev={handleNewsPrev}
-              onNext={handleNewsNext}
-            />
+            <>
+              <NewsSlider
+                newsSlides={newsSlides}
+                isDark={isDark}
+                searchQuery={searchQuery}
+                onSwiper={setNewsSwiper}
+                onPrev={handleNewsPrev}
+                onNext={handleNewsNext}
+              />
+              
+              {/* Espacio para banners debajo del primer articulo */}
+              <AdBanners ads={data.ads || []} isDark={isDark} startIndex={3} />
+            </>
           )}
 
           <div className={cn("h-[160px] shrink-0", isKeyboardOpen ? "mt-2" : "-mt-[23px]")}>
