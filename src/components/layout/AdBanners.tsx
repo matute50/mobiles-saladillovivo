@@ -7,29 +7,21 @@ import { cn } from '@/lib/utils';
 interface AdBannersProps {
     ads: Ad[];
     isDark?: boolean;
-    startIndex?: number;
 }
 
-export function AdBanners({ ads, isDark = true, startIndex = 0 }: AdBannersProps) {
-    const activeAds = ads?.filter(ad => ad.activo) || [];
-    if (activeAds.length === 0) return null;
-
-    // Queremos mostrar 3 banners (izquierda, centro, derecha)
-    const displayAds = [];
-    for (let i = 0; i < 3; i++) {
-        displayAds.push(activeAds[(startIndex + i) % activeAds.length]);
-    }
+export function AdBanners({ ads, isDark = true }: AdBannersProps) {
+    if (!ads || ads.length === 0) return null;
 
     return (
         <div className="flex w-full justify-between items-center gap-2 py-1 shrink-0 px-2">
-            {displayAds.map((ad, i) => (
+            {ads.map((ad, i) => (
                 <a 
                     key={`${ad.id}-${i}`} 
                     href={ad.url || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
-                        "relative flex-1 aspect-[2/1] rounded-md overflow-hidden border shadow-sm flex items-center justify-center transition-transform active:scale-95",
+                        "relative flex-1 aspect-square rounded-md overflow-hidden border shadow-sm flex items-center justify-center transition-transform active:scale-95",
                         isDark ? "bg-neutral-800 border-neutral-700" : "bg-neutral-100 border-neutral-200"
                     )}
                 >

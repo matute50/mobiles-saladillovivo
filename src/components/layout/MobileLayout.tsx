@@ -79,6 +79,40 @@ export default function MobileLayout({ data }: { data: PageData }) {
     return slides;
   }, [filteredData]);
 
+  // v24.7: Calcular banners asegurando 6 slots (3 arriba, 3 abajo) sin repetir "cestel"
+  const { topAds, bottomAds } = useMemo(() => {
+    const activeAds = data.ads?.filter(ad => ad.activo) || [];
+    if (activeAds.length === 0) return { topAds: [], bottomAds: [] };
+
+    const slots = [];
+    let cestelCount = 0;
+    
+    let currentIndex = 0;
+    // Evitar bucle infinito si por error solo hay banners de Cestel
+    const hasOnlyCestel = activeAds.every(ad => ad.cliente.toLowerCase().includes('cestel'));
+
+    // Llenar exactamente 6 espacios (índices 0..2 arriba, 3..5 abajo)
+    while(slots.length < 6) {
+       const ad = activeAds[currentIndex % activeAds.length];
+       const isCestel = ad.cliente.toLowerCase().includes('cestel');
+       
+       if (isCestel && cestelCount >= 1 && !hasOnlyCestel) {
+           // Si ya apareció una vez, lo saltamos en los siguientes slots
+           currentIndex++;
+           continue;
+       }
+       
+       if (isCestel) cestelCount++;
+       
+       slots.push(ad);
+       currentIndex++;
+    }
+
+    return {
+        topAds: slots.slice(0, 3),
+        bottomAds: slots.slice(3, 6)
+    };
+  }, [data.ads]);
 
   const firstLoadDone = useRef(false);
 
@@ -205,7 +239,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
       {!isLandscape && (
         <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
           {/* Espacio para banners entre el reproductor multimedia y el primer articulo */}
-          <AdBanners ads={data.ads || []} isDark={isDark} startIndex={0} />
+          <AdBanners ads={topAds} isDark={isDark} />
 
           {/* Ocultar NewsSlider si hay teclado O si hay búsqueda activa (Prevent Layout Shift & "Resultados" flash) */}
           {!isKeyboardOpen && !isSearchOpen && (
@@ -220,7 +254,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
               />
               
               {/* Espacio para banners debajo del primer articulo */}
-              <AdBanners ads={data.ads || []} isDark={isDark} startIndex={3} />
+              <AdBanners ads={bottomAds} isDark={isDark} />
             </>
           )}
 
