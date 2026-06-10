@@ -19,7 +19,7 @@ export async function getPageData(): Promise<PageData> {
     };
 
     const fetchSponsors = async () => {
-      const url = `${supabaseUrl}/rest/v1/anuncios?select=id,name,imageUrl,linkUrl,isActive,createdAt&isActive=eq.true&order=createdAt.desc`;
+      const url = `${supabaseUrl}/rest/v1/anuncios?select=id,title,image_url,link_url,is_active,created_at&is_active=eq.true&order=created_at.desc`;
       const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
       return res.json();
     };
@@ -62,13 +62,13 @@ export async function getPageData(): Promise<PageData> {
 
     const mappedSponsors: Sponsor[] = (sponsorsData || []).map((item: any) => ({
       id: String(item.id),
-      cliente: item.name || 'Anónimo',
-      imagen_url: item.imageUrl || '',
-      url: item.linkUrl || '',
+      cliente: item.title || 'Anónimo',
+      imagen_url: item.image_url || '',
+      url: item.link_url || '',
       tipo: 'banner',
-      fecha_inicio: item.createdAt || new Date().toISOString(),
-      fecha_fin: item.createdAt || new Date().toISOString(),
-      activo: item.isActive !== undefined ? item.isActive : true
+      fecha_inicio: item.created_at || new Date().toISOString(),
+      fecha_fin: item.created_at || new Date().toISOString(),
+      activo: item.is_active !== undefined ? item.is_active : true
     }));
 
     const now = new Date();
