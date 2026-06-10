@@ -26,7 +26,7 @@ export interface Video {
   volumen_extra?: number;
 }
 
-export interface Ad {
+export interface Sponsor {
   id: string;
   cliente: string;
   imagen_url: string;
@@ -47,5 +47,5 @@ export interface PageData {
     allVideos: Video[];
     liveStream: Video | null;
   };
-  ads: Ad[];
+  sponsors: Sponsor[];
 }

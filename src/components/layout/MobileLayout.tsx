@@ -15,7 +15,7 @@ import { Maximize } from 'lucide-react';
 import { Header } from './Header';
 import { VideoCarouselBlock } from './VideoCarouselBlock';
 import { NewsSlider } from './NewsSlider';
-import { AdBanners } from './AdBanners';
+import { SponsorBanners } from './SponsorBanners';
 import { InstallModal } from './InstallModal';
 import { usePWA } from '@/context/PWAContext';
 import { useKeyboard } from '@/hooks/useKeyboard';
@@ -80,16 +80,16 @@ export default function MobileLayout({ data }: { data: PageData }) {
   }, [filteredData]);
 
   // v24.7: Calcular banners asegurando que ningún banner se repita en absoluto
-  const { topAds, bottomAds } = useMemo(() => {
-    const activeAds = data.ads?.filter(ad => ad.activo) || [];
-    if (activeAds.length === 0) return { topAds: [], bottomAds: [] };
+  const { topSponsors, bottomSponsors } = useMemo(() => {
+    const activeSponsors = data.sponsors?.filter(sponsor => sponsor.activo) || [];
+    if (activeSponsors.length === 0) return { topSponsors: [], bottomSponsors: [] };
 
     // Simplemente tomamos los primeros 6 anuncios únicos
     return {
-        topAds: activeAds.slice(0, 3),
-        bottomAds: activeAds.slice(3, 6)
+        topSponsors: activeSponsors.slice(0, 3),
+        bottomSponsors: activeSponsors.slice(3, 6)
     };
-  }, [data.ads]);
+  }, [data.sponsors]);
 
   const firstLoadDone = useRef(false);
 
@@ -216,7 +216,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
       {!isLandscape && (
         <div className="flex-1 flex flex-col gap-2 px-3 pt-1 pb-4 overflow-y-auto">
           {/* Espacio para banners entre el reproductor multimedia y el primer articulo */}
-          <AdBanners ads={topAds} isDark={isDark} />
+          <SponsorBanners sponsors={topSponsors} isDark={isDark} />
 
           {/* Ocultar NewsSlider si hay teclado O si hay búsqueda activa (Prevent Layout Shift & "Resultados" flash) */}
           {!isKeyboardOpen && !isSearchOpen && (
@@ -240,7 +240,7 @@ export default function MobileLayout({ data }: { data: PageData }) {
           </div>
 
           {/* Espacio para banners debajo del carrusel de videos */}
-          <AdBanners ads={bottomAds} isDark={isDark} />
+          <SponsorBanners sponsors={bottomSponsors} isDark={isDark} />
         </div>
       )}
     </div>

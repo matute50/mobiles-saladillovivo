@@ -1,5 +1,5 @@
 // src/lib/data.ts
-import { PageData, Video, Article, Ad } from '@/lib/types';
+import { PageData, Video, Article, Sponsor } from '@/lib/types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -18,16 +18,16 @@ export async function getPageData(): Promise<PageData> {
       return res.json();
     };
 
-    const fetchAds = async () => {
+    const fetchSponsors = async () => {
       const url = `${supabaseUrl}/rest/v1/anuncios?select=id,name,imageUrl,linkUrl,isActive,createdAt&isActive=eq.true&order=createdAt.desc`;
       const res = await fetch(url, { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}` }, next: { revalidate: 60 } });
       return res.json();
     };
 
-    const [articlesData, videosData, adsData] = await Promise.all([
+    const [articlesData, videosData, sponsorsData] = await Promise.all([
       fetchArticles(),
       fetchVideos(),
-      fetchAds()
+      fetchSponsors()
     ]);
 
     const mappedArticles: Article[] = (articlesData || []).map((item: any) => {
@@ -60,7 +60,7 @@ export async function getPageData(): Promise<PageData> {
       volumen_extra: item.volumen_extra ? Number(item.volumen_extra) : 1
     }));
 
-    const mappedAds: Ad[] = (adsData || []).map((item: any) => ({
+    const mappedSponsors: Sponsor[] = (sponsorsData || []).map((item: any) => ({
       id: String(item.id),
       cliente: item.name || 'Anónimo',
       imagen_url: item.imageUrl || '',
@@ -106,11 +106,11 @@ export async function getPageData(): Promise<PageData> {
         otherNews
       },
       videos: { allVideos: mappedVideos, liveStream: null },
-      ads: mappedAds
+      sponsors: mappedSponsors
     };
   } catch (error) {
     console.error('❌ Error cargando datos:', error);
-    return { articles: { featuredNews: null, secondaryNews: [], otherNews: [] }, videos: { allVideos: [], liveStream: null }, ads: [] };
+    return { articles: { featuredNews: null, secondaryNews: [], otherNews: [] }, videos: { allVideos: [], liveStream: null }, sponsors: [] };
   }
 }
 

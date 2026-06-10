@@ -1,23 +1,23 @@
 'use client';
 import React from 'react';
-import { Ad } from '@/lib/types';
+import { Sponsor } from '@/lib/types';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-interface AdBannersProps {
-    ads: Ad[];
+interface SponsorBannersProps {
+    sponsors: Sponsor[];
     isDark?: boolean;
 }
 
-export function AdBanners({ ads, isDark = true }: AdBannersProps) {
-    if (!ads || ads.length === 0) return null;
+export function SponsorBanners({ sponsors, isDark = true }: SponsorBannersProps) {
+    if (!sponsors || sponsors.length === 0) return null;
 
     return (
         <div className="grid grid-cols-3 w-full gap-2 py-1 shrink-0 px-2">
-            {ads.map((ad, i) => (
+            {sponsors.map((sponsor, i) => (
                 <a 
-                    key={`${ad.id}-${i}`} 
-                    href={ad.url || '#'}
+                    key={`${sponsor.id}-${i}`} 
+                    href={sponsor.url || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
@@ -25,12 +25,12 @@ export function AdBanners({ ads, isDark = true }: AdBannersProps) {
                         isDark ? "bg-neutral-800 border-neutral-700" : "bg-neutral-100 border-neutral-200"
                     )}
                 >
-                    {ad.imagen_url ? (
+                    {sponsor.imagen_url ? (
                         <Image 
-                            src={ad.imagen_url} 
+                            src={sponsor.imagen_url} 
                             fill 
                             sizes="(max-width: 768px) 33vw, 20vw"
-                            alt={ad.cliente || "Publicidad"} 
+                            alt={sponsor.cliente || "Publicidad"} 
                             className="object-cover" 
                             unoptimized
                         />
@@ -39,7 +39,7 @@ export function AdBanners({ ads, isDark = true }: AdBannersProps) {
                             "text-[10px] font-bold uppercase opacity-50 text-center px-1 leading-tight",
                             isDark ? "text-white" : "text-black"
                         )}>
-                            {ad.cliente}
+                            {sponsor.cliente}
                         </span>
                     )}
                 </a>
